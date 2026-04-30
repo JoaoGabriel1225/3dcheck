@@ -1,164 +1,251 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 import { 
-  MessageCircle, 
+  ExternalLink, 
+  Copy, 
+  Store, 
+  Palette, 
+  ImageIcon, 
+  Globe, 
+  Check, 
   Instagram, 
-  ShoppingBag, 
-  Zap,
-  Info,
-  Loader2,
-  Package,
-  ArrowRight
+  MessageCircle, 
+  Settings2,
+  Share2,
+  Image as ImageLucide
 } from 'lucide-react';
 
-export default function Storefront() {
-  const { id } = useParams();
-  const [settings, setSettings] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function StorefrontSettings() {
+  const { profile } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  
+  const [storeName, setStoreName] = useState('');
+  const [description, setDescription] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#3b82f6');
+  const [instagram, setInstagram] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [showPrices, setShowPrices] = useState(true);
+  const [showStock, setShowStock] = useState(true);
+  
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [currentLogo, setCurrentLogo] = useState('');
+  const [currentBanner, setCurrentBanner] = useState('');
+
+  const storeUrl = `${window.location.origin}/storefront/${profile?.id}`;
 
   useEffect(() => {
-    const fetchStoreData = async () => {
+    if (!profile) return;
+    const fetchSettings = async () => {
       try {
-        const { data: storeData } = await supabase
+        const { data, error } = await supabase
           .from('store_settings')
           .select('*')
-          .eq('user_id', id)
+          .eq('user_id', profile.id)
           .single();
 
-        const { data: productsData } = await supabase
-          .from('products')
-          .select('*')
-          .eq('user_id', id)
-          .eq('is_public', true);
-
-        setSettings(storeData);
-        setProducts(productsData || []);
-      } catch (e) {
-        console.error("Erro ao carregar vitrine", e);
+        if (error && error.code !== 'PGRST116') throw error;
+        
+        if (data) {
+          setStoreName(data.store_name || '');
+          setDescription(data.description || '');
+          setPrimaryColor(data.primary_color || '#3b82f6');
+          setInstagram(data.instagram_handle || '');
+          setWhatsapp(data.whatsapp_number || '');
+          setShowPrices(data.show_prices ?? true);
+          setShowStock(data.show_stock ?? true);
+          setCurrentLogo(data.logo_url || '');
+          setCurrentBanner(data.banner_url || '');
+        }
+      } catch (err: any) {
+        console.error('Error fetching settings:', err);
       } finally {
-        setLoading(false);
+        setFetching(false);
       }
     };
-    fetchStoreData();
-  }, [id]);
+    fetchSettings();
+  }, [profile]);
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0c]">
-      <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-    </div>
-  );
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+    setLoading(true);
 
-  if (!settings) return <div className="min-h-screen flex items-center justify-center font-bold">Loja não encontrada.</div>;
+    try {
+      let logoUrl = currentLogo;
+      let bannerUrl = currentBanner;
+
+      if (logoFile) {
+        const filePath = `${profile.id}/logo-${Date.now()}`;
+        const { error } = await supabase.storage.from('store-assets').upload(filePath, logoFile);
+        if (!error) logoUrl = supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl;
+      }
+
+      if (bannerFile) {
+        const filePath = `${profile.id}/banner-${Date.now()}`;
+        const { error } = await supabase.storage.from('store-assets').upload(filePath, bannerFile);
+        if (!error) bannerUrl = supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl;
+      }
+
+      const { error } = await supabase
+        .from('store_settings')
+        .upsert({
+          user_id: profile.id,
+          store_name: storeName,
+          description,
+          primary_color: primaryColor,
+          instagram_handle: instagram,
+          whatsapp_number: whatsapp,
+          show_prices: showPrices,
+          show_stock: showStock,
+          logo_url: logoUrl,
+          banner_url: bannerUrl,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+      toast.success('Configurações atualizadas!');
+      setCurrentLogo(logoUrl);
+      setCurrentBanner(bannerUrl);
+    } catch (err: any) {
+      toast.error('Erro ao salvar.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (fetching) return <div className="py-20 text-center font-black text-slate-400 animate-pulse tracking-widest">SINCRONIZANDO...</div>;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 font-sans pb-20 selection:bg-blue-500/30">
-      
-      {/* BANNER DINÂMICO */}
-      <div className="relative h-[40vh] md:h-[50vh] w-full overflow-hidden">
-        {settings.banner_url ? (
-          <img src={settings.banner_url} className="w-full h-full object-cover" alt="Banner" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#1a1a1e] via-[#0a0a0c] to-black" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-transparent" />
-        
-        {/* LOGO GLASSMORPHISM */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center space-y-4">
-           <div className="p-1.5 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl">
-             <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.2rem] overflow-hidden bg-[#161618] flex items-center justify-center border border-white/5">
-                {settings.logo_url ? (
-                  <img src={settings.logo_url} className="w-full h-full object-contain p-2" alt="Logo" />
-                ) : (
-                  <span className="text-3xl font-black text-blue-500">3D</span>
-                )}
-             </div>
-           </div>
-           <div className="space-y-1">
-             <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white drop-shadow-xl">
-               {settings.store_name}
-             </h1>
-             <p className="text-slate-400 font-medium max-w-lg mx-auto text-sm">
-               {settings.description}
-             </p>
-           </div>
+    <div className="space-y-10 animate-in fade-in duration-500 max-w-5xl pb-20">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
+            <Store className="w-4 h-4" />
+            Configurações da Loja
+          </div>
+          <h2 className="text-4xl font-black tracking-tight">Personalização</h2>
         </div>
+        
+        <Button variant="outline" className="h-12 px-6 rounded-xl border-border font-bold hover:bg-accent gap-2" asChild>
+          <a href={storeUrl} target="_blank" rel="noreferrer">
+            <ExternalLink className="w-4 h-4" />
+            Ver Loja ao Vivo
+          </a>
+        </Button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6">
-        {/* REDES SOCIAIS GLASS */}
-        <div className="flex justify-center -mt-8 relative z-20">
-          <div className="bg-[#161618]/90 backdrop-blur-xl border border-white/10 p-2 rounded-2xl flex gap-2 shadow-2xl">
-            {settings.instagram_handle && (
-              <Button variant="ghost" className="rounded-xl hover:bg-white/5 font-bold gap-2 text-pink-500" asChild>
-                <a href={`https://instagram.com/${settings.instagram_handle}`} target="_blank" rel="noreferrer">
-                  <Instagram className="w-4 h-4" /> <span className="hidden sm:inline">Instagram</span>
-                </a>
-              </Button>
-            )}
-            <Button variant="ghost" className="rounded-xl hover:bg-white/5 font-bold gap-2 text-emerald-500" asChild>
-              <a href={`https://wa.me/55${settings.whatsapp_number}`} target="_blank" rel="noreferrer">
-                <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
-              </a>
+      <form onSubmit={handleSave} className="grid gap-8">
+        <Card className="border-none bg-blue-500/5 rounded-3xl overflow-hidden shadow-sm">
+          <div className="p-8 flex flex-col md:flex-row items-center gap-6">
+            <div className="p-4 bg-white dark:bg-black/20 rounded-2xl text-blue-600">
+              <Share2 className="w-8 h-8" />
+            </div>
+            <div className="flex-1 space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/70">Link da Vitrine</span>
+              <div className="text-sm font-bold text-foreground opacity-80">{storeUrl}</div>
+            </div>
+            <Button type="button" onClick={() => { navigator.clipboard.writeText(storeUrl); toast.success('Copiado!'); }} className="h-12 px-8 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl gap-2">
+              <Copy className="h-4 w-4" /> Copiar
+            </Button>
+          </div>
+        </Card>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-8">
+            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl">
+              <CardHeader className="p-8 border-b border-border/50">
+                <CardTitle className="text-xl font-black flex items-center gap-3">
+                   <Globe className="w-5 h-5 text-blue-500" /> Conteúdo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Nome da Loja</Label>
+                  <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} required className="h-12 rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Boas-vindas</Label>
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-xl min-h-[120px]" />
+                </div>
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-pink-500">Instagram (sem @)</Label>
+                    <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} className="h-12 rounded-xl" placeholder="ex: minha.loja" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-emerald-500">WhatsApp (com DDD)</Label>
+                    <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="h-12 rounded-xl" placeholder="11999999999" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl">
+              <CardHeader className="p-8 border-b border-border/50">
+                <CardTitle className="text-xl font-black flex items-center gap-3">
+                   <Settings2 className="w-5 h-5 text-blue-500" /> Exibição
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8 grid sm:grid-cols-2 gap-8">
+                <div className="flex items-center justify-between p-4 bg-accent/20 rounded-2xl border border-border">
+                  <Label className="font-bold">Mostrar Preços</Label>
+                  <Switch checked={showPrices} onCheckedChange={setShowPrices} />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-accent/20 rounded-2xl border border-border">
+                  <Label className="font-bold">Mostrar Estoque</Label>
+                  <Switch checked={showStock} onCheckedChange={setShowStock} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-8">
+            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl">
+              <CardHeader className="p-8 border-b border-border/50">
+                <CardTitle className="text-xl font-black flex items-center gap-3">
+                  <Palette className="w-5 h-5 text-blue-500" /> Visual
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Cor de Destaque</Label>
+                  <div className="flex gap-2">
+                    <Input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-14 h-12 p-1 rounded-xl cursor-pointer" />
+                    <Input value={primaryColor} readOnly className="h-12 rounded-xl font-mono uppercase" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Logotipo</Label>
+                  <div className="aspect-square w-full rounded-2xl bg-accent/30 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                    {currentLogo ? <img src={currentLogo} className="w-full h-full object-contain p-4" /> : <ImageIcon className="opacity-10 w-10 h-10" />}
+                  </div>
+                  <Input type="file" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="h-11 rounded-xl pt-2 text-xs" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Banner</Label>
+                  <div className="aspect-video w-full rounded-2xl bg-accent/30 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                    {currentBanner ? <img src={currentBanner} className="w-full h-full object-cover" /> : <ImageLucide className="opacity-10 w-10 h-10" />}
+                  </div>
+                  <Input type="file" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} className="h-11 rounded-xl pt-2 text-xs" />
+                </div>
+              </CardContent>
+            </Card>
+            <Button type="submit" disabled={loading} className="w-full h-16 text-lg font-black bg-blue-600 hover:bg-blue-500 text-white rounded-3xl shadow-2xl transition-all">
+              {loading ? 'Sincronizando...' : 'Salvar Alterações'}
             </Button>
           </div>
         </div>
-
-        {/* PRODUTOS */}
-        <div className="mt-20 space-y-10">
-          <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">
-            <Package className="text-blue-500 w-6 h-6" />
-            Catálogo Profissional
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {products.map((product) => {
-              const hasDiscount = product.discount > 0;
-              const finalPrice = product.final_price - (product.discount || 0);
-
-              return (
-                <Card key={product.id} className="group border-none bg-[#161618]/40 backdrop-blur-sm rounded-[2.5rem] overflow-hidden hover:translate-y-[-8px] transition-all duration-500 border border-white/5">
-                  <div className="aspect-square relative overflow-hidden bg-[#1c1c1f]">
-                    <img 
-                      src={product.main_image_url || "/placeholder-3d.jpg"} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                      alt={product.name} 
-                    />
-                    {hasDiscount && (
-                      <div className="absolute top-4 left-4 bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg">
-                        OFERTA
-                      </div>
-                    )}
-                  </div>
-                  
-                  <CardContent className="p-8 space-y-4">
-                    <h3 className="text-xl font-black tracking-tight text-white">{product.name}</h3>
-                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                      {settings.show_prices ? (
-                        <div className="flex flex-col">
-                          {hasDiscount && <span className="text-[10px] font-bold text-slate-500 line-through">R$ {product.final_price?.toFixed(2)}</span>}
-                          <span className="text-2xl font-black tracking-tighter text-emerald-400">R$ {finalPrice.toFixed(2)}</span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest flex items-center gap-2"><Info className="w-3 h-3" /> Orçamento</span>
-                      )}
-                      
-                      <Button className="rounded-2xl h-12 w-12 p-0 bg-white/5 hover:bg-blue-600 border border-white/10 text-white transition-all" asChild>
-                        <a href={`https://wa.me/55${settings.whatsapp_number}?text=Olá! Gostaria de encomendar o item: ${product.name}`} target="_blank" rel="noreferrer">
-                          <ArrowRight className="w-5 h-5" />
-                        </a>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      </form>
     </div>
   );
 }
