@@ -56,7 +56,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+ const fetchProfile = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+      return;
+    }
+
+    if (!data) return;
+
+    const now = new Date();
+    const trialEnd = data.trialEndsAt ? new Date(data.trialEndsAt) : null;
+
+    let updatedProfile = data;
+
+    // 🔥 BLOQUEIO AUTOMÁTICO DO TRIAL
+    if (trialEnd && now > trialEnd && data.status !== 'active') {
+      updatedProfile = {
+        ...data,
+        status: 'blocked'
+      };
+
+      // salva no banco para persistir bloqueio
+      await supabase
+        .from('profiles')
+        .update({ status: 'blocked' })
+        .eq('id', userId);
+    }
+
+    setProfile(updatedProfile as Profile);
+
+  } catch (error) {
+    console.error('Failed to fetch profile', error);
+  } finally {
+    setLoading(false);
+  }
+}; {
     try {
       const { data, error } = await supabase
         .from('profiles')
