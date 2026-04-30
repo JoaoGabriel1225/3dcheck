@@ -33,8 +33,7 @@ export default function Products() {
   const [isPublic, setIsPublic] = useState(true);
   const [discount, setDiscount] = useState('');
   
-  // Calculator state
-  const [useCalculator, setUseCalculator] = useState(false);
+  // Calculator state (agora obrigatório)
   const [filamentPrice, setFilamentPrice] = useState('');
   const [gramsUsed, setGramsUsed] = useState('');
   const [energyCost, setEnergyCost] = useState('');
@@ -66,26 +65,25 @@ export default function Products() {
     fetchProducts();
   }, [profile]);
 
+  // Efeito que calcula automaticamente sempre que qualquer custo muda
   useEffect(() => {
-    if (useCalculator) {
-      const fPrice = parseFloat(filamentPrice) || 0;
-      const gUsed = parseFloat(gramsUsed) || 0;
-      const materialCost = (fPrice / 1000) * gUsed;
-      
-      const eCost = parseFloat(energyCost) || 0;
-      const mCost = parseFloat(machineCost) || 0;
-      const pTime = parseFloat(printTime) || 0;
-      const oCosts = parseFloat(otherCosts) || 0;
-      
-      const extraCost = (eCost + mCost) * pTime + oCosts;
-      const cTotal = materialCost + extraCost;
-      setCalculatedCost(cTotal);
-      
-      const margin = parseFloat(profitMargin) || 0;
-      const calcPrice = cTotal * (1 + margin / 100);
-      setPrice(calcPrice.toFixed(2));
-    }
-  }, [useCalculator, filamentPrice, gramsUsed, energyCost, machineCost, printTime, otherCosts, profitMargin]);
+    const fPrice = parseFloat(filamentPrice) || 0;
+    const gUsed = parseFloat(gramsUsed) || 0;
+    const materialCost = (fPrice / 1000) * gUsed;
+    
+    const eCost = parseFloat(energyCost) || 0;
+    const mCost = parseFloat(machineCost) || 0;
+    const pTime = parseFloat(printTime) || 0;
+    const oCosts = parseFloat(otherCosts) || 0;
+    
+    const extraCost = (eCost + mCost) * pTime + oCosts;
+    const cTotal = materialCost + extraCost;
+    setCalculatedCost(cTotal);
+    
+    const margin = parseFloat(profitMargin) || 0;
+    const calcPrice = cTotal * (1 + margin / 100);
+    setPrice(calcPrice.toFixed(2));
+  }, [filamentPrice, gramsUsed, energyCost, machineCost, printTime, otherCosts, profitMargin]);
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +91,7 @@ export default function Products() {
     
     try {
       let finalPriceNum = parseFloat(price.replace(',', '.')) || 0;
-      let costTotalNum = useCalculator ? calculatedCost : 0;
+      let costTotalNum = calculatedCost; // Agora pega direto do calculo
       let profitMarginNum = parseFloat(profitMargin) || 0;
       let discountNum = parseFloat(discount.replace(',', '.')) || 0;
 
@@ -135,7 +133,6 @@ export default function Products() {
         
       if (productError) throw productError;
 
-      // 2. Upload image if exists
       if (file) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${productData.id}-${Math.random()}.${fileExt}`;
@@ -169,7 +166,7 @@ export default function Products() {
       resetForm();
       fetchProducts();
     } catch (err: any) {
-      toast.error('Erro ao salvar produto', err.message);
+      toast.error('Erro ao salvar produto: ' + err.message);
     }
   };
 
@@ -199,13 +196,7 @@ export default function Products() {
     setCalculatedCost(product.cost_total || 0);
 
     if (product.cost_total > 0 && product.profit_margin > 0) {
-      setUseCalculator(true);
-      // We don't have all calculator fields saved, just final cost and margin,
-      // so we can put the total cost in "otherCosts" or a similar field if we want to reverse engineer it, 
-      // but for simplicity let's just place it in otherCosts to keep the math working.
       setOtherCosts(product.cost_total.toString());
-    } else {
-      setUseCalculator(false);
     }
 
     setIsDialogOpen(true);
@@ -236,7 +227,6 @@ export default function Products() {
     setFile(null);
     setIsPublic(true);
     setDiscount('');
-    setUseCalculator(false);
     setFilamentPrice('');
     setGramsUsed('');
     setEnergyCost('');
@@ -284,62 +274,54 @@ export default function Products() {
                  </div>
                </div>
 
-              {/* Precificação */}
+              {/* Precificação e Custos (Agora obrigatório e visível por padrão) */}
               <div className="space-y-4 pt-4 border-t border-border/50">
-                <div className="flex items-center justify-between">
-                  <Label className="font-bold text-foreground text-base">Precificação</Label>
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="use-calc" className="font-medium text-muted-foreground text-xs uppercase">Usar Calculadora</Label>
-                    <Switch id="use-calc" checked={useCalculator} onCheckedChange={setUseCalculator} />
+                <Label className="font-bold text-foreground text-base">Custos e Precificação</Label>
+
+                <div className="bg-muted/50 p-4 rounded-xl space-y-4 border border-border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="filPrice" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Custo do Filamento / KG (R$)*</Label>
+                      <Input id="filPrice" type="number" step="0.01" value={filamentPrice} onChange={(e) => setFilamentPrice(e.target.value)} required className="border-slate-200 h-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gUsed" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Gramas Utilizadas*</Label>
+                      <Input id="gUsed" type="number" step="0.01" value={gramsUsed} onChange={(e) => setGramsUsed(e.target.value)} required className="border-slate-200 h-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="eCost" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Custo Energia / Hr (R$)</Label>
+                      <Input id="eCost" type="number" step="0.01" value={energyCost} onChange={(e) => setEnergyCost(e.target.value)} className="border-slate-200 h-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mCost" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Custo Máquina / Hr (R$)</Label>
+                      <Input id="mCost" type="number" step="0.01" value={machineCost} onChange={(e) => setMachineCost(e.target.value)} className="border-slate-200 h-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pTime" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Tempo (Horas)</Label>
+                      <Input id="pTime" type="number" step="0.01" value={printTime} onChange={(e) => setPrintTime(e.target.value)} className="border-slate-200 h-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="oCosts" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Outros Custos (R$)</Label>
+                      <Input id="oCosts" type="number" step="0.01" value={otherCosts} onChange={(e) => setOtherCosts(e.target.value)} className="border-slate-200 h-9" />
+                    </div>
+                  </div>
+                  
+                  <div className="border-t border-border pt-4 flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-medium text-muted-foreground">Custo Total Calculado:</span>
+                      <span className="font-bold text-foreground">R$ {calculatedCost.toFixed(2)}</span>
+                    </div>
+                    <div className="space-y-2 mt-2">
+                      <Label htmlFor="pMargin" className="font-bold text-blue-700 text-[10px] uppercase tracking-wider">Margem de Lucro (%)*</Label>
+                      <Input id="pMargin" type="number" step="0.01" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="border-blue-200 bg-blue-50/50" />
+                    </div>
                   </div>
                 </div>
 
-                {useCalculator && (
-                  <div className="bg-muted/50 p-4 rounded-xl space-y-4 border border-border">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="filPrice" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Custo do Filamento por KG (R$)*</Label>
-                        <Input id="filPrice" type="number" step="0.01" value={filamentPrice} onChange={(e) => setFilamentPrice(e.target.value)} required={useCalculator} className="border-slate-200 h-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="gUsed" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Gramas Utilizadas*</Label>
-                        <Input id="gUsed" type="number" step="0.01" value={gramsUsed} onChange={(e) => setGramsUsed(e.target.value)} required={useCalculator} className="border-slate-200 h-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="eCost" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Custo Energia / Hr (R$)</Label>
-                        <Input id="eCost" type="number" step="0.01" value={energyCost} onChange={(e) => setEnergyCost(e.target.value)} className="border-slate-200 h-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="mCost" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Custo Máquina / Hr (R$)</Label>
-                        <Input id="mCost" type="number" step="0.01" value={machineCost} onChange={(e) => setMachineCost(e.target.value)} className="border-slate-200 h-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="pTime" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Tempo (Horas)</Label>
-                        <Input id="pTime" type="number" step="0.01" value={printTime} onChange={(e) => setPrintTime(e.target.value)} className="border-slate-200 h-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="oCosts" className="font-bold text-slate-700 text-[10px] uppercase tracking-wider">Outros Custos (R$)</Label>
-                        <Input id="oCosts" type="number" step="0.01" value={otherCosts} onChange={(e) => setOtherCosts(e.target.value)} className="border-slate-200 h-9" />
-                      </div>
-                    </div>
-                    
-                    <div className="border-t border-border pt-4 flex flex-col gap-2">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="font-medium text-muted-foreground">Custo Total Calculado:</span>
-                        <span className="font-bold text-foreground">R$ {calculatedCost.toFixed(2)}</span>
-                      </div>
-                      <div className="space-y-2 mt-2">
-                        <Label htmlFor="pMargin" className="font-bold text-blue-700 text-[10px] uppercase tracking-wider">Margem de Lucro (%)*</Label>
-                        <Input id="pMargin" type="number" step="0.01" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required={useCalculator} className="border-blue-200 bg-blue-50/50" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="price" className="font-bold text-slate-700 text-xs uppercase tracking-wider">Preço Final (R$)</Label>
-                    <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required readOnly={useCalculator} className={`border-slate-200 ${useCalculator ? 'bg-slate-50 text-slate-500' : ''}`} />
+                    <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required readOnly className="border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="discount" className="font-bold text-slate-700 text-xs uppercase tracking-wider">Desconto (R$ Opcional)</Label>
