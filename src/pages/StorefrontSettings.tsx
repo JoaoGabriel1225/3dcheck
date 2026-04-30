@@ -138,7 +138,7 @@ export default function StorefrontSettings() {
         </div>
       </div>
 
-      {/* NOVO: CARD DE LINK COMPARTILHÁVEL */}
+      {/* NOVO: CARD DE LINK COMPARTILHÁVEL COM O NOVO BOTÃO */}
       <Card className="rounded-[2rem] border-blue-500/20 bg-blue-500/5 shadow-xl overflow-hidden border-2">
         <CardContent className="p-8">
           <div className="flex flex-col md:flex-row items-center gap-8">
@@ -147,33 +147,40 @@ export default function StorefrontSettings() {
             </div>
             
             <div className="flex-1 space-y-2 text-center md:text-left">
-              <h3 className="text-xl font-black text-foreground">Link de Divulgação</h3>
+              <h3 className="text-xl font-black text-foreground">Divulgação da Loja</h3>
               <p className="text-sm text-muted-foreground font-medium">
-                Use este link para enviar para clientes ou colocar na <span className="text-blue-600 font-bold">Bio do Instagram</span>.
+                Seu catálogo está online! Use os botões abaixo para acessar ou divulgar na <span className="text-blue-600 font-bold">Bio do Instagram</span>.
               </p>
               
-              <div className="flex flex-col sm:flex-row items-center gap-2 mt-4">
+              <div className="flex flex-col lg:flex-row items-center gap-4 mt-4">
+                {/* Visor do Link */}
                 <div className="flex-1 w-full bg-background border-2 border-slate-200 h-12 rounded-xl flex items-center px-4 font-mono text-sm text-blue-600 overflow-hidden group hover:border-blue-500/50 transition-colors">
-                  <LinkIcon className="w-4 h-4 mr-2 text-slate-400" />
+                  <LinkIcon className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span className="truncate">3dcheck.app/<span className="font-bold text-slate-900">{storeSlug}</span>/produtos</span>
                 </div>
                 
-                <div className="flex gap-2 w-full sm:w-auto">
+                {/* Grupo de Botões (Copiar + Ver Vitrine) */}
+                <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                   <Button 
                     type="button"
                     onClick={handleCopyLink}
-                    className={`flex-1 sm:flex-none h-12 px-6 rounded-xl font-bold transition-all ${copied ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}
+                    className={`h-12 px-6 rounded-xl font-bold transition-all w-full sm:w-auto ${copied ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg'}`}
                   >
                     {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
                     {copied ? 'COPIADO' : 'COPIAR LINK'}
                   </Button>
                   
+                  {/* BOTÃO VER MINHA VITRINE */}
                   <Button 
+                    type="button"
                     variant="outline"
-                    className="h-12 w-12 rounded-xl border-slate-200 bg-white p-0 shadow-sm"
+                    className="h-12 px-6 rounded-xl border-blue-600 text-blue-600 font-black hover:bg-blue-600 hover:text-white transition-all shadow-md w-full sm:w-auto group"
                     asChild
                   >
-                    <a href={friendlyUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4" /></a>
+                    <a href={friendlyUrl} target="_blank" rel="noreferrer">
+                      VER MINHA VITRINE
+                      <ExternalLink className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    </a>
                   </Button>
                 </div>
               </div>
