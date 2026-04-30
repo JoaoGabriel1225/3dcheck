@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { MessageCircle, Copy, Plus, Search, Trash2, ShoppingBag, Filter, Calendar, User, Tag, DollarSign, Calculator, ChevronDown } from 'lucide-react';
+import { MessageCircle, Copy, Plus, Search, Trash2, ShoppingBag, Filter, Calendar, User, Tag, DollarSign, Calculator, ChevronDown, Package } from 'lucide-react';
 
 const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Cancelado'];
 
@@ -43,6 +43,8 @@ export default function Orders() {
   const [productsOptions, setProductsOptions] = useState<any[]>([]);
   const [clientSearchText, setClientSearchText] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [productSearchText, setProductSearchText] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
   
   // Estado do Formulário
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -134,19 +136,13 @@ export default function Orders() {
     }
   };
 
-  const handleProductSelect = (productId: string) => {
-    setSelectedProductId(productId);
-    if (productId !== 'custom') {
-      const product = productsOptions.find(p => p.id === productId);
-      if (product) {
-        setOrderDescription(product.description || '');
-        setOrderPrice(product.final_price?.toString() || '');
-        setOrderCost(product.cost_total?.toString() || '0');
-      }
-    } else {
-      setOrderPrice('');
-      setOrderCost('');
-    }
+  const selectProduct = (product: any) => {
+    setSelectedProductId(product.id);
+    setProductSearchText(product.name);
+    setOrderDescription(product.description || '');
+    setOrderPrice(product.final_price?.toString() || '');
+    setOrderCost(product.cost_total?.toString() || '0');
+    setShowProductDropdown(false);
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -182,6 +178,7 @@ export default function Orders() {
   };
 
   const filteredClients = clientSearchText.trim() === '' ? [] : clientsOptions.filter(c => c.name.toLowerCase().includes(clientSearchText.toLowerCase()));
+  const filteredProducts = productSearchText.trim() === '' ? [] : productsOptions.filter(p => p.name.toLowerCase().includes(productSearchText.toLowerCase()));
 
   const selectClient = (client: any) => {
     setSelectedClientId(client.id);
@@ -195,6 +192,7 @@ export default function Orders() {
 
   const resetOrderForm = () => {
     setClientSearchText(''); setShowClientDropdown(false); setSelectedClientId('');
+    setProductSearchText(''); setShowProductDropdown(false);
     setNewClientName(''); setNewClientPhone(''); setSelectedProductId('custom');
     setOrderDescription(''); setOrderPrice(''); setOrderCost('');
   };
@@ -209,6 +207,8 @@ export default function Orders() {
       (order.description || '').toLowerCase().includes(term)
     );
   });
+
+  const estimatedProfit = (parseFloat(orderPrice.replace(',', '.')) || 0) - (parseFloat(orderCost.replace(',', '.')) || 0);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -258,7 +258,7 @@ export default function Orders() {
                             className="h-12 rounded-xl"
                         />
                         {showClientDropdown && filteredClients.length > 0 && (
-                            <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                            <div className="absolute z-[60] w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-40 overflow-y-auto">
                                 {filteredClients.map(c => (
                                     <div 
                                         key={c.id} 
@@ -288,52 +288,100 @@ export default function Orders() {
               {/* PRODUCT SECTION */}
               <div className="space-y-4 pt-4 border-t border-border">
                 <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
-                  <Tag className="w-3 h-3" /> Peça e Especificações
+                  <Package className="w-3 h-3" /> Peça e Especificações
                 </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Select value={selectedProductId} onValueChange={handleProductSelect}>
-                        <SelectTrigger className="h-12 rounded-xl font-bold">
-                            <SelectValue placeholder="Selecione um Produto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="custom" className="font-black text-blue-500">PRODUTO PERSONALIZADO</SelectItem>
-                            {productsOptions.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                <div className="relative">
                     <Input 
-                        placeholder="Preço Acordado (R$)" 
-                        value={orderPrice}
-                        onChange={(e) => setOrderPrice(e.target.value)}
-                        className="h-12 rounded-xl font-black text-emerald-500"
+                        placeholder="Pesquisar produto ou item personalizado..." 
+                        value={productSearchText}
+                        onChange={(e) => {
+                            setProductSearchText(e.target.value);
+                            setOrderDescription(e.target.value);
+                            setSelectedProductId('custom');
+                            setShowProductDropdown(true);
+                        }}
+                        onFocus={() => setShowProductDropdown(true)}
+                        className="h-12 rounded-xl pr-10"
                     />
+                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
+                    
+                    {showProductDropdown && filteredProducts.length > 0 && (
+                        <div className="absolute z-[60] w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                            {filteredProducts.map(p => (
+                                <div 
+                                    key={p.id} 
+                                    onClick={() => selectProduct(p)}
+                                    className="p-3 hover:bg-accent cursor-pointer flex flex-col transition-colors border-b border-border last:border-0"
+                                >
+                                    <span className="font-bold text-sm">{p.name}</span>
+                                    <span className="text-[10px] opacity-50">Preço Sugerido: R$ {p.final_price?.toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <Textarea 
-                    placeholder="Detalhes adicionais do pedido (tamanho, cor, material...)" 
+                    placeholder="Detalhes adicionais do pedido (cor, escala, material...)" 
                     value={orderDescription}
                     onChange={(e) => setOrderDescription(e.target.value)}
-                    className="rounded-xl min-h-[100px]"
+                    className="rounded-xl min-h-[80px]"
                 />
               </div>
 
-              {/* FINANCIAL INFO */}
-              <div className="p-4 bg-accent/30 rounded-2xl border border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-background rounded-lg shadow-sm"><Calculator className="w-4 h-4 text-muted-foreground" /></div>
-                    <div>
-                        <p className="text-[10px] font-black uppercase opacity-50 tracking-wider">Custo de Produção</p>
-                        <p className="text-sm font-black text-foreground">R$ {parseFloat(orderCost || '0').toFixed(2)}</p>
+              {/* FINANCIAL SECTION */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
+                  <DollarSign className="w-3 h-3" /> Resumo Financeiro
+                </Label>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold uppercase opacity-60 ml-1">Preço Total Acordado (R$)</Label>
+                        <Input 
+                            type="text"
+                            placeholder="0,00" 
+                            value={orderPrice}
+                            onChange={(e) => setOrderPrice(e.target.value)}
+                            className="h-12 rounded-xl font-black text-emerald-500 text-lg"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold uppercase opacity-60 ml-1">Gastos de Produção (R$)</Label>
+                        <Input 
+                            type="text"
+                            placeholder="0,00" 
+                            value={orderCost}
+                            onChange={(e) => setOrderCost(e.target.value)}
+                            className="h-12 rounded-xl font-black text-red-500 text-lg"
+                        />
                     </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-[10px] font-black uppercase opacity-50 tracking-wider">Lucro Estimado</p>
-                    <p className="text-sm font-black text-emerald-500">
-                        R$ {(parseFloat(orderPrice || '0') - parseFloat(orderCost || '0')).toFixed(2)}
-                    </p>
+
+                <div className="p-5 bg-blue-500/5 rounded-3xl border border-blue-500/10 flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-border">
+                            <Calculator className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Lucro Estimado</p>
+                            <p className={`text-2xl font-black ${estimatedProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                R$ {estimatedProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="text-right hidden sm:block">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Margem</p>
+                        <p className="text-sm font-bold opacity-60">
+                            {orderPrice && parseFloat(orderPrice) > 0 
+                                ? ((estimatedProfit / parseFloat(orderPrice.replace(',', '.'))) * 100).toFixed(0) 
+                                : 0}%
+                        </p>
+                    </div>
                 </div>
               </div>
 
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white font-black text-lg rounded-2xl shadow-xl shadow-blue-500/20 transition-all active:scale-95">
+                <Button type="submit" className="w-full h-16 bg-blue-600 hover:bg-blue-500 text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-500/20 transition-all active:scale-95">
                   SALVAR PEDIDO
                 </Button>
               </DialogFooter>
@@ -342,7 +390,7 @@ export default function Orders() {
         </Dialog>
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTER BAR - Mantida igual */}
       <Card className="p-4 border-border bg-card/50 backdrop-blur-md shadow-sm space-y-4 rounded-2xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md group">
@@ -379,7 +427,7 @@ export default function Orders() {
         </div>
       </Card>
 
-      {/* ORDERS TABLE */}
+      {/* ORDERS TABLE - Mantida igual */}
       <Card className="border-border bg-card/30 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
         <Table>
           <TableHeader>
@@ -459,7 +507,7 @@ export default function Orders() {
         </Table>
       </Card>
 
-      {/* WHATSAPP CONFIRMATION MODAL */}
+      {/* WHATSAPP MODAL - Mantido igual */}
       <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
         <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
           <DialogHeader>
