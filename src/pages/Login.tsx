@@ -38,7 +38,7 @@ export default function Login() {
         <div className="relative z-10 flex items-center gap-3">
           <div className="h-10 flex items-center justify-center">
             {/* TAG DA IMAGEM AQUI: Basta colocar sua logo.png na pasta public */}
-            <img src="/logo.png" alt="3dCheck Logo" className="h-full w-auto object-contain drop-shadow-[0_0_15px_rgba(37,99,235,0.5)]" />
+            <img src="/logo.jpg.png" alt="3dCheck Logo" className="h-full w-auto object-contain drop-shadow-[0_0_15px_rgba(37,99,235,0.5)]" />
           </div>
           <span className="text-3xl font-extrabold tracking-tight text-white">
             <span className="text-blue-500">3d</span>Check
