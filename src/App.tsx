@@ -45,7 +45,12 @@ export default function App() {
                <Route index element={<AdminDashboard />} />
             </Route>
             
+            {/* Rota técnica original (mantida para compatibilidade) */}
             <Route path="/storefront/:id" element={<Storefront />} />
+
+            {/* NOVA ROTA AMIGÁVEL: É aqui que o link da Bio vai "morar" */}
+            {/* O :storeSlug permite que o sistema identifique a loja pelo nome */}
+            <Route path="/catalogo/:storeSlug" element={<Storefront />} />
             
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
