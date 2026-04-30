@@ -7,12 +7,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { ExternalLink, Copy, Store, Palette, ImageIcon, Globe, X, Layout, Settings2 } from 'lucide-react';
+import { 
+  ExternalLink, 
+  Copy, 
+  Store, 
+  Palette, 
+  ImageIcon, 
+  Globe, 
+  X, 
+  Layout, 
+  Settings2, 
+  Share2, 
+  Check,
+  Link as LinkIcon 
+} from 'lucide-react';
 
 export default function StorefrontSettings() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [copied, setCopied] = useState(false);
   
   const [storeName, setStoreName] = useState('');
   const [description, setDescription] = useState('');
@@ -26,7 +40,12 @@ export default function StorefrontSettings() {
   const [currentLogo, setCurrentLogo] = useState('');
   const [currentBanner, setCurrentBanner] = useState('');
 
-  const storeUrl = `${window.location.origin}/storefront/${profile?.id}`;
+  // Lógica do Link Mascarado e Amigável
+  const storeSlug = storeName 
+    ? storeName.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') 
+    : 'minha-loja';
+  
+  const friendlyUrl = `${window.location.origin}/catalogo/${storeSlug}`;
 
   useEffect(() => {
     if (!profile) return;
@@ -47,6 +66,13 @@ export default function StorefrontSettings() {
     };
     fetchSettings();
   }, [profile]);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(friendlyUrl);
+    setCopied(true);
+    toast.success('Link copiado com sucesso!');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleRemoveImage = async (type: 'logo' | 'banner') => {
     if (!profile) return;
@@ -104,15 +130,57 @@ export default function StorefrontSettings() {
 
   return (
     <div className="space-y-10 max-w-5xl pb-20">
-      <div className="flex justify-between items-end gap-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1">
           <p className="text-blue-500 font-bold text-xs uppercase tracking-widest">Painel de Identidade</p>
           <h2 className="text-4xl font-black tracking-tight">Design da Vitrine</h2>
         </div>
-        <Button variant="outline" className="rounded-xl font-bold h-12 shadow-sm border-slate-200" asChild>
-          <a href={storeUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4 mr-2" />Visualizar Loja</a>
-        </Button>
       </div>
+
+      {/* NOVO: CARD DE LINK COMPARTILHÁVEL */}
+      <Card className="rounded-[2rem] border-blue-500/20 bg-blue-500/5 shadow-xl overflow-hidden border-2">
+        <CardContent className="p-8">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="h-16 w-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20 shrink-0">
+              <Share2 className="text-white w-8 h-8" />
+            </div>
+            
+            <div className="flex-1 space-y-2 text-center md:text-left">
+              <h3 className="text-xl font-black text-foreground">Link de Divulgação</h3>
+              <p className="text-sm text-muted-foreground font-medium">
+                Use este link para enviar para clientes ou colocar na <span className="text-blue-600 font-bold">Bio do Instagram</span>.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-center gap-2 mt-4">
+                <div className="flex-1 w-full bg-background border-2 border-slate-200 h-12 rounded-xl flex items-center px-4 font-mono text-sm text-blue-600 overflow-hidden group hover:border-blue-500/50 transition-colors">
+                  <LinkIcon className="w-4 h-4 mr-2 text-slate-400" />
+                  <span className="truncate">3dcheck.app/<span className="font-bold text-slate-900">{storeSlug}</span>/produtos</span>
+                </div>
+                
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button 
+                    type="button"
+                    onClick={handleCopyLink}
+                    className={`flex-1 sm:flex-none h-12 px-6 rounded-xl font-bold transition-all ${copied ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}
+                  >
+                    {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                    {copied ? 'COPIADO' : 'COPIAR LINK'}
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    className="h-12 w-12 rounded-xl border-slate-200 bg-white p-0 shadow-sm"
+                    asChild
+                  >
+                    <a href={friendlyUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4" /></a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSave} className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
@@ -161,7 +229,6 @@ export default function StorefrontSettings() {
         <div className="space-y-8">
           <Card className="rounded-[2rem] border-slate-200 shadow-xl">
             <CardContent className="p-8 space-y-8">
-              {/* COR PICKER RESTAURADO */}
               <div className="space-y-3">
                 <Label className="text-[10px] font-black uppercase text-slate-500">Cor Principal da Marca</Label>
                 <div className="flex gap-2">
@@ -197,7 +264,7 @@ export default function StorefrontSettings() {
               </div>
             </CardContent>
           </Card>
-          <Button type="submit" disabled={loading} className="w-full h-16 text-lg font-black bg-blue-600 hover:bg-blue-500 text-white rounded-[1.5rem] shadow-xl shadow-blue-500/20 transition-all hover:-translate-y-1">
+          <Button type="submit" disabled={loading} className="w-full h-16 text-lg font-black bg-blue-600 hover:bg-blue-500 text-white rounded-[1.5rem] shadow-xl shadow-blue-600/20 transition-all hover:-translate-y-1">
             {loading ? 'PUBLICANDO...' : 'ATUALIZAR VITRINE'}
           </Button>
         </div>
