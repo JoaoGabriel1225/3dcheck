@@ -47,7 +47,6 @@ export default function Storefront() {
         setLoading(true);
         let targetUserId = id;
 
-        // 1. Lógica Automática de Slug (Busca otimizada)
         if (!id && storeSlug) {
           const { data: storeSearch } = await supabase
             .from('store_settings')
@@ -68,7 +67,6 @@ export default function Storefront() {
           return;
         }
 
-        // 2. BUSCA PARALELA (Carrega tudo ao mesmo tempo para ser mais rápido)
         const [storeRes, prodRes] = await Promise.all([
           supabase.from('store_settings').select('*').eq('user_id', targetUserId).single(),
           supabase.from('products')
@@ -82,7 +80,7 @@ export default function Storefront() {
         if (prodRes.data) setProducts(prodRes.data);
 
       } catch (err) { 
-        console.error(err); 
+        console.error('Erro ao buscar dados:', err); 
         toast.error("Erro ao carregar a vitrine.");
       } finally { 
         setLoading(false); 
@@ -103,6 +101,7 @@ export default function Storefront() {
     }
 
     try {
+      // 1. Tenta inserir o Cliente
       const { data: clientData, error: clientErr } = await supabase.from('clients').insert({ 
         user_id: store.user_id, 
         name, 
@@ -113,6 +112,7 @@ export default function Storefront() {
       
       const finalOrderPrice = selectedProduct.final_price - (selectedProduct.discount || 0);
       
+      // 2. Tenta inserir o Pedido
       const { error: orderErr } = await supabase.from('orders').insert({
         user_id: store.user_id, 
         client_id: clientData.id, 
@@ -129,13 +129,14 @@ export default function Storefront() {
       setSelectedProduct(null);
       setName(''); setPhone(''); setDescription('');
     } catch (err: any) { 
-      toast.error('Erro ao enviar pedido.'); 
+      // LOG DETALHADO PARA DEBUG
+      console.error('ERRO SUPABASE:', err);
+      toast.error(`Erro ao enviar pedido: ${err.message || 'Verifique as permissões de banco de dados.'}`); 
     } finally { 
       setIsSubmitting(false); 
     }
   };
 
-  // 3. ESTADO DE CARREGAMENTO (Skeleton UI)
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0c] p-8 space-y-12 overflow-hidden">
@@ -167,7 +168,6 @@ export default function Storefront() {
   return (
     <div className={`relative min-h-screen font-sans pb-20 ${isLight ? 'bg-slate-50 text-slate-900' : 'text-white'}`}>
       
-      {/* 4. BOTÃO DE VOLTAR (Visível apenas para o dono) */}
       {profile?.id === store?.user_id && (
         <Button 
           onClick={() => navigate('/app/storefront-settings')}
