@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, UploadCloud, CheckCircle2, ShieldCheck, Copy, FileText, Check } from 'lucide-react';
+import { AlertTriangle, UploadCloud, CheckCircle2, ShieldCheck, Copy, FileText, Check, Zap, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Billing() {
@@ -15,22 +15,17 @@ export default function Billing() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
 
   const trialInfo = useMemo(() => {
     if (!profile?.trialEndsAt) {
-      return {
-        diffDays: 0,
-        isExpired: true,
-      };
+      return { diffDays: 0, isExpired: true };
     }
     const now = new Date();
     const end = new Date(profile.trialEndsAt);
     const diffTime = end.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return {
-      diffDays,
-      isExpired: diffDays <= 0,
-    };
+    return { diffDays, isExpired: diffDays <= 0 };
   }, [profile]);
 
   const { diffDays, isExpired } = trialInfo;
@@ -67,6 +62,7 @@ export default function Billing() {
         .insert({
           user_id: profile.id,
           pix_proof_url: data.publicUrl,
+          plan_type: selectedPlan // Registrando qual plano ele escolheu
         });
 
       if (dbError) throw dbError;
@@ -83,7 +79,7 @@ export default function Billing() {
   if (!profile) return null;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       {/* HEADER */}
       <div className="flex items-center gap-3">
         <div className="p-3 bg-blue-500/10 rounded-xl">
@@ -98,89 +94,107 @@ export default function Billing() {
       {/* STATUS DO PLANO */}
       {isExpired ? (
         <Card className="border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 shadow-none">
-          <CardContent className="p-6 sm:p-8 flex items-start gap-4">
+          <CardContent className="p-6 flex items-start gap-4">
             <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full shrink-0">
               <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-500" />
             </div>
             <div>
               <h3 className="font-black text-lg text-red-800 dark:text-red-400 tracking-tight">Período de Testes Expirado</h3>
-              <p className="text-sm text-red-600/80 dark:text-red-400/80 font-medium mt-1 leading-relaxed">
-                Seu acesso foi bloqueado. Para continuar gerenciando seus pedidos e custos com o 3dCheck, por favor, realize a assinatura do plano.
+              <p className="text-sm text-red-600/80 dark:text-red-400/80 font-medium mt-1">
+                Seu trial expirou. Selecione um plano abaixo para liberar seu acesso.
               </p>
             </div>
           </CardContent>
         </Card>
       ) : (
         <Card className="border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 shadow-none">
-          <CardContent className="p-6 sm:p-8 flex items-center justify-between">
+          <CardContent className="p-6 flex items-center justify-between">
             <div>
               <h3 className="font-black text-lg text-emerald-800 dark:text-emerald-400 tracking-tight">Plano Ativo (Trial)</h3>
               <p className="text-sm text-emerald-600/80 dark:text-emerald-400/80 font-medium mt-1">
-                Aproveite todos os recursos da plataforma gratuitamente.
+                Você tem {diffDays} dias restantes no seu período gratuito.
               </p>
-            </div>
-            <div className="text-center bg-white dark:bg-black/20 px-4 py-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
-              <span className="block text-2xl font-black text-emerald-600 dark:text-emerald-500 leading-none">{diffDays}</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-800/50 dark:text-emerald-400/50">Dias Restantes</span>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* ÁREA DE PAGAMENTO */}
+      {/* SELEÇÃO DE PLANOS */}
+      {!submitted && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <button 
+            onClick={() => setSelectedPlan('monthly')}
+            className={`p-6 rounded-3xl border-2 text-left transition-all ${selectedPlan === 'monthly' ? 'border-blue-500 bg-blue-500/5 ring-4 ring-blue-500/10' : 'border-border bg-card/50 hover:border-blue-500/30'}`}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div className={`p-2 rounded-lg ${selectedPlan === 'monthly' ? 'bg-blue-500 text-white' : 'bg-accent text-muted-foreground'}`}>
+                <Zap className="w-5 h-5" />
+              </div>
+              {selectedPlan === 'monthly' && <CheckCircle2 className="w-5 h-5 text-blue-500" />}
+            </div>
+            <h4 className="font-black text-lg tracking-tight">Mensal</h4>
+            <p className="text-muted-foreground text-xs font-medium mb-4 tracking-wide">Para quem quer flexibilidade</p>
+            <div className="text-2xl font-black tracking-tighter">R$ 29,90 <span className="text-sm font-medium text-muted-foreground">/mês</span></div>
+          </button>
+
+          <button 
+            onClick={() => setSelectedPlan('annual')}
+            className={`p-6 rounded-3xl border-2 text-left transition-all relative overflow-hidden ${selectedPlan === 'annual' ? 'border-emerald-500 bg-emerald-500/5 ring-4 ring-emerald-500/10' : 'border-border bg-card/50 hover:border-emerald-500/30'}`}
+          >
+            <div className="absolute top-3 right-3 bg-emerald-500 text-white text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-widest">
+              Melhor Valor
+            </div>
+            <div className="flex justify-between items-start mb-4">
+              <div className={`p-2 rounded-lg ${selectedPlan === 'annual' ? 'bg-emerald-500 text-white' : 'bg-accent text-muted-foreground'}`}>
+                <Star className="w-5 h-5" />
+              </div>
+              {selectedPlan === 'annual' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+            </div>
+            <h4 className="font-black text-lg tracking-tight">Anual</h4>
+            <p className="text-muted-foreground text-xs font-medium mb-4 tracking-wide text-emerald-600 dark:text-emerald-500">Economize R$ 60,00 por ano</p>
+            <div className="text-2xl font-black tracking-tighter">R$ 299,00 <span className="text-sm font-medium text-muted-foreground">/ano</span></div>
+          </button>
+        </div>
+      )}
+
+      {/* ÁREA DE PAGAMENTO DINÂMICA */}
       {submitted ? (
-        <Card className="border-border bg-card shadow-xl overflow-hidden rounded-3xl">
-          <div className="h-2 bg-emerald-500 w-full" />
+        <Card className="border-border bg-card shadow-xl overflow-hidden rounded-3xl animate-in zoom-in duration-300">
           <CardContent className="p-12 text-center flex flex-col items-center">
-            <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-500/10 rounded-full flex items-center justify-center mb-6">
+            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-6">
               <CheckCircle2 className="w-10 h-10 text-emerald-500" />
             </div>
-            <h3 className="font-black text-2xl text-foreground tracking-tight mb-2">Tudo Certo!</h3>
-            <p className="text-muted-foreground font-medium max-w-sm mx-auto leading-relaxed">
-              Recebemos seu comprovante. Nossa equipe fará a validação em breve e seu acesso integral será liberado.
+            <h3 className="font-black text-2xl text-foreground tracking-tight mb-2">Comprovante em análise</h3>
+            <p className="text-muted-foreground font-medium max-w-sm mx-auto">
+              Recebemos seu comprovante do plano <strong>{selectedPlan === 'monthly' ? 'Mensal' : 'Anual'}</strong>. Seu acesso será liberado em instantes.
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card className="border-border bg-card/50 backdrop-blur-sm shadow-xl rounded-3xl overflow-hidden">
-          <CardHeader className="p-8 border-b border-border/50 bg-accent/20 text-center">
-            <CardTitle className="font-black text-2xl tracking-tight">Ativar Assinatura via PIX</CardTitle>
-            <CardDescription className="font-medium text-sm mt-2">Pagamento rápido e seguro direto na conta oficial.</CardDescription>
+          <CardHeader className="p-8 border-b border-border/50 bg-accent/20">
+            <CardTitle className="font-black text-xl tracking-tight">Pagamento via PIX</CardTitle>
+            <CardDescription className="font-medium text-sm">Valor selecionado: <span className="text-foreground font-bold">{selectedPlan === 'monthly' ? 'R$ 29,90' : 'R$ 299,00'}</span></CardDescription>
           </CardHeader>
 
           <CardContent className="p-8 space-y-8">
-            
-            {/* BOX DA CHAVE PIX */}
-            <div className="bg-background rounded-2xl border border-border p-6 relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="space-y-1 text-center sm:text-left">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Chave PIX (Telefone)</span>
-                  <div className="text-3xl font-black tracking-tight text-foreground font-mono">15022408740</div>
-                </div>
-                <Button 
-                  onClick={handleCopyPix}
-                  className={`h-12 px-6 font-bold rounded-xl shrink-0 transition-all ${
-                    copied 
-                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20' 
-                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20'
-                  } shadow-lg`}
-                >
-                  {copied ? <Check className="w-5 h-5 mr-2" /> : <Copy className="w-5 h-5 mr-2" />}
-                  {copied ? 'Copiado!' : 'Copiar Chave'}
-                </Button>
-              </div>
+            <div className="bg-background rounded-2xl border border-border p-6 text-center space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Chave PIX (Telefone)</span>
+              <div className="text-3xl font-black tracking-tight text-foreground font-mono">15022408740</div>
+              <Button 
+                onClick={handleCopyPix}
+                variant="outline"
+                className={`h-10 mt-2 rounded-xl transition-all ${copied ? 'border-emerald-500 text-emerald-500' : ''}`}
+              >
+                {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                {copied ? 'Copiado!' : 'Copiar Chave'}
+              </Button>
             </div>
 
-            {/* ÁREA DE UPLOAD */}
-            <form onSubmit={handleFileUpload} className="space-y-6 bg-accent/30 p-6 rounded-2xl border border-border/50">
+            <form onSubmit={handleFileUpload} className="space-y-6">
               <div className="space-y-3">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-foreground">Enviar Comprovante de Pagamento</Label>
-                
-                <div className={`
-                  relative border-2 border-dashed rounded-2xl p-8 text-center transition-all
-                  ${file ? 'border-blue-500 bg-blue-500/5' : 'border-border bg-background hover:border-blue-500/50 hover:bg-accent/50'}
-                `}>
+                <Label className="text-[11px] font-black uppercase tracking-widest text-foreground">Anexar Comprovante</Label>
+                <div className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all ${file ? 'border-blue-500 bg-blue-500/5' : 'border-border bg-background hover:border-blue-500/50'}`}>
                   <Input
                     type="file"
                     accept="image/*,.pdf"
@@ -188,27 +202,15 @@ export default function Billing() {
                     onChange={(e) => setFile(e.target.files?.[0] || null)}
                     required
                   />
-                  
-                  <div className="flex flex-col items-center justify-center gap-3 pointer-events-none">
+                  <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
                     {file ? (
-                      <>
-                        <div className="p-3 bg-blue-500/10 rounded-full text-blue-500">
-                          <FileText className="w-8 h-8" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm text-foreground">{file.name}</p>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Pronto para envio</p>
-                        </div>
-                      </>
+                      <div className="flex items-center gap-2 text-blue-500 font-bold text-sm">
+                        <FileText className="w-5 h-5" /> {file.name}
+                      </div>
                     ) : (
                       <>
-                        <div className="p-3 bg-muted rounded-full text-muted-foreground">
-                          <UploadCloud className="w-8 h-8" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm text-foreground">Clique ou arraste o arquivo aqui</p>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Formatos aceitos: JPG, PNG ou PDF</p>
-                        </div>
+                        <UploadCloud className="w-8 h-8 text-muted-foreground/50" />
+                        <p className="font-bold text-sm text-foreground">Clique para selecionar o arquivo</p>
                       </>
                     )}
                   </div>
@@ -217,12 +219,11 @@ export default function Billing() {
 
               <Button 
                 disabled={!file || loading} 
-                className="w-full h-14 text-lg font-black bg-slate-900 dark:bg-slate-100 dark:text-slate-900 text-white hover:opacity-90 rounded-xl transition-all"
+                className="w-full h-14 text-lg font-black bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-xl shadow-blue-500/20 transition-all"
               >
-                {loading ? 'Processando envio...' : 'Enviar Comprovante e Ativar Plano'}
+                {loading ? 'Enviando...' : `Ativar Plano ${selectedPlan === 'monthly' ? 'Mensal' : 'Anual'}`}
               </Button>
             </form>
-
           </CardContent>
         </Card>
       )}
