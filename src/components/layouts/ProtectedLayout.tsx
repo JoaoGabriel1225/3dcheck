@@ -23,27 +23,26 @@ export function ProtectedLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ ÚNICA FONTE DE VERDADE (EXPIRAÇÃO)
-  const isExpired = profile?.trialEndsAt
-    ? new Date(profile.trialEndsAt).getTime() < Date.now()
-    : true;
+  // 🔥 BASE ÚNICA DE TEMPO
+  const now = Date.now();
 
-  // 🔒 BLOQUEIO GLOBAL CORRIGIDO
+  const endTime = profile?.trialEndsAt
+    ? new Date(profile.trialEndsAt).getTime()
+    : null;
+
+  const daysLeft =
+    endTime !== null
+      ? Math.ceil((endTime - now) / (1000 * 60 * 60 * 24))
+      : 0;
+
+  const isExpired = endTime !== null ? endTime < now : true;
+
+  // 🔒 BLOQUEIO GLOBAL
   if (profile.role !== 'admin' && isExpired) {
     if (location.pathname !== '/billing') {
       return <Navigate to="/billing" replace />;
     }
   }
-
-  const daysLeft = profile.trialEndsAt
-    ? Math.max(
-        0,
-        Math.ceil(
-          (new Date(profile.trialEndsAt).getTime() - new Date().getTime()) /
-            (1000 * 60 * 60 * 24)
-        )
-      )
-    : 0;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans">
@@ -64,8 +63,8 @@ export function ProtectedLayout() {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-5">
-          {/* ✅ agora depende da expiração real */}
-          {!isExpired && (
+          {/* ✅ agora sempre correto */}
+          {!isExpired && daysLeft > 0 && (
             <div className="bg-blue-500/20 border border-blue-500 px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold hidden xs:block">
               Trial: {daysLeft} dias restantes
             </div>
