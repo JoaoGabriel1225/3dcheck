@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
- const fetchProfile = async (userId: string) => {
+const fetchProfile = async (userId: string) => {
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -76,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let updatedProfile = data;
 
-    // 🔥 BLOQUEIO AUTOMÁTICO DO TRIAL
     if (trialEnd && now > trialEnd && data.status !== 'active') {
       updatedProfile = {
         ...data,
