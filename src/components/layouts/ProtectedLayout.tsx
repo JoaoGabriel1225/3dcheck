@@ -26,11 +26,15 @@ export function ProtectedLayout() {
   // Check trial expiration
   const isTrialExpired = profile.trialEndsAt ? new Date(profile.trialEndsAt) < new Date() : false;
   
-  if (profile.role !== 'admin' && profile.status !== 'active' && isTrialExpired) {
-    if (location.pathname !== '/billing') {
-      return <Navigate to="/billing" replace />;
-    }
+ const isExpired = profile?.trialEndsAt
+  ? new Date(profile.trialEndsAt).getTime() < Date.now()
+  : true;
+
+if (profile.role !== 'admin' && isExpired) {
+  if (location.pathname !== '/billing') {
+    return <Navigate to="/billing" replace />;
   }
+}
 
   const daysLeft = profile.trialEndsAt ? Math.max(0, Math.ceil((new Date(profile.trialEndsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
