@@ -24,12 +24,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { MessageCircle, Copy, Plus } from 'lucide-react';
+import { MessageCircle, Copy, Plus, Search, Trash2 } from 'lucide-react';
+
+const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Cancelado'];
 
 export default function Orders() {
   const { profile } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Search and Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Todos');
 
   // Auto trigger WhatsApp modal state
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
@@ -50,7 +56,7 @@ export default function Orders() {
   const [selectedProductId, setSelectedProductId] = useState('custom');
   const [orderDescription, setOrderDescription] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
-  const [orderCost, setOrderCost] = useState(''); // NOVO: Estado para o custo
+  const [orderCost, setOrderCost] = useState('');
 
   const fetchOrders = async () => {
     if (!profile) return;
@@ -79,7 +85,6 @@ export default function Orders() {
     try {
       const [clientsRes, productsRes] = await Promise.all([
         supabase.from('clients').select('id, name, phone').eq('user_id', profile.id).order('name'),
-        // NOVO: Adicionado cost_total na busca dos produtos
         supabase.from('products').select('id, name, description, final_price, cost_total').eq('user_id', profile.id).order('name')
       ]);
       if (clientsRes.data) setClientsOptions(clientsRes.data);
@@ -110,7 +115,7 @@ export default function Orders() {
       fetchOrders();
 
       const phone = order.clients?.phone;
-      if (phone) {
+      if (phone && newStatus !== 'Cancelado') {
         const msg = generateWhatsappMessage(order.products?.name, newStatus, order.clients?.name);
         const cleanPhone = phone.replace(/\D/g, '');
         const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
@@ -119,7 +124,19 @@ export default function Orders() {
         setWhatsappModalOpen(true);
       }
     } catch (err: any) {
-      toast.error('Erro ao atualizar status', err.message);
+      toast.error('Erro ao atualizar status: ' + err.message);
+    }
+  };
+
+  const deleteOrder = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este pedido permanentemente? Isso pode afetar seu dashboard financeiro.')) return;
+    try {
+      const { error } = await supabase.from('orders').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Pedido excluído com sucesso.');
+      fetchOrders();
+    } catch (err: any) {
+      toast.error('Erro ao excluir pedido: ' + err.message);
     }
   };
 
@@ -145,7 +162,6 @@ export default function Orders() {
     }
   };
 
-  // NOVO: Preenche os dados automaticamente, incluindo o custo
   const handleProductSelect = (productId: string) => {
     setSelectedProductId(productId);
     if (productId !== 'custom') {
@@ -168,7 +184,6 @@ export default function Orders() {
     try {
       let finalClientId = selectedClientId;
       if (!finalClientId) {
-        // Create new client
         const cleanPhone = newClientPhone.replace(/\D/g, '');
         if (cleanPhone.length < 10) {
           toast.error('Telefone inválido. Inclua o DDD.');
@@ -194,7 +209,6 @@ export default function Orders() {
         return;
       }
 
-      // NOVO: Adicionado cost_total no insert
       const { error: orderErr } = await supabase
         .from('orders')
         .insert({
@@ -241,8 +255,25 @@ export default function Orders() {
     setSelectedProductId('custom');
     setOrderDescription('');
     setOrderPrice('');
-    setOrderCost(''); // NOVO
+    setOrderCost('');
   };
+
+  // Filtragem local baseada na Pesquisa e no Status
+  const filteredOrders = orders.filter((order) => {
+    const matchesStatus = statusFilter === 'Todos' || order.status === statusFilter;
+    
+    if (!searchTerm) return matchesStatus;
+
+    const term = searchTerm.toLowerCase();
+    const clientName = (order.clients?.name || '').toLowerCase();
+    const productName = (order.products?.name || 'pedido personalizado').toLowerCase();
+    const desc = (order.description || '').toLowerCase();
+    const price = (order.final_price?.toString() || '');
+
+    const matchesSearch = clientName.includes(term) || productName.includes(term) || desc.includes(term) || price.includes(term);
+
+    return matchesStatus && matchesSearch;
+  });
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -352,7 +383,6 @@ export default function Orders() {
                   <Textarea id="order-desc" value={orderDescription} onChange={e => setOrderDescription(e.target.value)} placeholder="Cor, estilo, tamanho ou link do bixo." />
                 </div>
                 
-                {/* NOVO: Grid com Preço e Custo */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="order-price" className="text-xs font-bold uppercase text-foreground">Preço Acordado (R$)</Label>
@@ -369,7 +399,6 @@ export default function Orders() {
                       placeholder="0.00" 
                       readOnly={selectedProductId !== 'custom'}
                       className={selectedProductId !== 'custom' ? "bg-muted text-muted-foreground cursor-not-allowed border-transparent shadow-none" : "border-slate-200"}
-                      title={selectedProductId !== 'custom' ? "O custo é definido automaticamente pelo produto selecionado." : "Insira o custo do seu pedido personalizado."}
                     />
                   </div>
                 </div>
@@ -379,6 +408,37 @@ export default function Orders() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* NOVO: Barra de Pesquisa e Filtros de Status */}
+      <div className="space-y-4 pt-2">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+             placeholder="Buscar por cliente, produto, preço..."
+             value={searchTerm}
+             onChange={(e) => setSearchTerm(e.target.value)}
+             className="pl-9 bg-card border-border shadow-sm"
+          />
+        </div>
+        <div className="flex flex-wrap gap-2 pb-2">
+          {STATUS_OPTIONS.map(status => (
+             <Button
+               key={status}
+               variant={statusFilter === status ? 'default' : 'outline'}
+               size="sm"
+               onClick={() => setStatusFilter(status)}
+               className={`text-xs rounded-full h-7 px-3 font-bold transition-all ${statusFilter === status ? 'shadow-md' : 'text-muted-foreground border-border bg-card hover:bg-muted'}`}
+             >
+               {status}
+               {statusFilter === status && (
+                 <span className="ml-1.5 bg-background/20 text-background px-1.5 py-0.5 rounded-full text-[10px]">
+                   {status === 'Todos' ? orders.length : orders.filter(o => o.status === status).length}
+                 </span>
+               )}
+             </Button>
+          ))}
+        </div>
       </div>
 
       <Card className="rounded-xl border border-border shadow-sm overflow-x-auto bg-card">
@@ -395,19 +455,26 @@ export default function Orders() {
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={5} className="text-center py-8">Carregando...</TableCell></TableRow>
-            ) : orders.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado.</TableCell></TableRow>
+            ) : filteredOrders.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground font-medium">
+                  {searchTerm || statusFilter !== 'Todos' ? 'Nenhum pedido encontrado para sua pesquisa/filtro.' : 'Nenhum pedido encontrado.'}
+                </TableCell>
+              </TableRow>
             ) : (
-              orders.map((order) => (
+              filteredOrders.map((order) => (
                 <TableRow key={order.id} className="hover:bg-muted/50 border-border">
-                  <TableCell className="py-4 px-5 align-top whitespace-nowrap">{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell className="py-4 px-5 align-top whitespace-nowrap">
+                    <span className="font-medium text-foreground">{new Date(order.created_at).toLocaleDateString()}</span>
+                  </TableCell>
                   <TableCell className="py-4 px-5 align-top">
                     <div className="font-bold text-foreground">{order.clients?.name || 'Sem nome'}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">{order.clients?.phone || 'Sem telefone'}</div>
                   </TableCell>
                   <TableCell className="py-4 px-5 align-top">
-                    <div className="font-medium text-foreground">{order.products?.name || 'Pedido Personalizado'}</div>
+                    <div className="font-bold text-foreground">{order.products?.name || 'Pedido Personalizado'}</div>
                     <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5" title={order.description}>{order.description}</div>
+                    <div className="mt-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-500">R$ {order.final_price?.toFixed(2)}</div>
                   </TableCell>
                   <TableCell className="py-4 px-5 align-top">
                     <Select defaultValue={order.status} onValueChange={(val) => updateStatus(order, val)}>
@@ -424,8 +491,8 @@ export default function Orders() {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="py-4 px-5 align-top text-center w-[120px]">
-                    <div className="flex items-center justify-center gap-1 flex-wrap sm:flex-nowrap">
+                  <TableCell className="py-4 px-5 align-top text-center w-[160px]">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap sm:flex-nowrap">
                       <Button 
                         variant="secondary" 
                         size="sm"
@@ -448,13 +515,23 @@ export default function Orders() {
                       <Button 
                         variant="secondary" 
                         size="sm"
-                        className="h-8 w-8 p-0 bg-background hover:bg-muted text-muted-foreground shrink-0" 
+                        className="h-8 w-8 p-0 bg-background hover:bg-muted text-muted-foreground border border-border shrink-0" 
                         title="Copiar mensagem"
                         onClick={() => copyMessage(
                           generateWhatsappMessage(order.products?.name, order.status, order.clients?.name)
                         )}
                       >
                         <Copy className="h-4 w-4" />
+                      </Button>
+                      {/* NOVO: Botão de Excluir */}
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        className="h-8 w-8 p-0 shrink-0 shadow-sm" 
+                        title="Excluir pedido"
+                        onClick={() => deleteOrder(order.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
