@@ -96,7 +96,6 @@ const fetchProfile = async (userId: string) => {
   } finally {
     setLoading(false);
   }
-}; {
     try {
       const { data, error } = await supabase
         .from('profiles')
