@@ -31,7 +31,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     
     setIsAppMode(checkAppMode);
 
-    // 2. Só captura o prompt se o navegador considerar o site instalável
+    // 2. Captura o evento de instalação para uso posterior
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -43,14 +43,17 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   }, []);
 
   const handleInstallClick = async () => {
-    // Se o prompt não existir, a função não faz nada (evita o erro/alert)
-    if (!deferredPrompt) return;
-
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
+    // Tenta executar o prompt se o navegador já o tiver liberado
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      // Fallback silencioso: se o prompt não estiver pronto, 
+      // o usuário pode instalar pelo menu do próprio navegador.
+      console.log("Aguardando sinal do navegador para instalação automática.");
     }
   };
 
@@ -154,8 +157,8 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         {/* Rodapé da Sidebar */}
         <div className="mt-auto pt-6 border-t border-border/50 space-y-4">
           
-          {/* BANNER DE INSTALAÇÃO - Só aparece se o navegador disparar o sinal verde e NÃO estiver no modo App */}
-          {deferredPrompt && !isAppMode && (
+          {/* BANNER DE INSTALAÇÃO - Agora visível sempre que estiver no navegador */}
+          {!isAppMode && (
             <div className="px-2 animate-in slide-in-from-bottom-2 duration-500">
               <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3">
                 <div className="flex items-center gap-3">
@@ -164,14 +167,15 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black text-foreground uppercase tracking-widest leading-none">App 3DCheck</span>
-                    <span className="text-[9px] text-muted-foreground mt-1">Instalação disponível</span>
+                    <span className="text-[9px] text-muted-foreground mt-1">Disponível para PC e Celular</span>
                   </div>
                 </div>
                 <Button 
                   onClick={handleInstallClick}
                   className="w-full h-8 text-[10px] font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all active:scale-95 shadow-md shadow-blue-600/10"
                 >
-                  <Download className="w-3 h-3 mr-2" /> INSTALAR AGORA
+                  <Download className="w-3 h-3 mr-2" /> 
+                  {deferredPrompt ? 'INSTALAR AGORA' : 'BAIXAR APP'}
                 </Button>
               </div>
             </div>
