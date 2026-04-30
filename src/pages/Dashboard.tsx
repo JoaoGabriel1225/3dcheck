@@ -1,8 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { PackageSearch, Clock, CheckCircle, Package, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+  PackageSearch, 
+  Clock, 
+  CheckCircle, 
+  Package, 
+  DollarSign, 
+  TrendingUp, 
+  TrendingDown,
+  LayoutDashboard,
+  ShieldCheck,
+  Zap
+} from 'lucide-react';
 
 type OrderContext = {
   total: number;
@@ -60,89 +71,125 @@ export default function Dashboard() {
   }, [profile]);
 
   return (
-    <div className="space-y-8 max-w-6xl">
-      <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Bem-vindo, {profile?.name}</h2>
-        <p className="text-muted-foreground font-medium">Acompanhe o resumo dos seus pedidos e financeiro.</p>
+    <div className="space-y-10">
+      {/* HEADER DO DASHBOARD */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
+          <LayoutDashboard className="w-4 h-4" />
+          Visão Geral
+        </div>
+        <h2 className="text-4xl font-black tracking-tight text-foreground">
+          Olá, {profile?.name?.split(' ')[0]} <span className="text-blue-500">.</span>
+        </h2>
+        <p className="text-muted-foreground font-medium max-w-2xl">
+          Aqui está o desempenho da sua produção 3D e o resumo financeiro atualizado.
+        </p>
       </div>
 
-      {/* Financial Metrics */}
-      <div className="grid gap-5 md:grid-cols-3">
-        <Card className="rounded-xl border border-border shadow-sm bg-card transition-colors">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-[12px] text-muted-foreground font-bold uppercase tracking-widest">Total Faturado</div>
-              <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+      {/* MÉTRICAS FINANCEIRAS - DESTAQUE */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* FATURAMENTO */}
+        <Card className="relative overflow-hidden border-none bg-card shadow-xl shadow-blue-500/5 group hover:translate-y-[-4px] transition-all duration-300">
+          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Faturado</span>
+              <div className="p-2 rounded-lg bg-emerald-500/10">
+                <DollarSign className="h-5 w-5 text-emerald-500" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold mt-2 text-foreground">
-              {loading ? '-' : `R$ ${stats.revenue.toFixed(2)}`}
+            <div className="text-4xl font-black tracking-tighter text-foreground">
+              {loading ? <div className="h-10 w-32 bg-muted animate-pulse rounded" /> : `R$ ${stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
             </div>
+            <p className="text-xs text-muted-foreground mt-2 font-medium">Receita bruta total</p>
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl border border-border shadow-sm bg-card transition-colors">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-[12px] text-muted-foreground font-bold uppercase tracking-widest">Total de Custos</div>
-              <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center">
-                <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+        {/* CUSTOS */}
+        <Card className="relative overflow-hidden border-none bg-card shadow-xl shadow-blue-500/5 group hover:translate-y-[-4px] transition-all duration-300">
+          <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Custos Operacionais</span>
+              <div className="p-2 rounded-lg bg-red-500/10">
+                <TrendingDown className="h-5 w-5 text-red-500" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold mt-2 text-foreground">
-              {loading ? '-' : `R$ ${stats.cost.toFixed(2)}`}
+            <div className="text-4xl font-black tracking-tighter text-foreground">
+              {loading ? <div className="h-10 w-32 bg-muted animate-pulse rounded" /> : `R$ ${stats.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
             </div>
+            <p className="text-xs text-muted-foreground mt-2 font-medium">Investimento em insumos</p>
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl border border-border shadow-sm bg-primary text-primary-foreground transition-colors hidden-border-dark">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-[12px] font-bold uppercase tracking-widest opacity-80">Lucro Total</div>
-              <div className="h-8 w-8 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-primary-foreground" />
+        {/* LUCRO (DESTAQUE) */}
+        <Card className="relative overflow-hidden border-none bg-gradient-to-br from-blue-600 to-blue-700 shadow-2xl shadow-blue-500/30 group hover:translate-y-[-4px] transition-all duration-300">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[11px] font-black uppercase tracking-widest text-blue-100/70">Lucro Líquido</span>
+              <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
+                <TrendingUp className="h-5 w-5 text-white" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold mt-2 text-primary-foreground">
-              {loading ? '-' : `R$ ${stats.profit.toFixed(2)}`}
+            <div className="text-4xl font-black tracking-tighter text-white">
+              {loading ? <div className="h-10 w-32 bg-white/20 animate-pulse rounded" /> : `R$ ${stats.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            </div>
+            <div className="flex items-center gap-1.5 mt-2 text-blue-100/80 text-xs font-bold uppercase tracking-wider">
+              <Zap className="w-3 h-3" />
+              Performance Máxima
             </div>
           </CardContent>
+          {/* Decoração sutil no card de lucro */}
+          <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
         </Card>
       </div>
 
-      <h3 className="text-xl font-extrabold tracking-tight text-foreground pt-2">Pedidos</h3>
+      {/* SEÇÃO DE PEDIDOS */}
+      <div className="space-y-6">
+        <h3 className="text-xl font-black tracking-tight text-foreground flex items-center gap-2">
+          Fluxo de Produção
+          <div className="h-1 flex-1 bg-border/50 rounded-full ml-2" />
+        </h3>
 
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="rounded-xl border border-border shadow-sm bg-card transition-colors">
-          <CardContent className="p-5">
-            <div className="text-[12px] text-muted-foreground font-semibold uppercase tracking-wide">Total de Pedidos</div>
-            <div className="text-3xl font-extrabold mt-1 text-foreground">{loading ? '-' : stats.total}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="rounded-xl border border-border shadow-sm bg-card transition-colors">
-          <CardContent className="p-5">
-            <div className="text-[12px] text-muted-foreground font-semibold uppercase tracking-wide">Novos Pedidos</div>
-            <div className="text-3xl font-extrabold mt-1 text-primary">{loading ? '-' : stats.newOrders}</div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-border/50 bg-card/50 hover:bg-card transition-colors">
+            <CardContent className="p-6">
+              <Package className="w-5 h-5 text-muted-foreground mb-3" />
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-1">Total de Pedidos</div>
+              <div className="text-3xl font-black">{loading ? '-' : stats.total}</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-border/50 bg-card/50 hover:bg-card transition-colors">
+            <CardContent className="p-6">
+              <Clock className="w-5 h-5 text-blue-500 mb-3" />
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-1">Novas Demandas</div>
+              <div className="text-3xl font-black text-blue-500">{loading ? '-' : stats.newOrders}</div>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-xl border border-border shadow-sm bg-card transition-colors">
-          <CardContent className="p-5">
-            <div className="text-[12px] text-muted-foreground font-semibold uppercase tracking-wide">Em Andamento</div>
-            <div className="text-3xl font-extrabold mt-1 text-amber-600 dark:text-amber-500">{loading ? '-' : stats.inProgress}</div>
-          </CardContent>
-        </Card>
+          <Card className="border-border/50 bg-card/50 hover:bg-card transition-colors">
+            <CardContent className="p-6">
+              <PackageSearch className="w-5 h-5 text-amber-500 mb-3" />
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-1">Em Impressão</div>
+              <div className="text-3xl font-black text-amber-500">{loading ? '-' : stats.inProgress}</div>
+            </CardContent>
+          </Card>
 
-        <Card className="rounded-xl border border-border shadow-sm bg-card transition-colors">
-          <CardContent className="p-5">
-            <div className="text-[12px] text-muted-foreground font-semibold uppercase tracking-wide">Status do Plano</div>
-            <div className="text-3xl font-extrabold mt-1 text-foreground">
-              {profile?.role === 'admin' ? 'Admin' : profile?.status === 'trial' ? 'Trial' : profile?.status === 'active' ? 'Ativo' : 'Inativo'}
-            </div>
-          </CardContent>
-        </Card>
+          <Card className="border-border/50 bg-card/50 hover:bg-card transition-colors border-l-4 border-l-blue-500">
+            <CardContent className="p-6">
+              <ShieldCheck className="w-5 h-5 text-foreground mb-3" />
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground mb-1">Status da Licença</div>
+              <div className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                {profile?.role === 'admin' ? (
+                  <span className="text-blue-500">Administrador</span>
+                ) : (
+                  <span>{profile?.status || 'Usuário'}</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
