@@ -10,9 +10,23 @@ import { toast } from 'sonner';
 
 export default function Billing() {
   const { profile } = useAuth();
+
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // 🚀 LÓGICA DO TRIAL (CORRETA E CENTRALIZADA)
+  const now = new Date();
+
+  const end = profile?.trial_end_date
+    ? new Date(profile.trial_end_date)
+    : null;
+
+  const diffTime = end ? end.getTime() - now.getTime() : 0;
+
+  const diffDays = end
+    ? Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    : 0;
 
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +75,8 @@ export default function Billing() {
         <p className="text-slate-500 font-medium mt-1">Gerencie seu plano e pagamentos.</p>
       </div>
 
-      {(profile.status === 'blocked' || profile.status === 'trial') && (
+      {/* 🚨 BLOCO DE STATUS DO TRIAL (CORRIGIDO) */}
+      {diffDays <= 0 && (
         <Card className="border-red-200 bg-red-50 rounded-xl shadow-none">
           <CardContent className="p-6 flex items-start gap-4 text-red-800">
             <AlertTriangle className="h-6 w-6 text-red-600 mt-1" />
@@ -75,6 +90,19 @@ export default function Billing() {
         </Card>
       )}
 
+      {/* 🟢 BLOCO ATIVO (NOVO E CORRETO) */}
+      {diffDays > 0 && (
+        <Card className="border-green-200 bg-green-50 rounded-xl shadow-none">
+          <CardContent className="p-6 text-green-800">
+            <h3 className="font-extrabold text-lg">Plano Ativo</h3>
+            <p className="font-medium mt-1">
+              Você tem {diffDays} dias restantes no seu plano gratuito.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* COMPROVANTE ENVIADO */}
       {submitted ? (
         <Card className="border-green-200 border-2 rounded-xl shadow-none">
           <CardContent className="p-12 text-center space-y-4">
@@ -95,34 +123,50 @@ export default function Billing() {
               Para ativar sua assinatura de 30 dias, realize o PIX abaixo e envie o comprovante.
             </CardDescription>
           </CardHeader>
+
           <CardContent className="space-y-6 px-6 pb-6">
-            <div className="p-8 bg-slate-50 rounded-xl text-center space-y-2 relative border border-slate-200">
+            <div className="p-8 bg-slate-50 rounded-xl text-center space-y-2 border border-slate-200">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Chave PIX (Telefone)</p>
               <p className="text-4xl font-extrabold tracking-tight text-slate-900 my-4">15022408740</p>
-              <p className="text-sm font-medium text-slate-500">Dúvidas? Entre em contato: <strong className="text-slate-800">21995394315</strong></p>
+              <p className="text-sm font-medium text-slate-500">
+                Dúvidas? Entre em contato: <strong className="text-slate-800">21995394315</strong>
+              </p>
             </div>
 
             <form onSubmit={handleFileUpload} className="space-y-6 pt-4">
               <div className="space-y-3">
-                <Label className="font-bold text-slate-700 text-xs uppercase tracking-wider">Enviar Comprovante (Imagem ou PDF)</Label>
-                <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 hover:bg-slate-50 hover:border-slate-300 transition-colors text-center cursor-pointer relative bg-white group">
-                  <Input 
-                    type="file" 
+                <Label className="font-bold text-slate-700 text-xs uppercase tracking-wider">
+                  Enviar Comprovante (Imagem ou PDF)
+                </Label>
+
+                <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer bg-white relative">
+                  <Input
+                    type="file"
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     onChange={(e) => setFile(e.target.files?.[0] || null)}
                     accept="image/*,.pdf"
                     required
                   />
-                  <div className="flex justify-center items-center h-12 w-12 rounded-full bg-slate-100 mx-auto mb-4 group-hover:bg-blue-50 transition-colors">
-                    <UploadCloud className="h-6 w-6 text-slate-500 group-hover:text-blue-600 transition-colors" />
+
+                  <div className="flex justify-center items-center h-12 w-12 rounded-full bg-slate-100 mx-auto mb-4">
+                    <UploadCloud className="h-6 w-6 text-slate-500" />
                   </div>
+
                   <p className="font-extrabold text-[15px] text-slate-900">
                     {file ? file.name : 'Clique para selecionar ou arraste o arquivo'}
                   </p>
-                  <p className="text-[13px] font-medium text-slate-500 mt-1">PNG, JPG ou PDF</p>
+
+                  <p className="text-[13px] font-medium text-slate-500 mt-1">
+                    PNG, JPG ou PDF
+                  </p>
                 </div>
               </div>
-              <Button type="submit" className="w-full font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-md py-6 text-[15px] shadow-sm" disabled={!file || loading}>
+
+              <Button
+                type="submit"
+                className="w-full font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-md py-6 text-[15px] shadow-sm"
+                disabled={!file || loading}
+              >
                 {loading ? 'Enviando...' : 'Enviar Comprovante de Pagamento'}
               </Button>
             </form>
