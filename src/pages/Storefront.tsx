@@ -29,7 +29,9 @@ import {
 } from 'lucide-react';
 
 export default function Storefront() {
-  const { id } = useParams();
+  // Capturamos tanto o ID técnico quanto o Nome Amigável (slug) da URL
+  const { id, storeSlug } = useParams();
+  
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,24 +43,66 @@ export default function Storefront() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
     const fetchData = async () => {
       try {
-        const { data: storeData } = await supabase.from('store_settings').select('*').eq('user_id', id).single();
+        setLoading(true);
+        let targetUserId = id;
+
+        // LÓGICA AUTOMÁTICA: Se não temos ID, buscamos pelo nome da loja (slug)
+        if (!id && storeSlug) {
+          const { data: storeSearch } = await supabase
+            .from('store_settings')
+            .select('user_id, store_name')
+            .filter('store_name', 'not.is', null);
+
+          const matchedStore = storeSearch?.find(s => 
+            s.store_name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') === storeSlug
+          );
+
+          if (matchedStore) {
+            targetUserId = matchedStore.user_id;
+          }
+        }
+
+        if (!targetUserId) {
+          setLoading(false);
+          return;
+        }
+
+        // Busca as configurações da vitrine
+        const { data: storeData } = await supabase
+          .from('store_settings')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .single();
+        
         setStore(storeData);
-        const { data: prodData } = await supabase.from('products').select(`*, product_images(url)`).eq('user_id', id).eq('is_public', true).order('created_at', { ascending: false });
+
+        // Busca os produtos vinculados a esse usuário
+        const { data: prodData } = await supabase
+          .from('products')
+          .select(`*, product_images(url)`)
+          .eq('user_id', targetUserId)
+          .eq('is_public', true)
+          .order('created_at', { ascending: false });
+          
         setProducts(prodData || []);
-      } catch (err) { console.error(err); } finally { setLoading(false); }
+      } catch (err) { 
+        console.error(err); 
+        toast.error("Erro ao carregar a vitrine.");
+      } finally { 
+        setLoading(false); 
+      }
     };
+
     fetchData();
-  }, [id]);
+  }, [id, storeSlug]);
 
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id || !selectedProduct) return;
+    if (!store?.user_id || !selectedProduct) return;
     setIsSubmitting(true);
     
-    // Tratamento de WhatsApp (Garante que tenha 55 e apenas números)
     let cleanPhone = phone.replace(/\D/g, '');
     if (!cleanPhone.startsWith('55')) {
       cleanPhone = `55${cleanPhone}`;
@@ -66,7 +110,7 @@ export default function Storefront() {
 
     try {
       const { data: clientData, error: clientErr } = await supabase.from('clients').insert({ 
-        user_id: id, 
+        user_id: store.user_id, 
         name, 
         phone: cleanPhone 
       }).select().single();
@@ -76,7 +120,7 @@ export default function Storefront() {
       const finalOrderPrice = selectedProduct.final_price - (selectedProduct.discount || 0);
       
       const { error: orderErr } = await supabase.from('orders').insert({
-        user_id: id, 
+        user_id: store.user_id, 
         client_id: clientData.id, 
         product_id: selectedProduct.id, 
         description, 
@@ -101,8 +145,6 @@ export default function Storefront() {
 
   const theme = store?.theme_style || 'dark';
   const brandColor = store?.primary_color || '#3b82f6';
-
-  // Lógica de Classes
   const isLight = theme === 'light';
   const isColored = theme === 'colored';
   
@@ -113,7 +155,6 @@ export default function Storefront() {
   return (
     <div className={`relative min-h-screen font-sans pb-20 ${isLight ? 'bg-slate-50 text-slate-900' : 'text-white'}`}>
       
-      {/* SOLUÇÃO DEFINITIVA PARA COR DE FUNDO */}
       {isColored ? (
         <div className="fixed inset-0 z-[-1] transition-colors duration-500" style={{ backgroundColor: brandColor }} />
       ) : (
@@ -126,7 +167,6 @@ export default function Storefront() {
           <img src={store.banner_url} className={`absolute inset-0 w-full h-full object-cover ${isLight ? 'opacity-20' : 'opacity-30'}`} alt="Banner" />
         ) : <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/60" />}
         
-        {/* Overlay do Header com Transição Suave */}
         <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-transparent" 
              style={{ 
                background: `linear-gradient(to top, ${isColored ? brandColor : isLight ? '#f8fafc' : '#0f0f12'} 0%, transparent 100%)` 
@@ -196,7 +236,6 @@ export default function Storefront() {
                   </div>
                   
                   <div className={`pt-3 border-t ${isLight ? 'border-slate-100' : 'border-white/10'}`}>
-                    {/* SOLUÇÃO DO PREÇO RISCADO */}
                     <div className="flex flex-col mb-1">
                        {hasDiscount && (
                          <span className={`text-[10px] md:text-xs font-bold line-through ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
@@ -219,12 +258,10 @@ export default function Storefront() {
         </div>
       </div>
 
-      {/* DIALOG DE PEDIDO (Sempre Escuro/Neutro para Foco) */}
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
         <DialogContent className="max-w-[95vw] md:max-w-lg rounded-[2.5rem] bg-[#16161a] border-white/10 p-0 overflow-hidden text-zinc-100 outline-none max-h-[90vh] flex flex-col shadow-2xl">
           
           <div className="overflow-y-auto flex-1 custom-scrollbar">
-            {/* Header Mobile (Imagem Expandida) */}
             <div className="relative aspect-video w-full bg-zinc-900 md:hidden">
               <img src={selectedProduct?.main_image_url} className="w-full h-full object-cover" />
               <Button onClick={() => setSelectedProduct(null)} className="absolute top-4 right-4 h-10 w-10 rounded-full bg-black/60 backdrop-blur-md border-none p-0 hover:bg-black/80 z-50">
@@ -232,7 +269,6 @@ export default function Storefront() {
               </Button>
             </div>
 
-            {/* Header PC (Barra Limpa) */}
             <div className="hidden md:flex items-center justify-between p-6 border-b border-white/5 bg-zinc-900/50">
                 <h2 className="text-xl font-black tracking-tight flex items-center gap-2"><ShoppingBag className="w-5 h-5" /> Detalhes do Pedido</h2>
                 <Button onClick={() => setSelectedProduct(null)} variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-white/10">
@@ -245,7 +281,6 @@ export default function Storefront() {
                   <h2 className="text-2xl font-black tracking-tight leading-none">{selectedProduct?.name}</h2>
                   <p className="text-sm text-zinc-400 pt-1 leading-relaxed">{selectedProduct?.description}</p>
                   
-                  {/* Preço no Modal */}
                   <div className="flex items-end gap-2 pt-2">
                     {selectedProduct?.discount > 0 && (
                       <span className="text-xs text-zinc-500 line-through mb-1">R$ {selectedProduct?.final_price?.toFixed(2)}</span>
