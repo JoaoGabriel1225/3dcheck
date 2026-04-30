@@ -1,242 +1,207 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router';
 import { supabase } from '@/lib/supabase';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
-  ExternalLink, 
-  Copy, 
-  Store, 
-  Palette, 
-  ImageIcon, 
-  Globe, 
-  Check, 
-  Instagram, 
   MessageCircle, 
-  Settings2,
-  Share2
+  Instagram, 
+  ShoppingBag, 
+  Zap,
+  Info,
+  Loader2,
+  Package,
+  ArrowRight
 } from 'lucide-react';
 
-export default function StorefrontSettings() {
-  const { profile } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
-  
-  const [storeName, setStoreName] = useState('');
-  const [description, setDescription] = useState('');
-  const [primaryColor, setPrimaryColor] = useState('#3b82f6');
-  const [instagram, setInstagram] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [showPrices, setShowPrices] = useState(true);
-  const [showStock, setShowStock] = useState(true);
-  
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [bannerFile, setBannerFile] = useState<File | null>(null);
-  const [currentLogo, setCurrentLogo] = useState('');
-  const [currentBanner, setCurrentBanner] = useState('');
-
-  const storeUrl = `${window.location.origin}/storefront/${profile?.id}`;
+export default function Storefront() {
+  const { id } = useParams();
+  const [settings, setSettings] = useState<any>(null);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile) return;
-    const fetchSettings = async () => {
+    const fetchStoreData = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: storeData } = await supabase
           .from('store_settings')
           .select('*')
-          .eq('user_id', profile.id)
+          .eq('user_id', id)
           .single();
 
-        if (error && error.code !== 'PGRST116') throw error;
-        
-        if (data) {
-          setStoreName(data.store_name || '');
-          setDescription(data.description || '');
-          setPrimaryColor(data.primary_color || '#3b82f6');
-          setInstagram(data.instagram_handle || '');
-          setWhatsapp(data.whatsapp_number || '');
-          setShowPrices(data.show_prices ?? true);
-          setShowStock(data.show_stock ?? true);
-          setCurrentLogo(data.logo_url || '');
-          setCurrentBanner(data.banner_url || '');
-        }
-      } catch (err: any) {
-        console.error('Error fetching settings:', err);
+        const { data: productsData } = await supabase
+          .from('products')
+          .select('*')
+          .eq('user_id', id)
+          .eq('is_public', true);
+
+        setSettings(storeData);
+        setProducts(productsData || []);
+      } catch (e) {
+        console.error("Erro ao carregar vitrine", e);
       } finally {
-        setFetching(false);
+        setLoading(false);
       }
     };
-    fetchSettings();
-  }, [profile]);
+    fetchStoreData();
+  }, [id]);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile) return;
-    setLoading(true);
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0c]">
+      <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+    </div>
+  );
 
-    try {
-      let logoUrl = currentLogo;
-      let bannerUrl = currentBanner;
+  if (!settings) return <div className="min-h-screen flex items-center justify-center font-bold">Vitrine não encontrada.</div>;
 
-      if (logoFile) {
-        const filePath = `${profile.id}/logo-${Date.now()}`;
-        const { error } = await supabase.storage.from('store-assets').upload(filePath, logoFile);
-        if (!error) logoUrl = supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl;
-      }
-
-      if (bannerFile) {
-        const filePath = `${profile.id}/banner-${Date.now()}`;
-        const { error } = await supabase.storage.from('store-assets').upload(filePath, bannerFile);
-        if (!error) bannerUrl = supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl;
-      }
-
-      const { error } = await supabase
-        .from('store_settings')
-        .upsert({
-          user_id: profile.id,
-          store_name: storeName,
-          description,
-          primary_color: primaryColor,
-          instagram_handle: instagram,
-          whatsapp_number: whatsapp,
-          show_prices: showPrices,
-          show_stock: showStock,
-          logo_url: logoUrl,
-          banner_url: bannerUrl,
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
-      toast.success('Configurações da loja atualizadas!');
-    } catch (err: any) {
-      toast.error('Erro ao salvar. Verifique se as colunas existem no Supabase.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (fetching) return <div className="py-20 text-center font-black text-slate-400 animate-pulse tracking-widest">SINCRONIZANDO VITRINE...</div>;
+  const accentColor = settings.primary_color || '#3b82f6';
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 max-w-5xl pb-20">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
-            <Store className="w-4 h-4" />
-            Configurações da Loja
-          </div>
-          <h2 className="text-4xl font-black tracking-tight">Personalização</h2>
-          <p className="text-muted-foreground font-medium">Configure como sua marca será vista pelos clientes.</p>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 font-sans selection:bg-blue-500/30 pb-20">
+      
+      {/* HERO SECTION TECNOLÓGICA */}
+      <div className="relative h-[45vh] md:h-[55vh] w-full overflow-hidden">
+        {settings.banner_url ? (
+          <img src={settings.banner_url} className="w-full h-full object-cover" alt="Banner" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-blue-900 via-slate-900 to-black" />
+        )}
         
-        <Button variant="outline" className="h-12 px-6 rounded-xl border-border font-bold hover:bg-accent gap-2" asChild>
-          <a href={storeUrl} target="_blank" rel="noreferrer">
-            <ExternalLink className="w-4 h-4" />
-            Ver Loja ao Vivo
-          </a>
-        </Button>
+        {/* Overlay de Gradiente para Profundidade */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/40 to-transparent" />
+        
+        {/* Conteúdo Flutuante do Hero */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center space-y-4">
+           <div className="p-1.5 rounded-[2rem] bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl">
+             <div className="w-28 h-28 md:w-36 md:h-36 rounded-[1.8rem] overflow-hidden bg-[#161618] flex items-center justify-center border border-white/5">
+                {settings.logo_url ? (
+                  <img src={settings.logo_url} className="w-full h-full object-contain" alt="Logo" />
+                ) : (
+                  <span className="text-3xl font-black text-blue-500">3D</span>
+                )}
+             </div>
+           </div>
+           <div className="space-y-2">
+             <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white drop-shadow-2xl">
+               {settings.store_name}
+             </h1>
+             <p className="text-slate-400 font-medium max-w-lg mx-auto text-sm md:text-base">
+               {settings.description}
+             </p>
+           </div>
+        </div>
       </div>
 
-      <form onSubmit={handleSave} className="grid gap-8">
-        <Card className="border-none bg-blue-500/5 rounded-3xl overflow-hidden shadow-sm">
-          <div className="p-8 flex flex-col md:flex-row items-center gap-6">
-            <div className="p-4 bg-white dark:bg-black/20 rounded-2xl text-blue-600">
-              <Share2 className="w-8 h-8" />
-            </div>
-            <div className="flex-1 space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/70">Link da Vitrine</span>
-              <div className="text-sm font-bold text-foreground opacity-80">{storeUrl}</div>
-            </div>
-            <Button type="button" onClick={() => { navigator.clipboard.writeText(storeUrl); toast.success('Link copiado!'); }} className="h-12 px-8 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl gap-2">
-              <Copy className="h-4 w-4" /> Copiar
-            </Button>
-          </div>
-        </Card>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-8">
-            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl">
-              <CardHeader className="p-8 border-b border-border/50">
-                <CardTitle className="text-xl font-black flex items-center gap-3">
-                   <Globe className="w-5 h-5 text-blue-500" /> Identidade
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Nome da Loja</Label>
-                  <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} required className="h-12 rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Descrição / Boas-vindas</Label>
-                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-xl min-h-[120px]" />
-                </div>
-                <div className="grid sm:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-pink-500 tracking-wider">Instagram (sem @)</Label>
-                    <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} className="h-12 rounded-xl" placeholder="ex: 3dcheck.oficial" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-emerald-500 tracking-wider">WhatsApp (com DDD)</Label>
-                    <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="h-12 rounded-xl" placeholder="11999999999" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl">
-              <CardHeader className="p-8 border-b border-border/50">
-                <CardTitle className="text-xl font-black flex items-center gap-3">
-                   <Settings2 className="w-5 h-5 text-blue-500" /> Preferências de Exibição
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 grid sm:grid-cols-2 gap-8">
-                <div className="flex items-center justify-between p-4 bg-accent/20 rounded-2xl border border-border">
-                  <Label className="font-bold">Mostrar Preços</Label>
-                  <Switch checked={showPrices} onCheckedChange={setShowPrices} />
-                </div>
-                <div className="flex items-center justify-between p-4 bg-accent/20 rounded-2xl border border-border">
-                  <Label className="font-bold">Mostrar Estoque</Label>
-                  <Switch checked={showStock} onCheckedChange={setShowStock} />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-8">
-            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl">
-              <CardHeader className="p-8 border-b border-border/50">
-                <CardTitle className="text-xl font-black flex items-center gap-3">
-                  <Palette className="w-5 h-5 text-blue-500" /> Cores e Logo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Cor Principal</Label>
-                  <div className="flex gap-2">
-                    <Input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-14 h-12 p-1 rounded-xl cursor-pointer" />
-                    <Input value={primaryColor} readOnly className="h-12 rounded-xl font-mono uppercase" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Logo da Loja</Label>
-                  <div className="aspect-square w-full rounded-2xl bg-accent/30 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
-                    {currentLogo ? <img src={currentLogo} className="w-full h-full object-contain p-4" /> : <ImageIcon className="opacity-10 w-10 h-10" />}
-                  </div>
-                  <Input type="file" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="h-11 rounded-xl pt-2 text-xs" />
-                </div>
-              </CardContent>
-            </Card>
-            <Button type="submit" disabled={loading} className="w-full h-16 text-lg font-black bg-blue-600 hover:bg-blue-500 text-white rounded-3xl shadow-2xl transition-all">
-              {loading ? 'Salvando...' : 'Publicar Alterações'}
+      <div className="max-w-7xl mx-auto px-6">
+        {/* BARRA DE REDES SOCIAIS GLASS */}
+        <div className="flex justify-center -mt-8 relative z-20">
+          <div className="bg-[#161618]/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl flex gap-2 shadow-2xl">
+            {settings.instagram_handle && (
+              <Button variant="ghost" className="rounded-xl hover:bg-white/5 font-bold gap-2 text-pink-500" asChild>
+                <a href={`https://instagram.com/${settings.instagram_handle}`} target="_blank" rel="noreferrer">
+                  <Instagram className="w-4 h-4" /> <span className="hidden sm:inline">Instagram</span>
+                </a>
+              </Button>
+            )}
+            <Button variant="ghost" className="rounded-xl hover:bg-white/5 font-bold gap-2 text-emerald-500" asChild>
+              <a href={`https://wa.me/55${settings.whatsapp_number}`} target="_blank" rel="noreferrer">
+                <MessageCircle className="w-4 h-4" /> <span className="hidden sm:inline">WhatsApp</span>
+              </a>
             </Button>
           </div>
         </div>
-      </form>
+
+        {/* LISTAGEM DE PRODUTOS */}
+        <div className="mt-20 space-y-12">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">
+              <Package className="text-blue-500 w-6 h-6" />
+              Nossas Criações
+            </h2>
+            <div className="h-[1px] flex-1 bg-white/5" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {products.map((product) => {
+              const hasDiscount = product.discount > 0;
+              const finalPrice = product.final_price - (product.discount || 0);
+
+              return (
+                <Card key={product.id} className="group border-none bg-[#161618]/40 backdrop-blur-sm rounded-[2.5rem] overflow-hidden hover:translate-y-[-8px] transition-all duration-500 shadow-xl border border-white/5">
+                  <div className="aspect-square relative overflow-hidden bg-[#1c1c1f]">
+                    <img 
+                      src={product.main_image_url || "/placeholder-3d.jpg"} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" 
+                      alt={product.name} 
+                    />
+                    
+                    {/* Badge de Oferta em Verde Esmeralda */}
+                    {hasDiscount && (
+                      <div className="absolute top-4 left-4 bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg flex items-center gap-1 animate-pulse">
+                        <Zap className="w-3 h-3 fill-current" /> OFERTA
+                      </div>
+                    )}
+                  </div>
+                  
+                  <CardContent className="p-8 space-y-5">
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-black tracking-tight text-white group-hover:text-blue-400 transition-colors">{product.name}</h3>
+                      <p className="text-slate-500 text-xs font-medium line-clamp-2 leading-relaxed">{product.description}</p>
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                      {settings.show_prices ? (
+                        <div className="flex flex-col">
+                          {hasDiscount && (
+                            <span className="text-[10px] font-bold text-slate-500 line-through">R$ {product.final_price?.toFixed(2)}</span>
+                          )}
+                          <span className={`text-2xl font-black tracking-tighter ${hasDiscount ? 'text-emerald-400' : 'text-white'}`}>
+                            R$ {finalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 flex items-center gap-1.5">
+                          <Info className="w-3 h-3" /> Consultar Orçamento
+                        </div>
+                      )}
+                      
+                      <Button 
+                        className="rounded-2xl h-12 w-12 p-0 bg-white/5 hover:bg-blue-600 border border-white/10 text-white transition-all shadow-xl group/btn"
+                        asChild
+                      >
+                        <a href={`https://wa.me/55${settings.whatsapp_number}?text=Olá! Gostaria de encomendar: ${product.name}`} target="_blank" rel="noreferrer">
+                          <ArrowRight className="w-5 h-5 transition-transform group-hover/btn:translate-x-1" />
+                        </a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* FOOTER PREMIUM */}
+      <footer className="mt-32 py-12 border-t border-white/5 bg-black/20 text-center">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="h-6 w-6 bg-blue-600 rounded flex items-center justify-center text-[10px] font-black">3D</div>
+          <span className="font-black tracking-tighter text-slate-300">3DCheck</span>
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-600">
+          Tecnologia de Gestão para Impressão 3D Profissional
+        </p>
+      </footer>
+
+      {/* BOTÃO FLUTUANTE DISCRETO */}
+      <a 
+        href={`https://wa.me/55${settings.whatsapp_number}`} 
+        target="_blank" 
+        rel="noreferrer"
+        className="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-blue-600/40 hover:scale-110 active:scale-95 transition-all z-50 border border-white/10"
+      >
+        <MessageCircle className="w-8 h-8 fill-current" />
+      </a>
     </div>
   );
 }
