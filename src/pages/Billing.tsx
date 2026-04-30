@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,22 +15,29 @@ export default function Billing() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  if (!profile) return null;
+  // 🔥 LÓGICA 100% SEGURA DO TRIAL
+  const trialInfo = useMemo(() => {
+    if (!profile?.trial_end_date) {
+      return {
+        diffDays: 0,
+        isExpired: true,
+      };
+    }
 
-  // 🚀 LÓGICA ÚNICA DO TRIAL (FONTE DA VERDADE)
-  const now = new Date();
+    const now = new Date();
+    const end = new Date(profile.trial_end_date);
 
-  const end = profile?.trial_end_date
-    ? new Date(profile.trial_end_date)
-    : null;
+    const diffTime = end.getTime() - now.getTime();
 
-  const diffTime = end ? end.getTime() - now.getTime() : 0;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  const diffDays = end
-    ? Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    : 0;
+    return {
+      diffDays,
+      isExpired: diffDays <= 0,
+    };
+  }, [profile]);
 
-  const isExpired = diffDays <= 0;
+  const { diffDays, isExpired } = trialInfo;
 
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +56,7 @@ export default function Billing() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
+      const { data } = supabase.storage
         .from('pix-proofs')
         .getPublicUrl(filePath);
 
@@ -57,32 +64,34 @@ export default function Billing() {
         .from('payment_requests')
         .insert({
           user_id: profile.id,
-          pix_proof_url: publicUrlData.publicUrl,
+          pix_proof_url: data.publicUrl,
         });
 
       if (dbError) throw dbError;
 
       setSubmitted(true);
       toast.success('Comprovante enviado com sucesso!');
-    } catch (error: any) {
-      toast.error('Erro ao enviar comprovante', error.message);
+    } catch (err: any) {
+      toast.error('Erro ao enviar comprovante', err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  if (!profile) return null;
+
   return (
     <div className="max-w-2xl mx-auto space-y-8">
 
       <div>
-        <h2 className="text-2xl font-extrabold">Assinatura</h2>
+        <h2 className="text-2xl font-bold">Assinatura</h2>
         <p className="text-slate-500">Gerencie seu plano e pagamentos.</p>
       </div>
 
-      {/* 🚨 BLOQUEIO BASEADO APENAS EM DATA */}
-      {isExpired && (
+      {/* 🚨 BLOQUEIO REAL (SÓ QUANDO EXPIRADO DE VERDADE) */}
+      {isExpired ? (
         <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-6 flex items-start gap-4 text-red-800">
+          <CardContent className="p-6 flex gap-4 text-red-800">
             <AlertTriangle className="h-6 w-6 text-red-600 mt-1" />
             <div>
               <h3 className="font-bold text-lg">Plano Inativo</h3>
@@ -92,48 +101,41 @@ export default function Billing() {
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* 🟢 PLANO ATIVO */}
-      {!isExpired && (
+      ) : (
         <Card className="border-green-200 bg-green-50">
           <CardContent className="p-6 text-green-800">
             <h3 className="font-bold text-lg">Plano Ativo</h3>
-            <p>Você tem {diffDays} dias restantes no seu plano gratuito.</p>
+            <p>Você tem {diffDays} dias restantes no seu período gratuito.</p>
           </CardContent>
         </Card>
       )}
 
-      {/* 💳 PIX */}
+      {/* 💳 PAGAMENTO */}
       {submitted ? (
-        <Card className="border-green-200">
-          <CardContent className="p-12 text-center space-y-4">
-            <CheckCircle2 className="mx-auto h-10 w-10 text-green-600" />
-            <h3 className="text-xl font-bold">Comprovante em análise</h3>
-            <p className="text-slate-500">
-              Vamos verificar seu pagamento em breve.
-            </p>
+        <Card>
+          <CardContent className="p-10 text-center">
+            <CheckCircle2 className="mx-auto text-green-600" />
+            <h3 className="font-bold text-xl mt-4">Comprovante em análise</h3>
+            <p className="text-slate-500">Aguarde a aprovação do pagamento.</p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
             <CardTitle>Pagamento via PIX</CardTitle>
-            <CardDescription>
-              Envie o comprovante para liberar sua conta.
-            </CardDescription>
+            <CardDescription>Envie o comprovante para ativar sua conta.</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
 
-            <div className="p-6 bg-slate-50 rounded-xl text-center">
+            <div className="bg-slate-50 p-6 rounded-xl text-center">
               <p className="text-sm">Chave PIX</p>
               <p className="text-2xl font-bold">15022408740</p>
             </div>
 
             <form onSubmit={handleFileUpload} className="space-y-4">
 
-              <Label>Enviar comprovante</Label>
+              <Label>Comprovante</Label>
 
               <div className="border-dashed border p-6 text-center relative">
                 <Input
@@ -145,9 +147,7 @@ export default function Billing() {
 
                 <UploadCloud className="mx-auto mb-2" />
 
-                <p>
-                  {file ? file.name : 'Clique ou arraste o arquivo'}
-                </p>
+                <p>{file ? file.name : 'Clique para enviar arquivo'}</p>
               </div>
 
               <Button disabled={!file || loading} className="w-full">
@@ -155,10 +155,12 @@ export default function Billing() {
               </Button>
 
             </form>
+
           </CardContent>
         </Card>
       )}
 
     </div>
   );
+}
 }
