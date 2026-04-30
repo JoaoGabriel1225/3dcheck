@@ -63,29 +63,39 @@ export default function Products() {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, [profile]);
+  if (!useCalculator) return;
 
-  useEffect(() => {
-    if (useCalculator) {
-      const fPrice = parseFloat(filamentPrice) || 0;
-      const gUsed = parseFloat(gramsUsed) || 0;
-      const materialCost = (fPrice / 1000) * gUsed;
-      
-      const eCost = parseFloat(energyCost) || 0;
-      const mCost = parseFloat(machineCost) || 0;
-      const pTime = parseFloat(printTime) || 0;
-      const oCosts = parseFloat(otherCosts) || 0;
-      
-      const extraCost = (eCost + mCost) * pTime + oCosts;
-      const cTotal = materialCost + extraCost;
-      setCalculatedCost(cTotal);
-      
-      const margin = parseFloat(profitMargin) || 0;
-      const calcPrice = cTotal * (1 + margin / 100);
-      setPrice(calcPrice.toFixed(2));
-    }
-  }, [useCalculator, filamentPrice, gramsUsed, energyCost, machineCost, printTime, otherCosts, profitMargin]);
+  const fPrice = parseFloat(filamentPrice);
+  const gUsed = parseFloat(gramsUsed);
+  const eCost = parseFloat(energyCost);
+  const mCost = parseFloat(machineCost);
+  const pTime = parseFloat(printTime);
+  const oCosts = parseFloat(otherCosts);
+  const margin = parseFloat(profitMargin);
+
+  const materialCost = (fPrice || 0) / 1000 * (gUsed || 0);
+  const extraCost = ((eCost || 0) + (mCost || 0)) * (pTime || 0) + (oCosts || 0);
+  const cTotal = materialCost + extraCost;
+
+  setCalculatedCost(cTotal);
+
+  const calcPrice = cTotal * (1 + (margin || 0) / 100);
+
+  // só altera preço se estiver criando produto
+  if (!editingProductId && isFinite(calcPrice)) {
+    setPrice(calcPrice.toFixed(2));
+  }
+}, [
+  useCalculator,
+  filamentPrice,
+  gramsUsed,
+  energyCost,
+  machineCost,
+  printTime,
+  otherCosts,
+  profitMargin,
+  editingProductId
+]);
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
