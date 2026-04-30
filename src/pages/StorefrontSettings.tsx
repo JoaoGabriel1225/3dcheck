@@ -6,31 +6,45 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { ExternalLink, Copy, Store, Palette, ImageIcon, Layout, Globe, Check } from 'lucide-react';
+import { 
+  ExternalLink, 
+  Copy, 
+  Store, 
+  Palette, 
+  ImageIcon, 
+  Globe, 
+  Check, 
+  Instagram, 
+  MessageCircle, 
+  Eye, 
+  Settings2,
+  Share2
+} from 'lucide-react';
 
 export default function StorefrontSettings() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   
+  // Settings state
   const [storeName, setStoreName] = useState('');
   const [description, setDescription] = useState('');
-  const [primaryColor, setPrimaryColor] = useState('#1E3A8A');
+  const [primaryColor, setPrimaryColor] = useState('#3b82f6');
+  const [instagram, setInstagram] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  
+  // Customization Toggles
+  const [showPrices, setShowPrices] = useState(true);
+  const [showStock, setShowStock] = useState(true);
+  
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
-  
   const [currentLogo, setCurrentLogo] = useState('');
   const [currentBanner, setCurrentBanner] = useState('');
 
   const storeUrl = `${window.location.origin}/storefront/${profile?.id}`;
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(storeUrl);
-    toast.success('Link copiado com sucesso!', {
-      icon: <Check className="w-4 h-4 text-emerald-500" />
-    });
-  };
 
   useEffect(() => {
     if (!profile) return;
@@ -47,7 +61,11 @@ export default function StorefrontSettings() {
         if (data) {
           setStoreName(data.store_name || '');
           setDescription(data.description || '');
-          setPrimaryColor(data.primary_color || '#1E3A8A');
+          setPrimaryColor(data.primary_color || '#3b82f6');
+          setInstagram(data.instagram_handle || '');
+          setWhatsapp(data.whatsapp_number || '');
+          setShowPrices(data.show_prices ?? true);
+          setShowStock(data.show_stock ?? true);
           setCurrentLogo(data.logo_url || '');
           setCurrentBanner(data.banner_url || '');
         }
@@ -57,7 +75,6 @@ export default function StorefrontSettings() {
         setFetching(false);
       }
     };
-    
     fetchSettings();
   }, [profile]);
 
@@ -71,13 +88,13 @@ export default function StorefrontSettings() {
       let bannerUrl = currentBanner;
 
       if (logoFile) {
-        const filePath = `${profile.id}/logo-${Math.random()}.${logoFile.name.split('.').pop()}`;
+        const filePath = `${profile.id}/logo-${Date.now()}`;
         const { error } = await supabase.storage.from('store-assets').upload(filePath, logoFile);
         if (!error) logoUrl = supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl;
       }
 
       if (bannerFile) {
-        const filePath = `${profile.id}/banner-${Math.random()}.${bannerFile.name.split('.').pop()}`;
+        const filePath = `${profile.id}/banner-${Date.now()}`;
         const { error } = await supabase.storage.from('store-assets').upload(filePath, bannerFile);
         if (!error) bannerUrl = supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl;
       }
@@ -89,159 +106,157 @@ export default function StorefrontSettings() {
           store_name: storeName,
           description,
           primary_color: primaryColor,
+          instagram_handle: instagram,
+          whatsapp_number: whatsapp,
+          show_prices: showPrices,
+          show_stock: showStock,
           logo_url: logoUrl,
           banner_url: bannerUrl,
           updated_at: new Date().toISOString()
         });
 
       if (error) throw error;
-      
-      setCurrentLogo(logoUrl);
-      setCurrentBanner(bannerUrl);
-      toast.success('Loja atualizada com sucesso!');
+      toast.success('Vitrine profissional atualizada!');
     } catch (err: any) {
-      toast.error('Erro ao salvar as configurações.');
+      toast.error('Erro ao salvar configurações.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (fetching) return <div className="py-20 text-center font-black text-slate-400 tracking-widest animate-pulse">CARREGANDO PREFERÊNCIAS...</div>;
+  if (fetching) return <div className="py-20 text-center font-black text-slate-400 animate-pulse tracking-widest">SINCRONIZANDO VITRINE...</div>;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 max-w-5xl">
-      {/* HEADER SECTION */}
+    <div className="space-y-10 animate-in fade-in duration-500 max-w-5xl pb-20">
+      {/* HEADER INTEGRADO */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
-            <Globe className="w-4 h-4" />
-            Presença Digital
+            <Store className="w-4 h-4" />
+            Configuração de Vitrine
           </div>
-          <h2 className="text-4xl font-black tracking-tight text-foreground">Loja Virtual</h2>
-          <p className="text-muted-foreground font-medium">Configure como seus clientes verão seu catálogo público.</p>
+          <h2 className="text-4xl font-black tracking-tight">Personalização</h2>
+          <p className="text-muted-foreground font-medium">Transforme seu catálogo em uma experiência de marca única.</p>
         </div>
         
-        <Button variant="outline" className="h-12 px-6 rounded-xl border-border font-bold hover:bg-accent gap-2 transition-all" asChild>
-          <a href={`/storefront/${profile?.id}`} target="_blank" rel="noreferrer">
+        <Button variant="outline" className="h-12 px-6 rounded-2xl border-border font-bold hover:bg-accent gap-2 transition-all shadow-sm" asChild>
+          <a href={storeUrl} target="_blank" rel="noreferrer">
             <ExternalLink className="w-4 h-4" />
-            Visualizar Loja
+            Ver Loja ao Vivo
           </a>
         </Button>
       </div>
 
-      {/* PUBLIC LINK WIDGET */}
-      <Card className="border-none bg-blue-500/5 border border-blue-500/10 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-6">
-          <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-600">
-            <Globe className="w-8 h-8" />
-          </div>
-          <div className="flex-1 text-center md:text-left space-y-1">
-            <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-blue-600/70">Link Público da sua Vitrine</Label>
-            <div className="text-sm font-bold text-foreground break-all">{storeUrl}</div>
-          </div>
-          <Button onClick={copyToClipboard} className="h-11 px-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-lg shadow-blue-500/20 gap-2 shrink-0">
-            <Copy className="h-4 w-4" />
-            Copiar Link
-          </Button>
-        </div>
-      </Card>
-
       <form onSubmit={handleSave} className="grid gap-8">
-        <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
-          <CardHeader className="p-8 border-b border-border/50 bg-accent/20">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-background rounded-lg border border-border">
-                <Store className="w-5 h-5 text-blue-500" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-black tracking-tight">Identidade da Marca</CardTitle>
-                <CardDescription className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Como as pessoas conhecem seu negócio</CardDescription>
-              </div>
+        
+        {/* CARD: LINK & COMPARTILHAMENTO */}
+        <Card className="border-none bg-blue-600/5 dark:bg-blue-500/10 rounded-3xl overflow-hidden">
+          <div className="p-8 flex flex-col md:flex-row items-center gap-6">
+            <div className="p-4 bg-white dark:bg-black/20 rounded-2xl shadow-sm text-blue-600">
+              <Share2 className="w-8 h-8" />
             </div>
-          </CardHeader>
-          
-          <CardContent className="p-8 space-y-8">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Nome Comercial da Loja</Label>
-                <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} required className="h-12 rounded-xl bg-background/50 border-border" placeholder="Ex: João 3D Prints" />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Cor de Destaque (Tema)</Label>
-                <div className="flex gap-3">
-                  <Input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-14 h-12 p-1 rounded-xl cursor-pointer border-border" />
-                  <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-12 rounded-xl bg-background/50 border-border font-mono font-bold uppercase" />
-                </div>
-              </div>
+            <div className="flex-1 space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-600/70">Link de Divulgação</span>
+              <div className="text-sm font-bold text-foreground opacity-80">{storeUrl}</div>
             </div>
-
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mensagem de Boas-vindas / Bio</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-xl bg-background/50 border-border min-h-[120px] leading-relaxed" placeholder="Conte um pouco sobre suas impressões e prazos..." />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
-          <CardHeader className="p-8 border-b border-border/50 bg-accent/20">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-background rounded-lg border border-border">
-                <Palette className="w-5 h-5 text-blue-500" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-black tracking-tight">Materiais Visuais</CardTitle>
-                <CardDescription className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Imagens e artes da vitrine</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-8">
-            <div className="grid md:grid-cols-2 gap-10">
-              {/* LOGO UPLOAD */}
-              <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <ImageIcon className="w-3 h-3" /> Logotipo Principal
-                </Label>
-                <div className="relative aspect-square max-w-[200px] rounded-3xl border-2 border-dashed border-border flex items-center justify-center bg-accent/30 overflow-hidden group">
-                  {currentLogo ? (
-                    <img src={currentLogo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-105" />
-                  ) : (
-                    <Store className="w-10 h-10 text-muted-foreground/20" />
-                  )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                     <span className="text-[10px] text-white font-black uppercase tracking-widest">Alterar</span>
-                  </div>
-                </div>
-                <Input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="h-11 rounded-xl border-border cursor-pointer pt-2.5 text-xs font-bold" />
-              </div>
-
-              {/* BANNER UPLOAD */}
-              <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <Layout className="w-3 h-3" /> Banner de Fundo
-                </Label>
-                <div className="relative w-full aspect-video rounded-3xl border-2 border-dashed border-border flex items-center justify-center bg-accent/30 overflow-hidden group">
-                  {currentBanner ? (
-                    <img src={currentBanner} alt="Banner" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                  ) : (
-                    <ImageIcon className="w-10 h-10 text-muted-foreground/20" />
-                  )}
-                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                     <span className="text-[10px] text-white font-black uppercase tracking-widest">Alterar</span>
-                  </div>
-                </div>
-                <Input type="file" accept="image/*" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} className="h-11 rounded-xl border-border cursor-pointer pt-2.5 text-xs font-bold" />
-              </div>
-            </div>
-          </CardContent>
-
-          <CardFooter className="p-8 bg-accent/10 border-t border-border/50">
-            <Button type="submit" disabled={loading} className="w-full h-14 text-lg font-black bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-500/20 transition-all">
-              {loading ? 'Sincronizando...' : 'Publicar Alterações'}
+            <Button type="button" onClick={() => { navigator.clipboard.writeText(storeUrl); toast.success('Link copiado!'); }} className="h-12 px-8 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl gap-2 shadow-lg shadow-blue-600/20">
+              <Copy className="h-4 h-4" /> Copiar Link
             </Button>
-          </CardFooter>
+          </div>
         </Card>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {/* COLUNA ESQUERDA: CONFIGS BÁSICAS */}
+          <div className="md:col-span-2 space-y-8">
+            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
+              <CardHeader className="p-8 border-b border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Globe className="w-5 h-5" /></div>
+                  <CardTitle className="text-xl font-black">Informações da Marca</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Nome da Loja</Label>
+                  <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} required className="h-12 rounded-xl" placeholder="Ex: Master 3D Studio" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Slogan ou Descrição de Boas-vindas</Label>
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-xl min-h-[120px]" placeholder="Conte sobre sua qualidade de impressão..." />
+                </div>
+                
+                <div className="grid sm:grid-cols-2 gap-6 pt-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-pink-500 tracking-wider flex items-center gap-2"><Instagram className="w-3 h-3" /> Instagram (sem @)</Label>
+                    <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} className="h-12 rounded-xl border-pink-500/20 focus:border-pink-500" placeholder="loja.3d" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-emerald-500 tracking-wider flex items-center gap-2"><MessageCircle className="w-3 h-3" /> WhatsApp Comercial</Label>
+                    <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="h-12 rounded-xl border-emerald-500/20 focus:border-emerald-500" placeholder="11999999999" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
+              <CardHeader className="p-8 border-b border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Settings2 className="w-5 h-5" /></div>
+                  <CardTitle className="text-xl font-black">Customização de Exibição</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8 grid sm:grid-cols-2 gap-8">
+                <div className="flex items-center justify-between p-4 bg-accent/20 rounded-2xl border border-border">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-black">Mostrar Preços</Label>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Exibir valores nos produtos</p>
+                  </div>
+                  <Switch checked={showPrices} onCheckedChange={setShowPrices} />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-accent/20 rounded-2xl border border-border">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-black">Mostrar Estoque</Label>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Exibir quantidade disponível</p>
+                  </div>
+                  <Switch checked={showStock} onCheckedChange={setShowStock} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* COLUNA DIREITA: VISUAL */}
+          <div className="space-y-8">
+            <Card className="border-border bg-card/40 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden">
+              <CardHeader className="p-8 border-b border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Palette className="w-5 h-5" /></div>
+                  <CardTitle className="text-xl font-black">Visual</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8 space-y-8">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Cor de Identidade</Label>
+                  <div className="flex gap-2">
+                    <Input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-14 h-12 p-1 rounded-xl cursor-pointer border-border" />
+                    <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-12 rounded-xl font-mono uppercase font-bold" />
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-border/50">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Logotipo</Label>
+                  <div className="relative aspect-square w-full rounded-2xl bg-accent/30 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                    {currentLogo ? <img src={currentLogo} className="w-full h-full object-contain p-4" /> : <ImageIcon className="w-8 h-8 opacity-10" />}
+                  </div>
+                  <Input type="file" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="h-11 rounded-xl text-xs pt-2.5 border-border cursor-pointer" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Button type="submit" disabled={loading} className="w-full h-16 text-lg font-black bg-blue-600 hover:bg-blue-500 text-white rounded-3xl shadow-2xl shadow-blue-600/30 transition-all active:scale-95">
+              {loading ? 'Publicando...' : 'Publicar na Vitrine'}
+            </Button>
+          </div>
+        </div>
       </form>
     </div>
   );
