@@ -26,7 +26,8 @@ import {
   User,
   Phone,
   Mail,
-  FileText
+  FileText,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function Storefront() {
@@ -135,81 +136,85 @@ export default function Storefront() {
     </div>
   );
 
-  const hexColor = store?.primary_color || '#3b82f6';
+  // LÓGICA DE TEMAS E CORES
+  const theme = store?.theme_style || 'dark';
+  const brandColor = store?.primary_color || '#3b82f6';
+  
+  const bgClass = theme === 'light' ? 'bg-slate-50 text-slate-900' : theme === 'colored' ? 'text-white' : 'bg-[#0a0a0c] text-slate-100';
+  const bgStyle = theme === 'colored' ? { backgroundColor: brandColor } : {};
+  const cardClass = theme === 'light' ? 'bg-white border-slate-200 shadow-xl' : 'bg-white/5 border-white/10 backdrop-blur-md shadow-2xl';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-slate-100 font-sans selection:bg-blue-500/30 pb-20">
+    <div className={`min-h-screen font-sans transition-colors duration-500 pb-20 ${bgClass}`} style={bgStyle}>
       
-      {/* HEADER PREMIUM (BANNER + LOGO) */}
-      <div className="relative h-[40vh] md:h-[50vh] w-full overflow-hidden">
+      {/* HEADER ULTRA PREMIUM */}
+      <div className="relative h-[55vh] md:h-[65vh] w-full overflow-hidden">
         {store?.banner_url ? (
           <img src={store.banner_url} className="w-full h-full object-cover opacity-60" alt="Banner" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-900/20 via-slate-900 to-black" />
+          <div className="w-full h-full bg-black/40" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-transparent" />
+        <div className={`absolute inset-0 bg-gradient-to-t ${theme === 'light' ? 'from-slate-50' : theme === 'colored' ? 'from-black/40' : 'from-[#0a0a0c]'} via-transparent to-transparent opacity-90`} />
         
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center space-y-6">
-           <div className="p-1.5 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl">
-             <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.2rem] overflow-hidden bg-[#161618] flex items-center justify-center border border-white/5">
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center space-y-8 mt-10">
+           
+           {/* LOGO EM DESTAQUE */}
+           <div className="p-2 rounded-[3rem] bg-white/10 backdrop-blur-3xl border border-white/20 shadow-2xl">
+             <div className="w-28 h-28 md:w-36 md:h-36 rounded-[2.8rem] overflow-hidden bg-white flex items-center justify-center shadow-inner">
                 {store?.logo_url ? (
                   <img src={store.logo_url} className="w-full h-full object-contain p-2" alt="Logo" />
                 ) : (
-                  <ShoppingBag className="w-10 h-10 text-slate-700" />
+                  <ShoppingBag className="w-12 h-12 text-slate-800" />
                 )}
              </div>
            </div>
-           <div className="space-y-2">
-             <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white drop-shadow-xl">
+
+           <div className="space-y-3">
+             <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white drop-shadow-2xl">
                {store?.store_name || 'Minha Loja 3D'}
              </h1>
-             <p className="text-slate-400 font-medium max-w-lg mx-auto text-sm md:text-base leading-relaxed">
+             <p className="text-white/90 font-bold max-w-lg mx-auto text-sm md:text-lg drop-shadow-md leading-relaxed">
                {store?.description}
              </p>
            </div>
 
-           {/* REDES SOCIAIS GLASS */}
-           <div className="flex gap-3 pt-4">
+           {/* REDES SOCIAIS GIGANTES E CHAMATIVAS */}
+           <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md px-4 pt-4">
              {store?.instagram_handle && (
-               <Button variant="ghost" className="rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 font-bold gap-2 text-pink-500" asChild>
-                 <a href={`https://instagram.com/${store.instagram_handle}`} target="_blank" rel="noreferrer">
-                   <Instagram className="w-4 h-4" /> Instagram
-                 </a>
-               </Button>
+               <a href={`https://instagram.com/${store.instagram_handle}`} target="_blank" rel="noreferrer" 
+                  className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-gradient-to-r from-pink-600 to-purple-600 text-white font-black rounded-[2rem] shadow-2xl hover:scale-105 transition-transform text-lg uppercase tracking-widest">
+                 <Instagram className="w-6 h-6" /> Instagram
+               </a>
              )}
              {store?.whatsapp_number && (
-               <Button variant="ghost" className="rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 font-bold gap-2 text-emerald-500" asChild>
-                 <a href={`https://wa.me/55${store.whatsapp_number}`} target="_blank" rel="noreferrer">
-                   <MessageCircle className="w-4 h-4" /> WhatsApp
-                 </a>
-               </Button>
+               <a href={`https://wa.me/55${store.whatsapp_number}`} target="_blank" rel="noreferrer"
+                  className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-emerald-500 text-white font-black rounded-[2rem] shadow-2xl hover:scale-105 transition-transform text-lg uppercase tracking-widest">
+                 <MessageCircle className="w-6 h-6" /> WhatsApp
+               </a>
              )}
            </div>
         </div>
       </div>
 
-      {/* CATALOG GRID */}
-      <div className="max-w-7xl mx-auto px-6 mt-20">
-        <div className="flex items-center gap-4 mb-12">
-          <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">
-            <PackageSearch className="w-6 h-6 text-blue-500" />
-            Catálogo Profissional
-          </h2>
-          <div className="h-[1px] flex-1 bg-white/5" />
+      {/* CATÁLOGO ESTILO APPLE */}
+      <div className="max-w-7xl mx-auto px-6 mt-20 space-y-12">
+        <div className="flex items-center gap-4">
+          <h2 className="text-3xl font-black tracking-tight">Catálogo Profissional</h2>
+          <div className="h-1 flex-1 bg-current opacity-10 rounded-full" />
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
           {products.map(prod => {
             const hasDiscount = prod.discount > 0;
             const finalPrice = prod.final_price - (prod.discount || 0);
 
             return (
-              <Card key={prod.id} className="group border-none bg-[#161618]/40 backdrop-blur-sm rounded-[2.5rem] overflow-hidden hover:translate-y-[-8px] transition-all duration-500 border border-white/5 shadow-xl">
-                <div className="aspect-square relative overflow-hidden bg-[#1c1c1f]">
+              <Card key={prod.id} className={`group border-none rounded-[3rem] overflow-hidden hover:scale-105 transition-all duration-500 ${cardClass}`}>
+                <div className="aspect-square relative overflow-hidden bg-white/5">
                   {prod.main_image_url || (prod.product_images && prod.product_images[0]) ? (
-                    <img src={prod.main_image_url || prod.product_images[0].url} alt={prod.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
+                    <img src={prod.main_image_url || prod.product_images[0].url} alt={prod.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                   ) : (
-                    <ImageIcon className="h-12 w-12 text-white/5" />
+                    <div className="w-full h-full flex items-center justify-center bg-slate-200/10"><ImageIcon className="h-10 w-10 text-slate-400" /></div>
                   )}
                   
                   {hasDiscount && (
@@ -219,28 +224,31 @@ export default function Storefront() {
                   )}
                 </div>
                 
-                <CardContent className="p-8 space-y-5 flex flex-col flex-1">
-                  <div className="space-y-2 flex-1">
-                    <h3 className="text-xl font-black tracking-tight text-white group-hover:text-blue-400 transition-colors">{prod.name}</h3>
-                    <p className="text-slate-500 text-xs font-medium line-clamp-2 leading-relaxed">{prod.description}</p>
+                <CardContent className="p-8 space-y-6">
+                  <div>
+                    <h3 className="text-2xl font-black tracking-tight leading-none mb-2 line-clamp-1">{prod.name}</h3>
+                    <p className="text-[13px] opacity-60 font-bold uppercase tracking-widest line-clamp-2 leading-relaxed">{prod.description}</p>
                   </div>
                   
-                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                  <div className={`flex items-center justify-between pt-6 border-t ${theme === 'light' ? 'border-slate-100' : 'border-white/10'}`}>
                     <div className="flex flex-col">
                       {hasDiscount && (
-                        <span className="text-[10px] font-bold text-slate-500 line-through">R$ {prod.final_price?.toFixed(2)}</span>
+                        <span className={`text-[10px] font-bold line-through ${theme === 'light' ? 'text-slate-400' : 'text-white/50'}`}>
+                          R$ {prod.final_price?.toFixed(2)}
+                        </span>
                       )}
-                      <span className={`text-2xl font-black tracking-tighter ${hasDiscount ? 'text-emerald-400' : 'text-white'}`}>
+                      <span className={`text-3xl font-black tracking-tighter ${hasDiscount ? 'text-emerald-500' : theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
                         R$ {finalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                     
                     <Button 
-                      className="rounded-2xl h-12 w-12 p-0 bg-white/5 hover:bg-blue-600 border border-white/10 text-white transition-all shadow-xl group/btn"
+                      className="h-14 w-14 rounded-full text-white shadow-xl hover:scale-110 transition-transform"
+                      style={{ backgroundColor: theme === 'colored' ? 'rgba(0,0,0,0.4)' : brandColor }}
                       disabled={prod.stock_quantity <= 0}
                       onClick={() => setSelectedProduct(prod)}
                     >
-                      <ArrowRight className="w-5 h-5 transition-transform group-hover/btn:translate-x-1" />
+                      <ArrowRight className="w-6 h-6" />
                     </Button>
                   </div>
                 </CardContent>
@@ -252,16 +260,16 @@ export default function Storefront() {
 
       {/* CHECKOUT DIALOG PREMIUM */}
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        <DialogContent className="sm:max-w-lg rounded-[2.5rem] bg-[#161618] border-white/5 p-0 overflow-hidden shadow-2xl">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white">
+        <DialogContent className="sm:max-w-lg rounded-[2.5rem] bg-[#161618] border-white/10 p-0 overflow-hidden shadow-2xl text-white">
+          <div className="p-8 pb-4" style={{ backgroundColor: brandColor }}>
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black tracking-tight">Finalizar Pedido</DialogTitle>
+              <DialogTitle className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                <ShoppingBag className="w-6 h-6" /> Finalizar Pedido
+              </DialogTitle>
             </DialogHeader>
-            <div className="mt-2 text-sm font-bold opacity-80 flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4" /> {selectedProduct?.name} 
-              <span className="bg-white/20 px-2 py-0.5 rounded-lg ml-auto">
-                R$ {(selectedProduct?.final_price - (selectedProduct?.discount || 0)).toFixed(2)}
-              </span>
+            <div className="mt-4 text-sm font-bold opacity-90 bg-black/20 p-3 rounded-xl flex justify-between items-center">
+              <span>{selectedProduct?.name}</span>
+              <span className="text-white">R$ {(selectedProduct?.final_price - (selectedProduct?.discount || 0)).toFixed(2)}</span>
             </div>
           </div>
 
@@ -297,7 +305,7 @@ export default function Storefront() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-14 text-lg font-black bg-white text-black hover:bg-slate-200 rounded-2xl shadow-xl transition-all" disabled={isSubmitting}>
+            <Button type="submit" className="w-full h-14 text-lg font-black text-white rounded-2xl shadow-xl transition-all" style={{ backgroundColor: brandColor }} disabled={isSubmitting}>
               {isSubmitting ? 'Processando...' : 'Confirmar Pedido'}
             </Button>
             <p className="text-[11px] font-bold text-center text-slate-500 uppercase tracking-widest">
@@ -306,18 +314,6 @@ export default function Storefront() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* WHATSAPP FLOAT BUTTON */}
-      {store?.whatsapp_number && (
-        <a 
-          href={`https://wa.me/55${store.whatsapp_number}`} 
-          target="_blank" 
-          rel="noreferrer"
-          className="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-blue-600/40 hover:scale-110 active:scale-95 transition-all z-50 border border-white/10"
-        >
-          <MessageCircle className="w-8 h-8 fill-current" />
-        </a>
-      )}
     </div>
   );
 }
