@@ -15,9 +15,9 @@ export default function Billing() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // 🔥 LÓGICA 100% SEGURA DO TRIAL
+  // 🔥 LÓGICA 100% SEGURA DO TRIAL (CORRIGIDO)
   const trialInfo = useMemo(() => {
-    if (!profile?.trial_end_date) {
+    if (!profile?.trialEndsAt) {
       return {
         diffDays: 0,
         isExpired: true,
@@ -25,7 +25,7 @@ export default function Billing() {
     }
 
     const now = new Date();
-    const end = new Date(profile.trial_end_date);
+    const end = new Date(profile.trialEndsAt);
 
     const diffTime = end.getTime() - now.getTime();
 
