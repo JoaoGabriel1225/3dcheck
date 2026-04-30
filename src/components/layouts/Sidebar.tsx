@@ -31,10 +31,17 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     
     setIsAppMode(checkAppMode);
 
-    // 2. Captura o evento de instalação para uso posterior
+    // 2. Tenta "pescar" o sinal global que o main.tsx capturou
+    if ((window as any).deferredPrompt) {
+      setDeferredPrompt((window as any).deferredPrompt);
+      console.log("⚓ Sidebar: Sinal de instalação recuperado da memória global!");
+    }
+
+    // 3. Captura o evento caso ele ocorra após a montagem da Sidebar
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      (window as any).deferredPrompt = e; // Sincroniza com a memória global
     };
 
     window.addEventListener('beforeinstallprompt', handler);
@@ -43,16 +50,18 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   }, []);
 
   const handleInstallClick = async () => {
-    // Tenta executar o prompt se o navegador já o tiver liberado
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+    // Prioriza o prompt capturado na memória global ou no estado local
+    const promptToUse = deferredPrompt || (window as any).deferredPrompt;
+
+    if (promptToUse) {
+      promptToUse.prompt();
+      const { outcome } = await promptToUse.userChoice;
+      
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
+        (window as any).deferredPrompt = null; // Limpa o global após sucesso
       }
     } else {
-      // Fallback silencioso: se o prompt não estiver pronto, 
-      // o usuário pode instalar pelo menu do próprio navegador.
       console.log("Aguardando sinal do navegador para instalação automática.");
     }
   };
@@ -157,7 +166,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         {/* Rodapé da Sidebar */}
         <div className="mt-auto pt-6 border-t border-border/50 space-y-4">
           
-          {/* BANNER DE INSTALAÇÃO - Agora visível sempre que estiver no navegador */}
+          {/* BANNER DE INSTALAÇÃO - Sincronizado com a memória global */}
           {!isAppMode && (
             <div className="px-2 animate-in slide-in-from-bottom-2 duration-500">
               <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3">
@@ -175,7 +184,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                   className="w-full h-8 text-[10px] font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all active:scale-95 shadow-md shadow-blue-600/10"
                 >
                   <Download className="w-3 h-3 mr-2" /> 
-                  {deferredPrompt ? 'INSTALAR AGORA' : 'BAIXAR APP'}
+                  {(deferredPrompt || (window as any).deferredPrompt) ? 'INSTALAR AGORA' : 'BAIXAR APP'}
                 </Button>
               </div>
             </div>
