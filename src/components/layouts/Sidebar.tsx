@@ -20,15 +20,26 @@ import { Button } from '@/components/ui/button';
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { profile, signOut } = useAuth();
   
-  // LÓGICA PWA: Captura o evento de instalação do navegador
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
+  const [isAppMode, setIsAppMode] = useState(false);
 
   useEffect(() => {
+    // 1. Verifica se já está rodando como Aplicativo instalado
+    const checkAppMode = window.matchMedia('(display-mode: standalone)').matches 
+      || (window.navigator as any).standalone 
+      || document.referrer.includes('android-app://');
+    
+    setIsAppMode(checkAppMode);
+
+    // 2. Captura o evento de instalação do navegador
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstallBtn(true);
+      // Só mostra o botão se detectarmos que o usuário NÃO está no modo App
+      if (!checkAppMode) {
+        setShowInstallBtn(true);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handler);
@@ -143,11 +154,11 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </ul>
         </nav>
 
-        {/* Rodapé da Sidebar com Botão de Instalação */}
+        {/* Rodapé da Sidebar */}
         <div className="mt-auto pt-6 border-t border-border/50 space-y-4">
           
-          {/* BANNER DE INSTALAÇÃO (CTA) */}
-          {showInstallBtn && (
+          {/* BANNER DE INSTALAÇÃO (CTA) - Só aparece se NÃO estiver no modo App */}
+          {!isAppMode && showInstallBtn && (
             <div className="px-2 animate-in slide-in-from-bottom-2 duration-500">
               <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3">
                 <div className="flex items-center gap-3">
