@@ -29,9 +29,12 @@ export default function Login() {
         return;
       }
 
-      // Se der certo, avisa e redireciona para o painel principal!
+     // Se der certo, avisa e redireciona para o painel principal!
       toast.success('Login realizado com sucesso!');
-      window.location.href = '/'; // <-- LINHA ADICIONADA AQUI
+      
+      setTimeout(() => {
+        window.location.href = '/app';
+      }, 500);
       
     } catch (error) {
       console.error('Erro inesperado:', error);
