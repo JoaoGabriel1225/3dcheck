@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -56,62 +55,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-const fetchProfile = async (userId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching profile:', error);
-      return;
-    }
-
-    if (!data) return;
-
-    const now = new Date();
-    const trialEnd = data.trialEndsAt ? new Date(data.trialEndsAt) : null;
-
-    let updatedProfile = data;
-
-    if (trialEnd && now > trialEnd && data.status !== 'active') {
-      updatedProfile = {
-        ...data,
-        status: 'blocked'
-      };
-
-      // salva no banco para persistir bloqueio
-      await supabase
-        .from('profiles')
-        .update({ status: 'blocked' })
-        .eq('id', userId);
-    }
-
-    setProfile(updatedProfile as Profile);
-
-  } catch (error) {
-    console.error('Failed to fetch profile', error);
-  } finally {
-    setLoading(false);
-  }
+  const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
-      
+
       if (error) {
         console.error('Error fetching profile:', error);
-      } else if (data) {
-        setProfile(data as Profile);
+        return;
       }
-    } catch (e) {
-      console.error('Failed to fetch profile', e);
+
+      if (!data) return;
+
+      const now = new Date();
+      const trialEnd = data.trialEndsAt ? new Date(data.trialEndsAt) : null;
+
+      let updatedProfile = data;
+
+      // 🔥 REGRA CORRETA
+      if (trialEnd && now > trialEnd && data.status !== 'active') {
+        updatedProfile = {
+          ...data,
+          status: 'blocked'
+        };
+
+        await supabase
+          .from('profiles')
+          .update({ status: 'blocked' })
+          .eq('id', userId);
+      }
+
+      setProfile(updatedProfile as Profile);
+
+    } catch (error) {
+      console.error('Failed to fetch profile', error);
     } finally {
-      // Small artificial delay to ensure we don't accidentally show UI before profile loads
       setLoading(false);
     }
   };
