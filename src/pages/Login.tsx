@@ -29,8 +29,9 @@ export default function Login() {
         return;
       }
 
-      // Se der certo, o AuthContext vai detectar sozinho e trocar de tela!
+      // Se der certo, avisa e redireciona para o painel principal!
       toast.success('Login realizado com sucesso!');
+      window.location.href = '/'; // <-- LINHA ADICIONADA AQUI
       
     } catch (error) {
       console.error('Erro inesperado:', error);
