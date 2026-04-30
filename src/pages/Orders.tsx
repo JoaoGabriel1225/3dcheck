@@ -50,6 +50,7 @@ export default function Orders() {
   const [selectedProductId, setSelectedProductId] = useState('custom');
   const [orderDescription, setOrderDescription] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
+  const [orderCost, setOrderCost] = useState(''); // NOVO: Estado para o custo
 
   const fetchOrders = async () => {
     if (!profile) return;
@@ -57,7 +58,7 @@ export default function Orders() {
       const { data, error } = await supabase
         .from('orders')
         .select(`
-          id, description, status, final_price, created_at,
+          id, description, status, final_price, cost_total, created_at,
           clients(name, phone),
           products(name)
         `)
@@ -78,7 +79,8 @@ export default function Orders() {
     try {
       const [clientsRes, productsRes] = await Promise.all([
         supabase.from('clients').select('id, name, phone').eq('user_id', profile.id).order('name'),
-        supabase.from('products').select('id, name, description, final_price').eq('user_id', profile.id).order('name')
+        // NOVO: Adicionado cost_total na busca dos produtos
+        supabase.from('products').select('id, name, description, final_price, cost_total').eq('user_id', profile.id).order('name')
       ]);
       if (clientsRes.data) setClientsOptions(clientsRes.data);
       if (productsRes.data) setProductsOptions(productsRes.data);
@@ -143,6 +145,7 @@ export default function Orders() {
     }
   };
 
+  // NOVO: Preenche os dados automaticamente, incluindo o custo
   const handleProductSelect = (productId: string) => {
     setSelectedProductId(productId);
     if (productId !== 'custom') {
@@ -150,7 +153,11 @@ export default function Orders() {
       if (product) {
         setOrderDescription(product.description || '');
         setOrderPrice(product.final_price?.toString() || '');
+        setOrderCost(product.cost_total?.toString() || '0');
       }
+    } else {
+      setOrderPrice('');
+      setOrderCost('');
     }
   };
 
@@ -187,6 +194,7 @@ export default function Orders() {
         return;
       }
 
+      // NOVO: Adicionado cost_total no insert
       const { error: orderErr } = await supabase
         .from('orders')
         .insert({
@@ -195,7 +203,8 @@ export default function Orders() {
           product_id: selectedProductId === 'custom' ? null : selectedProductId,
           status: 'Aguardando contato',
           description: orderDescription,
-          final_price: parseFloat(orderPrice) || 0
+          final_price: parseFloat(orderPrice.toString().replace(',', '.')) || 0,
+          cost_total: parseFloat(orderCost.toString().replace(',', '.')) || 0
         });
 
       if (orderErr) throw orderErr;
@@ -232,6 +241,7 @@ export default function Orders() {
     setSelectedProductId('custom');
     setOrderDescription('');
     setOrderPrice('');
+    setOrderCost(''); // NOVO
   };
 
   return (
@@ -330,7 +340,7 @@ export default function Orders() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="custom">Pedido Personalizado (Sem produto)</SelectItem>
+                      <SelectItem value="custom">Pedido Personalizado (Sem produto base)</SelectItem>
                       {productsOptions.map(p => (
                         <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                       ))}
@@ -341,9 +351,27 @@ export default function Orders() {
                   <Label htmlFor="order-desc" className="text-xs font-bold uppercase text-foreground">Descrição / Combinações</Label>
                   <Textarea id="order-desc" value={orderDescription} onChange={e => setOrderDescription(e.target.value)} placeholder="Cor, estilo, tamanho ou link do bixo." />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="order-price" className="text-xs font-bold uppercase text-foreground">Preço Acordado (R$)</Label>
-                  <Input id="order-price" type="number" step="0.01" value={orderPrice} onChange={e => setOrderPrice(e.target.value)} placeholder="150.00" />
+                
+                {/* NOVO: Grid com Preço e Custo */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="order-price" className="text-xs font-bold uppercase text-foreground">Preço Acordado (R$)</Label>
+                    <Input id="order-price" type="number" step="0.01" value={orderPrice} onChange={e => setOrderPrice(e.target.value)} placeholder="150.00" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="order-cost" className="text-xs font-bold uppercase text-foreground">Custo Total (R$)</Label>
+                    <Input 
+                      id="order-cost" 
+                      type="number" 
+                      step="0.01" 
+                      value={orderCost} 
+                      onChange={e => setOrderCost(e.target.value)} 
+                      placeholder="0.00" 
+                      readOnly={selectedProductId !== 'custom'}
+                      className={selectedProductId !== 'custom' ? "bg-muted text-muted-foreground cursor-not-allowed border-transparent shadow-none" : "border-slate-200"}
+                      title={selectedProductId !== 'custom' ? "O custo é definido automaticamente pelo produto selecionado." : "Insira o custo do seu pedido personalizado."}
+                    />
+                  </div>
                 </div>
               </div>
               
