@@ -42,16 +42,24 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // FUNÇÃO ATUALIZADA COM INSTRUÇÕES INTELIGENTES
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      // Caso o navegador não forneça o prompt automático (ex: já instalado)
-      alert("O app já está pronto ou seu navegador não suporta a instalação automática no momento. Procure a opção 'Instalar' na barra de endereços do Chrome.");
-      return;
-    }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
+    if (deferredPrompt) {
+      // Se o navegador liberar o evento automático, usa ele
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      // Se o navegador bloquear (ex: já instalado ou no iPhone)
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      
+      if (isIOS) {
+        alert("Para instalar no iPhone:\n1. Toque no ícone de Compartilhar (quadrado com seta para cima)\n2. Role para baixo e escolha 'Adicionar à Tela de Início'");
+      } else {
+        alert("Parece que você já tem o app instalado ou o navegador bloqueou o atalho.\n\nPara instalar no PC: Procure o ícone de instalação (computador com setinha) na barra de endereços lá em cima.");
+      }
     }
   };
 
