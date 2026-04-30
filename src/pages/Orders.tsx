@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { MessageCircle, Copy, Plus, Search, Trash2, ShoppingBag, Filter, Calendar, User, Tag } from 'lucide-react';
+import { MessageCircle, Copy, Plus, Search, Trash2, ShoppingBag, Filter, Calendar, User, Tag, DollarSign, Calculator, ChevronDown } from 'lucide-react';
 
 const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Cancelado'];
 
@@ -37,10 +37,14 @@ export default function Orders() {
   const [pendingWhatsappMessage, setPendingWhatsappMessage] = useState('');
   const [pendingWhatsappPhone, setPendingWhatsappPhone] = useState('');
   const [isNewOrderDialogOpen, setIsNewOrderDialogOpen] = useState(false);
+  
+  // Opções e Busca
   const [clientsOptions, setClientsOptions] = useState<any[]>([]);
   const [productsOptions, setProductsOptions] = useState<any[]>([]);
   const [clientSearchText, setClientSearchText] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  
+  // Estado do Formulário
   const [selectedClientId, setSelectedClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -177,7 +181,7 @@ export default function Orders() {
     } catch (err: any) { toast.error('Erro ao criar: ' + err.message); }
   };
 
-  const filteredClients = clientSearchText.trim() === '' ? clientsOptions : clientsOptions.filter(c => c.name.toLowerCase().includes(clientSearchText.toLowerCase()));
+  const filteredClients = clientSearchText.trim() === '' ? [] : clientsOptions.filter(c => c.name.toLowerCase().includes(clientSearchText.toLowerCase()));
 
   const selectClient = (client: any) => {
     setSelectedClientId(client.id);
@@ -221,17 +225,119 @@ export default function Orders() {
 
         <Dialog open={isNewOrderDialogOpen} onOpenChange={(open) => { setIsNewOrderDialogOpen(open); if (!open) resetOrderForm(); }}>
           <DialogTrigger asChild>
-            <Button className="h-12 px-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-lg shadow-blue-500/20 gap-2 transition-all hover:scale-105 active:scale-95">
+            <Button className="h-12 px-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 gap-2 transition-all hover:scale-105 active:scale-95">
               <Plus className="w-5 h-5" /> Novo Pedido
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-xl rounded-2xl border-border bg-card shadow-2xl">
-             {/* Conteúdo do Formulário (Omitido para brevidade, mas deve ser mantido igual ao seu original com o novo estilo de botões) */}
-             <DialogHeader><DialogTitle className="text-2xl font-black">Criar Novo Pedido</DialogTitle></DialogHeader>
-             <form onSubmit={handleCreateOrder} className="space-y-4 pt-4">
-                {/* ... Mantendo sua lógica de Inputs ... */}
-                <Button type="submit" className="w-full h-12 font-black bg-blue-600 hover:bg-blue-500">Salvar Pedido</Button>
-             </form>
+          <DialogContent className="max-w-2xl rounded-[2rem] border-border bg-card shadow-2xl p-0 overflow-hidden">
+            <DialogHeader className="p-8 pb-0">
+                <DialogTitle className="text-2xl font-black flex items-center gap-2">
+                    <div className="p-2 bg-blue-500 rounded-lg text-white"><Plus className="w-5 h-5" /></div>
+                    Criar Novo Pedido
+                </DialogTitle>
+            </DialogHeader>
+            
+            <form onSubmit={handleCreateOrder} className="p-8 pt-6 space-y-6 overflow-y-auto max-h-[80vh]">
+              {/* CLIENT SECTION */}
+              <div className="space-y-4">
+                <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
+                  <User className="w-3 h-3" /> Identificação do Cliente
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="relative">
+                        <Input 
+                            placeholder="Pesquisar ou Nome do Cliente..." 
+                            value={clientSearchText}
+                            onChange={(e) => {
+                                setClientSearchText(e.target.value);
+                                setNewClientName(e.target.value);
+                                setSelectedClientId('');
+                                setShowClientDropdown(true);
+                            }}
+                            onFocus={() => setShowClientDropdown(true)}
+                            className="h-12 rounded-xl"
+                        />
+                        {showClientDropdown && filteredClients.length > 0 && (
+                            <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                                {filteredClients.map(c => (
+                                    <div 
+                                        key={c.id} 
+                                        onClick={() => selectClient(c)}
+                                        className="p-3 hover:bg-accent cursor-pointer flex justify-between items-center transition-colors"
+                                    >
+                                        <span className="font-bold text-sm">{c.name}</span>
+                                        <span className="text-[10px] opacity-50">{c.phone}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black opacity-30">+55</span>
+                        <Input 
+                            placeholder="WhatsApp (com DDD)" 
+                            value={newClientPhone}
+                            onChange={(e) => setNewClientPhone(e.target.value.replace(/\D/g, ''))}
+                            className="h-12 pl-12 rounded-xl"
+                            maxLength={11}
+                        />
+                    </div>
+                </div>
+              </div>
+
+              {/* PRODUCT SECTION */}
+              <div className="space-y-4 pt-4 border-t border-border">
+                <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
+                  <Tag className="w-3 h-3" /> Peça e Especificações
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Select value={selectedProductId} onValueChange={handleProductSelect}>
+                        <SelectTrigger className="h-12 rounded-xl font-bold">
+                            <SelectValue placeholder="Selecione um Produto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="custom" className="font-black text-blue-500">PRODUTO PERSONALIZADO</SelectItem>
+                            {productsOptions.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Input 
+                        placeholder="Preço Acordado (R$)" 
+                        value={orderPrice}
+                        onChange={(e) => setOrderPrice(e.target.value)}
+                        className="h-12 rounded-xl font-black text-emerald-500"
+                    />
+                </div>
+                <Textarea 
+                    placeholder="Detalhes adicionais do pedido (tamanho, cor, material...)" 
+                    value={orderDescription}
+                    onChange={(e) => setOrderDescription(e.target.value)}
+                    className="rounded-xl min-h-[100px]"
+                />
+              </div>
+
+              {/* FINANCIAL INFO */}
+              <div className="p-4 bg-accent/30 rounded-2xl border border-border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-background rounded-lg shadow-sm"><Calculator className="w-4 h-4 text-muted-foreground" /></div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase opacity-50 tracking-wider">Custo de Produção</p>
+                        <p className="text-sm font-black text-foreground">R$ {parseFloat(orderCost || '0').toFixed(2)}</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="text-[10px] font-black uppercase opacity-50 tracking-wider">Lucro Estimado</p>
+                    <p className="text-sm font-black text-emerald-500">
+                        R$ {(parseFloat(orderPrice || '0') - parseFloat(orderCost || '0')).toFixed(2)}
+                    </p>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white font-black text-lg rounded-2xl shadow-xl shadow-blue-500/20 transition-all active:scale-95">
+                  SALVAR PEDIDO
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -245,7 +351,7 @@ export default function Orders() {
                placeholder="Buscar por cliente ou produto..."
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
-               className="pl-10 h-11 bg-background/50 border-border rounded-xl focus:ring-blue-500/20"
+               className="pl-10 h-11 bg-background/50 border-border rounded-xl"
             />
           </div>
           <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground bg-accent/50 px-3 py-2 rounded-lg border border-border">
@@ -257,17 +363,17 @@ export default function Orders() {
         <div className="flex flex-wrap gap-2">
           {STATUS_OPTIONS.map(status => (
              <Button
-               key={status}
-               variant={statusFilter === status ? 'default' : 'outline'}
-               size="sm"
-               onClick={() => setStatusFilter(status)}
-               className={`h-8 px-4 rounded-full text-[11px] font-black uppercase tracking-wider transition-all ${
-                 statusFilter === status 
-                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
-                 : 'hover:bg-accent border-border text-muted-foreground'
-               }`}
+                key={status}
+                variant={statusFilter === status ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter(status)}
+                className={`h-8 px-4 rounded-full text-[11px] font-black uppercase tracking-wider transition-all ${
+                  statusFilter === status 
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
+                  : 'hover:bg-accent border-border text-muted-foreground'
+                }`}
              >
-               {status}
+                {status}
              </Button>
           ))}
         </div>
@@ -355,7 +461,7 @@ export default function Orders() {
 
       {/* WHATSAPP CONFIRMATION MODAL */}
       <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl border-border bg-card shadow-2xl">
+        <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-black text-xl flex items-center gap-3">
               <div className="p-2 bg-emerald-500 rounded-lg text-white"><MessageCircle className="w-5 h-5" /></div>
