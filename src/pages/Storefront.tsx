@@ -1,26 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { 
-  PackageSearch, 
   Image as ImageIcon, 
   MessageCircle, 
   Instagram, 
   Zap, 
-  Loader2, 
   ArrowRight,
+  ArrowLeft,
   ShoppingBag,
   User,
   Phone,
@@ -29,8 +27,9 @@ import {
 } from 'lucide-react';
 
 export default function Storefront() {
-  // Capturamos tanto o ID técnico quanto o Nome Amigável (slug) da URL
   const { id, storeSlug } = useParams();
+  const { profile } = useAuth();
+  const navigate = useNavigate();
   
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
@@ -48,12 +47,12 @@ export default function Storefront() {
         setLoading(true);
         let targetUserId = id;
 
-        // LÓGICA AUTOMÁTICA: Se não temos ID, buscamos pelo nome da loja (slug)
+        // 1. Lógica Automática de Slug (Busca otimizada)
         if (!id && storeSlug) {
           const { data: storeSearch } = await supabase
             .from('store_settings')
             .select('user_id, store_name')
-            .filter('store_name', 'not.is', null);
+            .not('store_name', 'is', null);
 
           const matchedStore = storeSearch?.find(s => 
             s.store_name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') === storeSlug
@@ -69,24 +68,19 @@ export default function Storefront() {
           return;
         }
 
-        // Busca as configurações da vitrine
-        const { data: storeData } = await supabase
-          .from('store_settings')
-          .select('*')
-          .eq('user_id', targetUserId)
-          .single();
-        
-        setStore(storeData);
+        // 2. BUSCA PARALELA (Carrega tudo ao mesmo tempo para ser mais rápido)
+        const [storeRes, prodRes] = await Promise.all([
+          supabase.from('store_settings').select('*').eq('user_id', targetUserId).single(),
+          supabase.from('products')
+            .select(`*, product_images(url)`)
+            .eq('user_id', targetUserId)
+            .eq('is_public', true)
+            .order('created_at', { ascending: false })
+        ]);
 
-        // Busca os produtos vinculados a esse usuário
-        const { data: prodData } = await supabase
-          .from('products')
-          .select(`*, product_images(url)`)
-          .eq('user_id', targetUserId)
-          .eq('is_public', true)
-          .order('created_at', { ascending: false });
-          
-        setProducts(prodData || []);
+        if (storeRes.data) setStore(storeRes.data);
+        if (prodRes.data) setProducts(prodRes.data);
+
       } catch (err) { 
         console.error(err); 
         toast.error("Erro ao carregar a vitrine.");
@@ -141,7 +135,25 @@ export default function Storefront() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#0a0a0c]"><Loader2 className="animate-spin text-blue-500 w-10 h-10" /></div>;
+  // 3. ESTADO DE CARREGAMENTO (Skeleton UI)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0c] p-8 space-y-12 overflow-hidden">
+        <div className="flex flex-col items-center gap-6 mt-20">
+          <div className="w-32 h-32 rounded-[2rem] bg-white/5 animate-pulse" />
+          <div className="space-y-3 flex flex-col items-center">
+            <div className="h-10 w-64 bg-white/5 rounded-xl animate-pulse" />
+            <div className="h-5 w-48 bg-white/5 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-7xl mx-auto pt-10">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+            <div key={i} className="aspect-[3/4] bg-white/5 rounded-[2.5rem] animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const theme = store?.theme_style || 'dark';
   const brandColor = store?.primary_color || '#3b82f6';
@@ -155,6 +167,17 @@ export default function Storefront() {
   return (
     <div className={`relative min-h-screen font-sans pb-20 ${isLight ? 'bg-slate-50 text-slate-900' : 'text-white'}`}>
       
+      {/* 4. BOTÃO DE VOLTAR (Visível apenas para o dono) */}
+      {profile?.id === store?.user_id && (
+        <Button 
+          onClick={() => navigate('/app/storefront-settings')}
+          className="fixed top-6 left-6 z-[100] gap-2 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-2xl shadow-blue-600/40 animate-in fade-in slide-in-from-left-4 duration-500 h-12 px-6 uppercase text-[10px] tracking-widest"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Voltar ao Painel
+        </Button>
+      )}
+
       {isColored ? (
         <div className="fixed inset-0 z-[-1] transition-colors duration-500" style={{ backgroundColor: brandColor }} />
       ) : (
