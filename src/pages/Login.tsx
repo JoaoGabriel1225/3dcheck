@@ -47,17 +47,19 @@ export default function Login() {
   return (
     <div className="min-h-screen flex bg-[#0a0a0c] selection:bg-blue-500/30">
       
-      {/* LADO ESQUERDO: Branding */}
+      {/* LADO ESQUERDO: Branding (PC) */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#050505] overflow-hidden flex-col justify-between p-12 border-r border-white/5">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-900/15 rounded-full blur-[120px] pointer-events-none" />
         
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="h-10 flex items-center justify-center">
-            {/* Imagem da sua logo */}
-            <img src="/logo.jpg.jpg" alt="3dCheck Logo" className="h-full w-auto object-contain drop-shadow-[0_0_15px_rgba(37,99,235,0.5)]" />
+        <div className="relative z-10 flex items-center gap-4">
+          {/* AUMENTADO AQUI (PC): de h-10 para h-28 */}
+          <div className="h-28 flex items-center justify-center">
+            {/* O nome do arquivo está como logo.jpg.png - mude aqui se lá no GitHub estiver diferente! */}
+            <img src="/logo.jpg.png" alt="3dCheck Logo" className="h-full w-auto object-contain drop-shadow-[0_0_20px_rgba(37,99,235,0.6)]" />
           </div>
-          <span className="text-3xl font-extrabold tracking-tight text-white">
+          {/* Texto aumentado para acompanhar a logo grande */}
+          <span className="text-5xl font-extrabold tracking-tight text-white">
             <span className="text-blue-500">3d</span>Check
           </span>
         </div>
@@ -76,7 +78,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* LADO DIREITO: Formulário */}
+      {/* LADO DIREITO: Formulário (Mobile e Login) */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10">
         
         <div className="absolute inset-0 lg:hidden bg-gradient-to-br from-[#0a0a0c] via-[#050505] to-[#0a192f] pointer-events-none" />
@@ -86,11 +88,13 @@ export default function Login() {
           
           <div className="text-center lg:text-left">
             <div className="flex lg:hidden justify-center items-center gap-3 mb-8">
-              <div className="h-10 flex items-center justify-center">
-                {/* Imagem da logo no Mobile */}
-                <img src="/logo.jpg.jpg" alt="3dCheck Logo" className="h-full w-auto object-contain drop-shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
+              {/* AUMENTADO AQUI (Mobile): de h-10 para h-16 */}
+              <div className="h-16 flex items-center justify-center">
+                {/* O nome do arquivo está como logo.jpg.png - mude aqui se lá no GitHub estiver diferente! */}
+                <img src="/logo.jpg.png" alt="3dCheck Logo" className="h-full w-auto object-contain drop-shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
               </div>
-              <span className="text-3xl font-extrabold tracking-tight text-white">
+              {/* Texto aumentado no mobile */}
+              <span className="text-4xl font-extrabold tracking-tight text-white">
                 <span className="text-blue-500">3d</span>Check
               </span>
             </div>
