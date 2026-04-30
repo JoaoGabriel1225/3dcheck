@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { PackageSearch, Plus, Image as ImageIcon, Trash2, Eye, EyeOff, Edit2 } from 'lucide-react';
+import { PackageSearch, Plus, Image as ImageIcon, Trash2, Eye, EyeOff, Edit2, Wand2 } from 'lucide-react';
 
 export default function Products() {
   const { profile } = useAuth();
@@ -33,7 +33,7 @@ export default function Products() {
   const [isPublic, setIsPublic] = useState(true);
   const [discount, setDiscount] = useState('');
   
-  // Calculator state (agora obrigatório)
+  // Calculator state
   const [filamentPrice, setFilamentPrice] = useState('');
   const [gramsUsed, setGramsUsed] = useState('');
   const [energyCost, setEnergyCost] = useState('');
@@ -42,6 +42,7 @@ export default function Products() {
   const [otherCosts, setOtherCosts] = useState('');
   const [profitMargin, setProfitMargin] = useState('');
   const [calculatedCost, setCalculatedCost] = useState(0);
+  const [suggestedPrice, setSuggestedPrice] = useState('0.00'); // Novo estado para o Preço Sugerido
 
   const fetchProducts = async () => {
     if (!profile) return;
@@ -65,7 +66,7 @@ export default function Products() {
     fetchProducts();
   }, [profile]);
 
-  // Efeito que calcula automaticamente sempre que qualquer custo muda
+  // Efeito que calcula automaticamente os CUSTOS e o PREÇO SUGERIDO
   useEffect(() => {
     const fPrice = parseFloat(filamentPrice) || 0;
     const gUsed = parseFloat(gramsUsed) || 0;
@@ -82,7 +83,8 @@ export default function Products() {
     
     const margin = parseFloat(profitMargin) || 0;
     const calcPrice = cTotal * (1 + margin / 100);
-    setPrice(calcPrice.toFixed(2));
+    setSuggestedPrice(calcPrice.toFixed(2));
+    // NOTA: Não mudamos mais o setPrice() automaticamente aqui, deixando livre para o usuário.
   }, [filamentPrice, gramsUsed, energyCost, machineCost, printTime, otherCosts, profitMargin]);
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -90,10 +92,10 @@ export default function Products() {
     if (!profile) return;
     
     try {
-      let finalPriceNum = parseFloat(price.replace(',', '.')) || 0;
-      let costTotalNum = calculatedCost; // Agora pega direto do calculo
+      let finalPriceNum = parseFloat(price.toString().replace(',', '.')) || 0;
+      let costTotalNum = calculatedCost;
       let profitMarginNum = parseFloat(profitMargin) || 0;
-      let discountNum = parseFloat(discount.replace(',', '.')) || 0;
+      let discountNum = parseFloat(discount.toString().replace(',', '.')) || 0;
 
       const productPayload = {
         name,
@@ -235,6 +237,7 @@ export default function Products() {
     setOtherCosts('');
     setProfitMargin('');
     setCalculatedCost(0);
+    setSuggestedPrice('0.00');
   };
 
   return (
@@ -274,7 +277,7 @@ export default function Products() {
                  </div>
                </div>
 
-              {/* Precificação e Custos (Agora obrigatório e visível por padrão) */}
+              {/* Precificação e Custos */}
               <div className="space-y-4 pt-4 border-t border-border/50">
                 <Label className="font-bold text-foreground text-base">Custos e Precificação</Label>
 
@@ -306,23 +309,45 @@ export default function Products() {
                     </div>
                   </div>
                   
-                  <div className="border-t border-border pt-4 flex flex-col gap-2">
+                  <div className="border-t border-border pt-4 flex flex-col gap-3">
                     <div className="flex justify-between items-center text-sm">
                       <span className="font-medium text-muted-foreground">Custo Total Calculado:</span>
                       <span className="font-bold text-foreground">R$ {calculatedCost.toFixed(2)}</span>
                     </div>
-                    <div className="space-y-2 mt-2">
+                    <div className="space-y-2">
                       <Label htmlFor="pMargin" className="font-bold text-blue-700 text-[10px] uppercase tracking-wider">Margem de Lucro (%)*</Label>
                       <Input id="pMargin" type="number" step="0.01" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="border-blue-200 bg-blue-50/50" />
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price" className="font-bold text-slate-700 text-xs uppercase tracking-wider">Preço Final (R$)</Label>
-                    <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required readOnly className="border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed" />
+                <div className="grid grid-cols-2 gap-4 mt-4 items-end">
+                  <div className="space-y-3">
+                    {/* Área do Preço Sugerido com Botão Rápido */}
+                    <div className="bg-emerald-50 border border-emerald-100 p-2 rounded-md flex justify-between items-center">
+                       <div>
+                         <Label className="font-bold text-emerald-800 text-[10px] uppercase tracking-wider block">Preço Sugerido</Label>
+                         <span className="font-extrabold text-emerald-600 text-sm">R$ {suggestedPrice}</span>
+                       </div>
+                       <Button 
+                         type="button" 
+                         variant="outline" 
+                         size="sm" 
+                         onClick={() => setPrice(suggestedPrice)} 
+                         className="h-7 px-2 text-[10px] border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                         title="Aplicar preço sugerido ao Preço Final"
+                       >
+                         <Wand2 className="w-3 h-3 mr-1" /> Usar
+                       </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="price" className="font-bold text-slate-700 text-xs uppercase tracking-wider">Preço Final (R$)*</Label>
+                      {/* O input de preço agora é editável novamente */}
+                      <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required className="border-slate-300 shadow-sm" placeholder="Ex: 50.00" />
+                    </div>
                   </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="discount" className="font-bold text-slate-700 text-xs uppercase tracking-wider">Desconto (R$ Opcional)</Label>
                     <Input id="discount" type="number" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} className="border-slate-200" />
