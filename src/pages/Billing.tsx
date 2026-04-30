@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,9 @@ export default function Billing() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // 🚀 LÓGICA DO TRIAL (CORRETA E CENTRALIZADA)
+  if (!profile) return null;
+
+  // 🚀 LÓGICA ÚNICA DO TRIAL (FONTE DA VERDADE)
   const now = new Date();
 
   const end = profile?.trial_end_date
@@ -28,9 +30,12 @@ export default function Billing() {
     ? Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     : 0;
 
+  const isExpired = diffDays <= 0;
+
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !profile) return;
+
     setLoading(true);
 
     try {
@@ -66,113 +71,95 @@ export default function Billing() {
     }
   };
 
-  if (!profile) return null;
-
   return (
     <div className="max-w-2xl mx-auto space-y-8">
+
       <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Assinatura</h2>
-        <p className="text-slate-500 font-medium mt-1">Gerencie seu plano e pagamentos.</p>
+        <h2 className="text-2xl font-extrabold">Assinatura</h2>
+        <p className="text-slate-500">Gerencie seu plano e pagamentos.</p>
       </div>
 
-      {/* 🚨 BLOCO DE STATUS DO TRIAL (CORRIGIDO) */}
-      {diffDays <= 0 && (
-        <Card className="border-red-200 bg-red-50 rounded-xl shadow-none">
+      {/* 🚨 BLOQUEIO BASEADO APENAS EM DATA */}
+      {isExpired && (
+        <Card className="border-red-200 bg-red-50">
           <CardContent className="p-6 flex items-start gap-4 text-red-800">
             <AlertTriangle className="h-6 w-6 text-red-600 mt-1" />
             <div>
-              <h3 className="font-extrabold text-lg">Plano Inativo</h3>
-              <p className="font-medium opacity-90 mt-1">
-                Seu trial expirou ou sua conta está bloqueada. Para continuar utilizando a plataforma, realize o pagamento.
+              <h3 className="font-bold text-lg">Plano Inativo</h3>
+              <p>
+                Seu trial expirou. Para continuar utilizando a plataforma, realize o pagamento.
               </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* 🟢 BLOCO ATIVO (NOVO E CORRETO) */}
-      {diffDays > 0 && (
-        <Card className="border-green-200 bg-green-50 rounded-xl shadow-none">
+      {/* 🟢 PLANO ATIVO */}
+      {!isExpired && (
+        <Card className="border-green-200 bg-green-50">
           <CardContent className="p-6 text-green-800">
-            <h3 className="font-extrabold text-lg">Plano Ativo</h3>
-            <p className="font-medium mt-1">
-              Você tem {diffDays} dias restantes no seu plano gratuito.
-            </p>
+            <h3 className="font-bold text-lg">Plano Ativo</h3>
+            <p>Você tem {diffDays} dias restantes no seu plano gratuito.</p>
           </CardContent>
         </Card>
       )}
 
-      {/* COMPROVANTE ENVIADO */}
+      {/* 💳 PIX */}
       {submitted ? (
-        <Card className="border-green-200 border-2 rounded-xl shadow-none">
+        <Card className="border-green-200">
           <CardContent className="p-12 text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="h-10 w-10" />
-            </div>
-            <h3 className="text-2xl font-extrabold text-slate-900">Comprovante em análise</h3>
-            <p className="text-slate-500 font-medium max-w-sm mx-auto">
-              Recebemos seu comprovante e nossa equipe irá verificar o pagamento em breve. Aguarde a aprovação para que seu acesso seja liberado.
+            <CheckCircle2 className="mx-auto h-10 w-10 text-green-600" />
+            <h3 className="text-xl font-bold">Comprovante em análise</h3>
+            <p className="text-slate-500">
+              Vamos verificar seu pagamento em breve.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <Card className="rounded-xl border-slate-200 shadow-none overflow-hidden">
-          <CardHeader className="p-6">
-            <CardTitle className="font-extrabold text-slate-900">Pagamento via PIX</CardTitle>
-            <CardDescription className="font-medium text-slate-500 mt-1">
-              Para ativar sua assinatura de 30 dias, realize o PIX abaixo e envie o comprovante.
+        <Card>
+          <CardHeader>
+            <CardTitle>Pagamento via PIX</CardTitle>
+            <CardDescription>
+              Envie o comprovante para liberar sua conta.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6 px-6 pb-6">
-            <div className="p-8 bg-slate-50 rounded-xl text-center space-y-2 border border-slate-200">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Chave PIX (Telefone)</p>
-              <p className="text-4xl font-extrabold tracking-tight text-slate-900 my-4">15022408740</p>
-              <p className="text-sm font-medium text-slate-500">
-                Dúvidas? Entre em contato: <strong className="text-slate-800">21995394315</strong>
-              </p>
+          <CardContent className="space-y-6">
+
+            <div className="p-6 bg-slate-50 rounded-xl text-center">
+              <p className="text-sm">Chave PIX</p>
+              <p className="text-2xl font-bold">15022408740</p>
             </div>
 
-            <form onSubmit={handleFileUpload} className="space-y-6 pt-4">
-              <div className="space-y-3">
-                <Label className="font-bold text-slate-700 text-xs uppercase tracking-wider">
-                  Enviar Comprovante (Imagem ou PDF)
-                </Label>
+            <form onSubmit={handleFileUpload} className="space-y-4">
 
-                <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer bg-white relative">
-                  <Input
-                    type="file"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
-                    accept="image/*,.pdf"
-                    required
-                  />
+              <Label>Enviar comprovante</Label>
 
-                  <div className="flex justify-center items-center h-12 w-12 rounded-full bg-slate-100 mx-auto mb-4">
-                    <UploadCloud className="h-6 w-6 text-slate-500" />
-                  </div>
+              <div className="border-dashed border p-6 text-center relative">
+                <Input
+                  type="file"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  required
+                />
 
-                  <p className="font-extrabold text-[15px] text-slate-900">
-                    {file ? file.name : 'Clique para selecionar ou arraste o arquivo'}
-                  </p>
+                <UploadCloud className="mx-auto mb-2" />
 
-                  <p className="text-[13px] font-medium text-slate-500 mt-1">
-                    PNG, JPG ou PDF
-                  </p>
-                </div>
+                <p>
+                  {file ? file.name : 'Clique ou arraste o arquivo'}
+                </p>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-md py-6 text-[15px] shadow-sm"
-                disabled={!file || loading}
-              >
-                {loading ? 'Enviando...' : 'Enviar Comprovante de Pagamento'}
+              <Button disabled={!file || loading} className="w-full">
+                {loading ? 'Enviando...' : 'Enviar comprovante'}
               </Button>
+
             </form>
           </CardContent>
         </Card>
       )}
+
     </div>
   );
+}
 }
