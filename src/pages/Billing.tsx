@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 export default function Billing() {
   const { profile } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
-  const [loading, setLoading] = useState(false); // Estado para controlar o botão
+  const [loading, setLoading] = useState(false);
 
   // Cálculo de dias restantes do Trial
   const trialInfo = useMemo(() => {
@@ -24,17 +24,23 @@ export default function Billing() {
 
   const { diffDays, isExpired } = trialInfo;
 
-  // Função ATUALIZADA: Chama a sua própria API na Vercel
+  // Função de Checkout Profissional
   const handleCheckout = async () => {
     if (selectedPlan !== 'monthly') {
       toast.info("O plano anual estará disponível em breve!");
       return;
     }
 
+    // Verificação de segurança para o e-mail
+    if (!profile?.email) {
+      toast.error("Erro: E-mail do usuário não encontrado. Tente refazer o login.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Chama a Serverless Function que você criou em api/checkout.js
+      // Chama a rota criada na pasta raiz /api/checkout.js
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,14 +53,14 @@ export default function Billing() {
       const data = await response.json();
 
       if (data.init_point) {
-        // Redireciona para o Checkout Seguro Oficial (com PIX e Cartão liberados)
+        // Redireciona para o ambiente seguro do Mercado Pago
         window.location.href = data.init_point;
       } else {
-        throw new Error('Falha ao gerar link. Verifique as configurações da API.');
+        throw new Error('Falha ao gerar init_point');
       }
     } catch (err) {
       console.error('Erro no checkout:', err);
-      toast.error('Erro ao conectar com o Mercado Pago. Tente novamente.');
+      toast.error('Erro ao conectar com o Mercado Pago. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }
@@ -139,7 +145,7 @@ export default function Billing() {
         </button>
       </div>
 
-      {/* CHECKOUT */}
+      {/* CHECKOUT CARD */}
       <Card className="border-border bg-card/50 backdrop-blur-sm shadow-2xl rounded-[3rem] overflow-hidden">
         <CardHeader className="p-10 border-b border-border/50 bg-accent/10">
           <CardTitle className="font-black text-2xl tracking-tight flex items-center gap-2">
