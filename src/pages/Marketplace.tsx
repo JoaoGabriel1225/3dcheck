@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-// Usando o alias @/ que já funciona no seu Dashboard
-import { ProductImporter } from '@/components/ProductImporter'; 
-import { Card, CardContent } from '@/components/ui/card';
+
+// 1. O ProductImporter está em /src/components/ (subimos 1 nível)
+import { ProductImporter } from '../components/ProductImporter'; 
+
+// 2. O card está em /components/ui/ (na raiz, então subimos 2 níveis)
+import { Card, CardContent } from '../../components/ui/card'; 
+
 import { ShoppingBag, Zap, ArrowRight } from 'lucide-react';
 
 export default function Marketplace() {
