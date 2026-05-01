@@ -21,14 +21,16 @@ export default function Marketplace() {
   const [sortBy, setSortBy] = useState('recent'); 
   const [activeCategory, setActiveCategory] = useState('Todos');
 
-  // Categorias específicas de Impressão 3D (As mais buscadas)
+  // Categorias Atualizadas
   const categories = [
     'Todos', 
-    'Impressoras FDM', 
-    'Impressoras Resina', 
+    'Impressoras 3D', 
     'Filamentos', 
-    'Resinas', 
-    'Peças & Upgrades'
+    'Peças e Reposição', 
+    'Ferramentas', 
+    'Adesão e Acabamento', 
+    'Armazenamento de Filamento', 
+    'Upgrades'
   ];
 
   const isAdmin = profile?.role === 'admin';
@@ -62,7 +64,7 @@ export default function Marketplace() {
   async function handlePost() {
     if (!importingProduct) return;
     if (!importingProduct.category || importingProduct.category === 'Todos') {
-        toast.error("Selecione uma categoria para o produto");
+        toast.error("Selecione uma categoria válida");
         return;
     }
 
@@ -76,7 +78,7 @@ export default function Marketplace() {
         discount: importingProduct.discount,
         image: importingProduct.image,
         url: importingProduct.url,
-        category: importingProduct.category, // Salvando a categoria selecionada
+        category: importingProduct.category,
         user_id: user?.id,
       };
 
@@ -95,11 +97,12 @@ export default function Marketplace() {
       }
 
       if (error) throw error;
-      toast.success(importingProduct.id ? 'Produto atualizado!' : 'Produto postado!');
+      toast.success(importingProduct.id ? 'Atualizado com sucesso!' : 'Postado com sucesso!');
       setImportingProduct(null);
       fetchProducts();
     } catch (err) {
-      toast.error('Erro ao salvar no banco de dados');
+      console.error(err);
+      toast.error('Erro no banco de dados. Verificou se a coluna category existe?');
     } finally {
       setIsSaving(false);
     }
@@ -110,17 +113,15 @@ export default function Marketplace() {
       const { error } = await supabase.from('marketplace_products').delete().eq('id', id);
       if (error) throw error;
       setSavedProducts(prev => prev.filter(p => p.id !== id));
-      toast.success('Removido da vitrine');
+      toast.success('Removido');
     } catch (err) {
       toast.error('Erro ao deletar');
     }
   }
 
-  // Lógica de Filtragem Corrigida
   const filteredProducts = savedProducts
     .filter(p => {
       const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
-      // Agora a categoria é comparada com o campo 'category' do banco de dados
       const matchesCategory = activeCategory === 'Todos' || p.category === activeCategory;
       return matchesSearch && matchesCategory;
     })
@@ -144,18 +145,18 @@ export default function Marketplace() {
           <h2 className="text-4xl font-black tracking-tight text-foreground uppercase">
             Marketplace <span className="text-blue-500">Hub</span>
           </h2>
-          <p className="text-muted-foreground font-medium">Equipamentos e insumos selecionados para Impressão 3D.</p>
+          <p className="text-muted-foreground font-medium">Equipamentos e insumos profissionais.</p>
         </div>
 
-        {/* Botões de Categorias */}
+        {/* Tabs de Categorias */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-6 py-2 rounded-full text-xs font-black transition-all whitespace-nowrap border-2 ${
+              className={`px-6 py-2 rounded-full text-[10px] font-black transition-all whitespace-nowrap border-2 ${
                 activeCategory === cat 
-                ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                ? 'bg-blue-500 border-blue-500 text-white shadow-lg' 
                 : 'bg-transparent border-accent/20 text-muted-foreground hover:border-blue-500/30'
               }`}
             >
@@ -171,33 +172,32 @@ export default function Marketplace() {
               placeholder="Buscar no catálogo..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 h-14 rounded-2xl bg-accent/20 border-none text-base focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="pl-12 h-14 rounded-2xl bg-accent/20 border-none text-base focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           <select 
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="h-14 px-6 rounded-2xl bg-accent/20 text-sm font-bold outline-none border-none cursor-pointer hover:bg-accent/30 transition-colors"
+            className="h-14 px-6 rounded-2xl bg-accent/20 text-sm font-bold outline-none border-none cursor-pointer"
           >
-            <option value="recent">Adicionados recentemente</option>
-            <option value="popular">Mais procurados</option>
-            <option value="price_asc">Menor preço</option>
-            <option value="price_desc">Maior preço</option>
+            <option value="recent">Lançamentos</option>
+            <option value="popular">Relevância</option>
+            <option value="price_asc">Menor Preço</option>
+            <option value="price_desc">Maior Preço</option>
           </select>
         </div>
       </div>
 
-      {/* ÁREA ADMINISTRATIVA EXCLUSIVA */}
       {isAdmin && (
-        <div className="animate-in fade-in slide-in-from-top-4 duration-500 bg-blue-500/5 p-6 rounded-[2.5rem] border border-dashed border-blue-500/20">
+        <div className="animate-in fade-in slide-in-from-top-4 duration-500 bg-blue-500/5 p-6 rounded-[2.5rem] border border-dashed border-blue-500/20 text-foreground">
           <ProductImporter onImport={(data: any) => setImportingProduct(data)} />
           {importingProduct && (
-            <div className="mt-6 p-6 bg-background rounded-3xl border border-blue-500/20 space-y-6 text-foreground">
+            <div className="mt-6 p-6 bg-background rounded-3xl border border-blue-500/20 space-y-6">
                <div className="flex gap-6 items-center">
                   <img src={importingProduct.image} className="w-24 h-24 rounded-2xl object-cover shadow-lg" />
                   <div className="flex-1 space-y-2">
-                    <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest">
-                      {importingProduct.id ? 'Editando Produto' : 'Novo Produto'}
+                    <span className="text-[10px] font-black uppercase text-blue-500">
+                      {importingProduct.id ? 'Modo Edição' : 'Revisão Técnica'}
                     </span>
                     <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold" />
                   </div>
@@ -205,11 +205,11 @@ export default function Marketplace() {
 
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1 flex items-center gap-1"><Tag className="w-3 h-3"/> Categoria</span>
+                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Categoria</span>
                     <select 
                         value={importingProduct.category || ''} 
                         onChange={(e) => setImportingProduct({...importingProduct, category: e.target.value})}
-                        className="w-full h-10 px-3 rounded-md bg-accent/20 text-sm font-medium border-none outline-none"
+                        className="w-full h-10 px-3 rounded-md bg-accent/20 text-sm font-medium border-none outline-none cursor-pointer"
                     >
                         <option value="">Selecione...</option>
                         {categories.filter(c => c !== 'Todos').map(c => (
@@ -218,22 +218,22 @@ export default function Marketplace() {
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1 text-blue-500">Preço Atual</span>
+                    <span className="text-[10px] font-black uppercase text-blue-500 ml-1">Preço Atual</span>
                     <Input value={importingProduct.price} onChange={(e) => setImportingProduct({...importingProduct, price: e.target.value})} className="font-black" />
                   </div>
                   <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Preço Original</span>
-                    <Input value={importingProduct.originalPrice || importingProduct.original_price} onChange={(e) => setImportingProduct({...importingProduct, originalPrice: e.target.value})} />
+                    <Input value={importingProduct.original_price || importingProduct.originalPrice} onChange={(e) => setImportingProduct({...importingProduct, originalPrice: e.target.value})} />
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1 text-green-500">Tag Desconto</span>
+                    <span className="text-[10px] font-black uppercase text-green-500 ml-1">Tag Desconto</span>
                     <Input value={importingProduct.discount} onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})} className="font-bold text-green-500" />
                   </div>
                </div>
 
                <div className="flex gap-3">
                  <button onClick={handlePost} disabled={isSaving} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black flex justify-center items-center gap-2 hover:bg-blue-500 transition-all">
-                   {isSaving ? <Loader2 className="animate-spin w-5 h-5" /> : <><Save className="w-5 h-5" /> {importingProduct.id ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR POSTAGEM'}</>}
+                   {isSaving ? <Loader2 className="animate-spin" /> : <><Save className="w-5 h-5" /> {importingProduct.id ? 'SALVAR ALTERAÇÕES' : 'POSTAR NA VITRINE'}</>}
                  </button>
                  <button onClick={() => setImportingProduct(null)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 transition-all">
                    <Trash2 className="w-6 h-6" />
@@ -244,9 +244,8 @@ export default function Marketplace() {
         </div>
       )}
 
-      {/* Grid de Itens */}
       {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 text-foreground">
           {filteredProducts.map((item) => (
             <div 
               key={item.id} 
@@ -325,7 +324,7 @@ export default function Marketplace() {
           <div className="bg-blue-500/10 p-10 rounded-full mb-8">
             <PackageSearch className="w-20 h-20 text-blue-500 opacity-40" />
           </div>
-          <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Nenhum produto encontrado</h2>
+          <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Nenhum item encontrado</h2>
           <button 
             onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }}
             className="mt-10 px-10 py-4 bg-foreground text-background rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-widest"
