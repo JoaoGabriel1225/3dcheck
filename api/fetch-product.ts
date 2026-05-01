@@ -31,13 +31,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return null;
     };
 
+    // 1. Limpando o Título do Mercado Livre (Remove o preço colado no final)
+    const rawTitle = getMeta(['og:title', 'twitter:title']) || $('h1').first().text().trim() || $('title').text().trim();
+    // Ex: "Bambu Lab Impressora 3d A1 Combo - R$ 5.641" -> Vira só "Bambu Lab Impressora 3d A1 Combo"
+    const cleanTitle = rawTitle ? rawTitle.split(' - R$')[0].split(' | ')[0] : 'Produto sem título';
+
+    // 2. Extração dos Preços
+    // .andes-money-amount__fraction é a classe específica do Mercado Livre
+    const salePrice = $('.andes-money-amount__fraction').first().text().trim() || 
+                      getMeta(['product:price:amount']) || 
+                      $('span[class*="price"]').first().text().replace(/[^\d.,]/g, '');
+
+    // .andes-money-amount--previous é onde o ML guarda o preço riscado
+    const originalPrice = $('.andes-money-amount--previous .andes-money-amount__fraction').first().text().trim();
+
+    // .ui-pdp-price__second-line .ui-pdp-color--GREEN é onde o ML guarda o "29% OFF"
+    const discountTag = $('.ui-pdp-price__second-line .ui-pdp-color--GREEN').first().text().trim() || 
+                        $('.andes-money-amount__discount').first().text().trim();
+
     const productData = {
-      title: getMeta(['og:title', 'twitter:title']) || $('h1').first().text().trim() || $('title').text().trim(),
+      title: cleanTitle,
       image: getMeta(['og:image', 'twitter:image', 'image:src']),
       description: getMeta(['og:description', 'description']),
-      price: getMeta(['product:price:amount']) || 
-             $('.andes-money-amount__fraction').first().text() || 
-             $('span[class*="price"]').first().text().replace(/[^\d.,]/g, ''),
+      price: salePrice,
+      originalPrice: originalPrice, // Adicionado
+      discount: discountTag,        // Adicionado
       url: url
     };
 
