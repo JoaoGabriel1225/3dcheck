@@ -5,8 +5,8 @@ import { ProductImporter } from '../components/ProductImporter';
 import { Card, CardContent } from '../../components/ui/card'; 
 import { Input } from '../../components/ui/input';
 import { 
-  ShoppingBag, Search, ExternalLink, 
-  Trash2, Save, Loader2, Sparkles, PackageSearch 
+  Search, ExternalLink, Trash2, Save, 
+  Loader2, Sparkles, PackageSearch, Trophy
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,6 +19,10 @@ export default function Marketplace() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('recent'); 
+  const [activeCategory, setActiveCategory] = useState('Todos');
+
+  // Definição das Categorias
+  const categories = ['Todos', 'Impressoras', 'Filamentos', 'Bicos', 'Hardware', 'Acessórios'];
 
   const isAdmin = profile?.role === 'admin';
 
@@ -87,8 +91,16 @@ export default function Marketplace() {
     }
   }
 
+  // Lógica de Filtragem por Busca + Categoria + Ordenação
   const filteredProducts = savedProducts
-    .filter(p => p.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter(p => {
+      const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
+      // Filtra pela categoria (verifica se o nome da categoria está no título ou descrição)
+      const matchesCategory = activeCategory === 'Todos' || 
+                             p.title.toLowerCase().includes(activeCategory.toLowerCase()) ||
+                             (p.description && p.description.toLowerCase().includes(activeCategory.toLowerCase()));
+      return matchesSearch && matchesCategory;
+    })
     .sort((a, b) => {
       const priceA = parseFloat(a.price.replace(/[^\d]/g, ''));
       const priceB = parseFloat(b.price.replace(/[^\d]/g, ''));
@@ -99,23 +111,45 @@ export default function Marketplace() {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
+  // Identifica o ID do produto mais popular da lista filtrada para o selo de Trophy
+  const topProductId = filteredProducts.length > 0 
+    ? [...filteredProducts].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0].id 
+    : null;
+
   return (
     <div className="space-y-8 pb-20 px-4 md:px-0">
       {/* Cabeçalho */}
       <div className="flex flex-col gap-6">
         <div className="space-y-2">
-          <h2 className="text-4xl font-black tracking-tight text-foreground">
+          <h2 className="text-4xl font-black tracking-tight text-foreground uppercase">
             Marketplace <span className="text-blue-500">Hub</span>
           </h2>
-          <p className="text-muted-foreground font-medium">Equipamentos e insumos para quem respira 3D.</p>
+          <p className="text-muted-foreground font-medium">Curadoria técnica de equipamentos e insumos.</p>
         </div>
 
-        {/* Barra de Busca e Filtros Inteligentes */}
+        {/* Categorias (Filtro Separado Estilo Tabs) */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`px-6 py-2 rounded-full text-xs font-black transition-all whitespace-nowrap border-2 ${
+                activeCategory === cat 
+                ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                : 'bg-transparent border-accent/20 text-muted-foreground hover:border-blue-500/30'
+              }`}
+            >
+              {cat.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Barra de Busca e Ordenação */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
             <Input 
-              placeholder="O que você está procurando hoje?" 
+              placeholder="Buscar no catálogo..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-12 h-14 rounded-2xl bg-accent/20 border-none text-base focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -173,21 +207,33 @@ export default function Marketplace() {
         </div>
       )}
 
+      {/* Grid de Itens */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map((item) => (
             <div 
               key={item.id} 
               onClick={() => handleProductClick(item)}
-              className="group bg-card border border-border rounded-[2rem] overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 flex flex-col cursor-pointer relative"
+              className={`group bg-card border rounded-[2rem] overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col cursor-pointer relative ${
+                item.id === topProductId ? 'border-blue-500/40 shadow-blue-500/5' : 'border-border'
+              }`}
             >
-              <div className="relative aspect-square overflow-hidden bg-white p-4">
-                <img src={item.image} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
+              {/* Badges Flutuantes */}
+              <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+                {item.id === topProductId && (
+                  <div className="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
+                    <Trophy className="w-3 h-3" /> TOP ESCOLHA
+                  </div>
+                )}
                 {item.discount && (
-                  <div className="absolute top-4 left-4 bg-green-500 text-white text-[10px] md:text-xs font-black px-3 py-1 rounded-full shadow-lg">
+                  <div className="bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg">
                     {item.discount}
                   </div>
                 )}
+              </div>
+
+              <div className="relative aspect-square overflow-hidden bg-white p-4">
+                <img src={item.image} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
               </div>
               
               <div className="p-5 space-y-3 flex-1 flex flex-col">
@@ -203,9 +249,14 @@ export default function Marketplace() {
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                  <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-muted-foreground font-black">
-                    <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
-                    {item.clicks || 0} VISITAS
+                  {/* Visitas: Só aparece se for maior que 100 */}
+                  <div className="h-4">
+                    {(item.clicks || 0) > 100 && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-black">
+                        <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
+                        {item.clicks} VISITAS
+                      </div>
+                    )}
                   </div>
                   {isAdmin && (
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
@@ -219,18 +270,17 @@ export default function Marketplace() {
           ))}
         </div>
       ) : !loading && (
-        /* Estado Vazio Profissional e Neutro */
+        /* Estado Vazio Profissional */
         <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-700">
           <div className="bg-blue-500/10 p-10 rounded-full mb-8">
             <PackageSearch className="w-20 h-20 text-blue-500 opacity-40" />
           </div>
           <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Pesquisa sem resultados</h2>
           <p className="text-muted-foreground text-base max-w-md mt-4 font-medium leading-relaxed px-4">
-            Não encontramos correspondências para "<span className="text-blue-500 font-bold">{searchTerm}</span>". 
-            Nossa vitrine é atualizada diariamente com novos hardwares e insumos; tente termos mais genéricos ou confira os destaques da semana.
+            Não encontramos correspondências para a categoria "<span className="text-blue-500 font-bold">{activeCategory}</span>" com o termo pesquisado. 
           </p>
           <button 
-            onClick={() => setSearchTerm('')}
+            onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }}
             className="mt-10 px-10 py-4 bg-foreground text-background rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-widest"
           >
             Ver catálogo completo
