@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function Settings() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -37,7 +37,7 @@ export default function Settings() {
     async function loadSettings() {
       if (!user) return;
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('store_settings')
           .select('*')
           .eq('user_id', user.id)
@@ -53,7 +53,6 @@ export default function Settings() {
           setBuffer(data.failure_buffer_pct?.toString() || '5');
         }
         
-        // Carrega info do Auth Metadata
         setFullName(user.user_metadata?.full_name || '');
         setAvatarUrl(user.user_metadata?.avatar_url || '');
       } catch (err) {
@@ -72,31 +71,26 @@ export default function Settings() {
     setLoading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `avatars/${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `avatars/${user.id}-${Date.now()}.${fileExt}`;
 
-      // 1. Upload para o Storage
       const { error: uploadError } = await supabase.storage
         .from('store-assets')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // 2. Pegar URL Pública
       const { data: { publicUrl } } = supabase.storage
         .from('store-assets')
         .getPublicUrl(filePath);
 
-      // 3. Atualizar User Metadata (Para o Header)
-      const { error: authError } = await supabase.auth.updateUser({
+      await supabase.auth.updateUser({
         data: { avatar_url: publicUrl }
       });
-
-      if (authError) throw authError;
 
       setAvatarUrl(publicUrl);
       toast.success('Foto de perfil atualizada!');
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error('Erro no upload da imagem.');
     } finally {
       setLoading(false);
     }
@@ -108,12 +102,10 @@ export default function Settings() {
     setLoading(true);
 
     try {
-      // Atualiza Perfil (Auth)
       await supabase.auth.updateUser({
         data: { full_name: fullName }
       });
 
-      // Atualiza Configurações Financeiras (Tabela)
       const { error } = await supabase.from('store_settings').upsert({
         user_id: user.id,
         store_name: storeName,
@@ -129,114 +121,126 @@ export default function Settings() {
       if (error) throw error;
       toast.success('Configurações salvas com sucesso!');
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error('Erro ao salvar as configurações.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (fetching) return <div className="p-20 text-center animate-pulse font-bold text-slate-500">CARREGANDO PAINEL...</div>;
+  if (fetching) return (
+    <div className="p-20 text-center animate-pulse">
+      <p className="text-sm font-black uppercase tracking-[0.3em] text-muted-foreground">Sincronizando Oficina...</p>
+    </div>
+  );
 
   return (
-    <div className="max-w-4xl space-y-8 pb-20">
+    <div className="max-w-5xl space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-1">
-        <h2 className="text-3xl font-black tracking-tight text-white">Configurações</h2>
-        <p className="text-slate-400">Gerencie sua identidade e os parâmetros de custo da sua oficina.</p>
+        <h2 className="text-4xl font-black tracking-tight text-foreground">Configurações</h2>
+        <p className="text-muted-foreground text-lg">Gerencie sua identidade e os parâmetros de custo da sua produção 3D.</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-8">
         
         {/* CARD: PERFIL */}
-        <Card className="rounded-[2rem] border-white/5 bg-zinc-900/50 backdrop-blur-xl overflow-hidden">
-          <CardHeader className="border-b border-white/5 bg-white/5">
-            <CardTitle className="text-lg flex items-center gap-2 text-white">
-              <User className="w-5 h-5 text-blue-500" /> Perfil do Usuário
+        <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden">
+          <CardHeader className="border-b border-border bg-muted/30 p-8">
+            <CardTitle className="text-xl font-black flex items-center gap-3 text-foreground">
+              <User className="w-6 h-6 text-blue-500" /> Perfil do Usuário
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8">
-            <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="flex flex-col md:flex-row items-center gap-10">
               <div className="relative group">
-                <div className="h-24 w-24 rounded-3xl border-2 border-blue-500/50 overflow-hidden bg-zinc-950 shadow-2xl shadow-blue-500/10 transition-transform group-hover:scale-105">
+                <div className="h-32 w-32 rounded-[2rem] border-2 border-blue-500/20 overflow-hidden bg-muted shadow-inner flex items-center justify-center transition-all group-hover:scale-105 group-hover:border-blue-500/50">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-blue-500 font-black text-2xl">3D</div>
+                    <div className="text-4xl font-black text-blue-500">3D</div>
                   )}
                 </div>
-                <label className="absolute -bottom-2 -right-2 p-2 bg-blue-600 rounded-xl cursor-pointer hover:bg-blue-500 transition-colors shadow-lg">
-                  <Camera className="w-4 h-4 text-white" />
+                <label className="absolute -bottom-2 -right-2 p-3 bg-blue-600 rounded-2xl cursor-pointer hover:bg-blue-500 transition-all shadow-lg hover:rotate-12 active:scale-90">
+                  <Camera className="w-5 h-5 text-white" />
                   <input type="file" className="hidden" onChange={handleAvatarUpload} accept="image/*" />
                 </label>
               </div>
 
-              <div className="flex-1 grid sm:grid-cols-2 gap-4 w-full">
+              <div className="flex-1 grid sm:grid-cols-2 gap-6 w-full">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Nome da Loja</Label>
-                  <Input value={storeName} onChange={e => setStoreName(e.target.value)} className="bg-zinc-950 border-white/10 text-white h-12" />
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Nome da Loja</Label>
+                  <Input value={storeName} onChange={e => setStoreName(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-border text-foreground text-base focus:ring-2 focus:ring-blue-500/20" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Seu Nome Completo</Label>
-                  <Input value={fullName} onChange={e => setFullName(e.target.value)} className="bg-zinc-950 border-white/10 text-white h-12" />
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Seu Nome Completo</Label>
+                  <Input value={fullName} onChange={e => setFullName(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-border text-foreground text-base focus:ring-2 focus:ring-blue-500/20" />
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* CARD: FINANCEIRO */}
-        <Card className="rounded-[2rem] border-white/5 bg-zinc-900/50 backdrop-blur-xl overflow-hidden">
-          <CardHeader className="border-b border-white/5 bg-white/5">
-            <CardTitle className="text-lg flex items-center gap-2 text-white">
-              <DollarSign className="w-5 h-5 text-emerald-500" /> Inteligência Financeira
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-1">
-                <Zap className="w-3 h-3" /> Energia (R$ / kWh)
-              </Label>
-              <Input type="number" step="0.01" value={kwhPrice} onChange={e => setKwhPrice(e.target.value)} className="bg-zinc-950 border-white/10 text-white h-12" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-500">Preço Filamento (R$ / kg)</Label>
-              <Input type="number" step="0.01" value={filamentPrice} onChange={e => setFilamentPrice(e.target.value)} className="bg-zinc-950 border-white/10 text-white h-12" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-500">Lucro Padrão (%)</Label>
-              <Input type="number" value={profitMargin} onChange={e => setProfitMargin(e.target.value)} className="bg-zinc-950 border-white/10 text-white h-12" />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* CARD: FINANCEIRO */}
+          <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden">
+            <CardHeader className="border-b border-border bg-muted/30 p-8">
+              <CardTitle className="text-xl font-black flex items-center gap-3 text-foreground">
+                <DollarSign className="w-6 h-6 text-emerald-500" /> Inteligência Financeira
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-8 space-y-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-amber-500" /> Energia (R$ / kWh)
+                </Label>
+                <Input type="number" step="0.01" value={kwhPrice} onChange={e => setKwhPrice(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-border text-foreground" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Preço Filamento (R$ / kg)</Label>
+                <Input type="number" step="0.01" value={filamentPrice} onChange={e => setFilamentPrice(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-border text-foreground" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Lucro Padrão (%)</Label>
+                <Input type="number" value={profitMargin} onChange={e => setProfitMargin(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-border text-foreground" />
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* CARD: OFICINA */}
-        <Card className="rounded-[2rem] border-white/5 bg-zinc-900/50 backdrop-blur-xl overflow-hidden">
-          <CardHeader className="border-b border-white/5 bg-white/5">
-            <CardTitle className="text-lg flex items-center gap-2 text-white">
-              <Wrench className="w-5 h-5 text-amber-500" /> Parâmetros da Máquina
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-500">Taxa de Setup (R$)</Label>
-              <Input type="number" step="0.01" value={setupFee} onChange={e => setSetupFee(e.target.value)} className="bg-zinc-950 border-white/10 text-white h-12" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-500">Depreciação (R$ / hora)</Label>
-              <Input type="number" step="0.01" value={depreciation} onChange={e => setDepreciation(e.target.value)} className="bg-zinc-950 border-white/10 text-white h-12" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-500">Buffer de Falha (%)</Label>
-              <Input type="number" value={buffer} onChange={e => setBuffer(e.target.value)} className="bg-zinc-950 border-white/10 text-white h-12" />
-            </div>
-          </CardContent>
-        </Card>
+          {/* CARD: OFICINA */}
+          <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden">
+            <CardHeader className="border-b border-border bg-muted/30 p-8">
+              <CardTitle className="text-xl font-black flex items-center gap-3 text-foreground">
+                <Wrench className="w-6 h-6 text-orange-500" /> Parâmetros da Máquina
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-8 space-y-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Taxa de Setup (R$)</Label>
+                <Input type="number" step="0.01" value={setupFee} onChange={e => setSetupFee(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-border text-foreground" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Depreciação (R$ / hora)</Label>
+                <Input type="number" step="0.01" value={depreciation} onChange={e => setDepreciation(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-border text-foreground" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Buffer de Falha (%)</Label>
+                <Input type="number" value={buffer} onChange={e => setBuffer(e.target.value)} className="h-14 rounded-2xl bg-muted/50 border-border text-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Button 
           type="submit" 
           disabled={loading}
-          className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-600/20 transition-all active:scale-95"
+          className="w-full h-20 rounded-3xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xl shadow-2xl shadow-blue-600/30 transition-all active:scale-[0.97] hover:-translate-y-1"
         >
-          {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Save className="w-5 h-5 mr-2" /> SALVAR CONFIGURAÇÕES</>}
+          {loading ? (
+            <Loader2 className="w-8 h-8 animate-spin" />
+          ) : (
+            <span className="flex items-center gap-3">
+              <Save className="w-6 h-6" /> ATUALIZAR MINHA OFICINA
+            </span>
+          )}
         </Button>
 
       </form>
