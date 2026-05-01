@@ -43,3 +43,7 @@
     "typescript": "~5.8.2"
   }
 }
+"dependencies": {
+  "mercadopago": "^2.2.3",
+  ... outros itens
+}
