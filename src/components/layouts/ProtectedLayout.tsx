@@ -11,6 +11,9 @@ export function ProtectedLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
+  // Puxa a foto de perfil dos metadados do Supabase Auth
+  const avatarUrl = user?.user_metadata?.avatar_url;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0c]">
@@ -75,7 +78,7 @@ export function ProtectedLayout() {
             {theme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
           </button>
 
-          {/* PERFIL DO USUÁRIO */}
+          {/* PERFIL DO USUÁRIO ATUALIZADO */}
           <div className="flex items-center gap-3 pl-2 border-l border-border/50">
             <div className="hidden sm:text-right sm:block">
               <div className="text-sm font-bold leading-none mb-1">{profile.name}</div>
@@ -85,9 +88,13 @@ export function ProtectedLayout() {
               </div>
             </div>
 
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-400 p-[2px] shadow-lg shadow-blue-500/20 group cursor-pointer transition-transform hover:scale-105 active:scale-95">
-              <div className="w-full h-full rounded-[10px] bg-background flex items-center justify-center text-sm font-black text-blue-500 uppercase">
-                {profile.name.substring(0, 2)}
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-400 p-[2px] shadow-lg shadow-blue-500/20 group cursor-pointer transition-transform hover:scale-105 active:scale-95 overflow-hidden">
+              <div className="w-full h-full rounded-[10px] bg-background flex items-center justify-center text-sm font-black text-blue-500 uppercase overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Perfil" className="w-full h-full object-cover" />
+                ) : (
+                  profile.name.substring(0, 2)
+                )}
               </div>
             </div>
           </div>
@@ -97,7 +104,6 @@ export function ProtectedLayout() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
         <main className="flex-1 overflow-y-auto bg-background/50 relative">
-          {/* DECORAÇÃO DE FUNDO SUTIL */}
           <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
           
           <div className="max-w-[1600px] mx-auto p-4 sm:p-8 relative z-10">
@@ -109,11 +115,12 @@ export function ProtectedLayout() {
   );
 }
 
-// ADMIN LAYOUT COM VARIAÇÃO DE COR (ROXO/BLUE)
+// ADMIN LAYOUT (TAMBÉM ATUALIZADO PARA CONSISTÊNCIA)
 export function AdminLayout() {
   const { user, profile, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const avatarUrl = user?.user_metadata?.avatar_url;
 
   if (loading) {
     return (
@@ -160,9 +167,13 @@ export function AdminLayout() {
               <div className="text-sm font-bold leading-none mb-1">{profile.name}</div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-purple-500">Global Master</div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-500 p-[2px] shadow-lg shadow-purple-500/20">
-              <div className="w-full h-full rounded-[10px] bg-background flex items-center justify-center text-sm font-black text-purple-500 uppercase">
-                {profile.name.substring(0, 2)}
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-500 p-[2px] shadow-lg shadow-purple-500/20 overflow-hidden">
+              <div className="w-full h-full rounded-[10px] bg-background flex items-center justify-center text-sm font-black text-purple-500 uppercase overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Perfil" className="w-full h-full object-cover" />
+                ) : (
+                  profile.name.substring(0, 2)
+                )}
               </div>
             </div>
           </div>
