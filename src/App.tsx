@@ -11,7 +11,8 @@ import { Toaster } from '@/components/ui/sonner';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
-import ResetPassword from './pages/ResetPassword'; // IMPORTADO AQUI
+import ResetPassword from './pages/ResetPassword';
+import Settings from './pages/Settings'; // IMPORTAÇÃO ADICIONADA
 import Billing from './pages/Billing';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
@@ -29,7 +30,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/reset-password" element={<ResetPassword />} /> {/* ROTA ADICIONADA AQUI */}
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             <Route path="/app" element={<ProtectedLayout />}>
               <Route index element={<Dashboard />} />
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="orders" element={<Orders />} />
               <Route path="products" element={<Products />} />
               <Route path="storefront-settings" element={<StorefrontSettings />} />
+              <Route path="settings" element={<Settings />} /> {/* ROTA ADICIONADA */}
             </Route>
             
             <Route element={<ProtectedLayout />}>
@@ -51,7 +53,6 @@ export default function App() {
             <Route path="/storefront/:id" element={<Storefront />} />
 
             {/* NOVA ROTA AMIGÁVEL: É aqui que o link da Bio vai "morar" */}
-            {/* O :storeSlug permite que o sistema identifique a loja pelo nome */}
             <Route path="/catalogo/:storeSlug" element={<Storefront />} />
             
             <Route path="*" element={<Navigate to="/login" replace />} />
