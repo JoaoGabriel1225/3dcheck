@@ -12,10 +12,11 @@ import { Toaster } from '@/components/ui/sonner';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
-import Settings from './pages/Settings'; // IMPORTAÇÃO ADICIONADA
+import Settings from './pages/Settings'; 
 import Billing from './pages/Billing';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import Marketplace from './pages/Marketplace'; // IMPORTAÇÃO ADICIONADA
 import Orders from './pages/Orders';
 import StorefrontSettings from './pages/StorefrontSettings';
 import AdminDashboard from './pages/AdminDashboard';
@@ -37,8 +38,9 @@ export default function App() {
               <Route path="clients" element={<Clients />} />
               <Route path="orders" element={<Orders />} />
               <Route path="products" element={<Products />} />
+              <Route path="marketplace" element={<Marketplace />} /> {/* ROTA ADICIONADA AQUI */}
               <Route path="storefront-settings" element={<StorefrontSettings />} />
-              <Route path="settings" element={<Settings />} /> {/* ROTA ADICIONADA */}
+              <Route path="settings" element={<Settings />} />
             </Route>
             
             <Route element={<ProtectedLayout />}>
