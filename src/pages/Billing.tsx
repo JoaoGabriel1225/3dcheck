@@ -2,7 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, ShieldCheck, Zap, Star, Rocket, Loader2 } from 'lucide-react';
+import { 
+  AlertTriangle, CheckCircle2, ShieldCheck, Zap, 
+  Star, Rocket, Loader2, Copy, CreditCard, Sparkles 
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Billing() {
@@ -10,7 +13,9 @@ export default function Billing() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
 
-  // Cálculo de dias restantes do Trial
+  // SUA CHAVE PIX ATUALIZADA
+  const pixKey = "24971502-ab9f-4837-88ff-73eea13fa78a";
+
   const trialInfo = useMemo(() => {
     if (!profile?.trialEndsAt) {
       return { diffDays: 0, isExpired: true };
@@ -24,43 +29,36 @@ export default function Billing() {
 
   const { diffDays, isExpired } = trialInfo;
 
-  // Função de Checkout Profissional
+  const handleCopyPix = () => {
+    navigator.clipboard.writeText(pixKey);
+    toast.success("Chave PIX copiada! Agora é só pagar no seu banco.");
+  };
+
   const handleCheckout = async () => {
     if (selectedPlan !== 'monthly') {
-      toast.info("O plano anual estará disponível em breve!");
+      toast.info("O plano anual estará disponível em breve! Use o Mensal por enquanto.");
       return;
     }
-
-    // Verificação de segurança para o e-mail
     if (!profile?.email) {
-      toast.error("Erro: E-mail do usuário não encontrado. Tente refazer o login.");
+      toast.error("E-mail não encontrado. Tente relogar.");
       return;
     }
 
     setLoading(true);
-
     try {
-      // Chama a rota criada na pasta raiz /api/checkout.js
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId: profile.id, 
-          email: profile.email 
-        }),
+        body: JSON.stringify({ userId: profile.id, email: profile.email }),
       });
-
       const data = await response.json();
-
       if (data.init_point) {
-        // Redireciona para o ambiente seguro do Mercado Pago
         window.location.href = data.init_point;
       } else {
-        throw new Error('Falha ao gerar init_point');
+        throw new Error('Falha ao gerar checkout');
       }
     } catch (err) {
-      console.error('Erro no checkout:', err);
-      toast.error('Erro ao conectar com o Mercado Pago. Verifique sua conexão.');
+      toast.error('Erro ao conectar com o gateway de pagamento.');
     } finally {
       setLoading(false);
     }
@@ -69,128 +67,140 @@ export default function Billing() {
   if (!profile) return null;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12 px-4 md:px-0">
-      {/* HEADER */}
-      <div className="flex items-center gap-3">
-        <div className="p-3 bg-blue-500/10 rounded-xl">
-          <ShieldCheck className="w-8 h-8 text-blue-600" />
-        </div>
-        <div>
-          <h2 className="text-3xl font-black tracking-tight text-foreground uppercase">Plano Profissional</h2>
-          <p className="text-muted-foreground font-medium">Libere o Marketplace Hub e automações exclusivas.</p>
+    <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-700 pb-20 px-4 md:px-0">
+      
+      {/* HEADER PREMIUM */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20 shadow-inner">
+            <ShieldCheck className="w-10 h-10 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-4xl font-black tracking-tighter text-foreground uppercase italic">
+              Elite <span className="text-blue-500">3DCheck</span>
+            </h2>
+            <p className="text-muted-foreground font-semibold tracking-tight">
+              Domine sua operação com o ecossistema mais avançado do mercado.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* STATUS DO TRIAL */}
+      {/* STATUS DO TRIAL DINÂMICO */}
       {isExpired ? (
-        <Card className="border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20 shadow-none rounded-3xl">
-          <CardContent className="p-6 flex items-start gap-4">
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full shrink-0">
-              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-500" />
-            </div>
-            <div>
-              <h3 className="font-black text-lg text-red-800 dark:text-red-400 tracking-tight">Acesso Expirado</h3>
-              <p className="text-sm text-red-600/80 dark:text-red-400/80 font-medium mt-1">
-                Seu período de teste acabou. Assine para continuar usando o Marketplace e a Gestão.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-[2rem] flex items-center gap-4 animate-pulse">
+          <AlertTriangle className="h-8 w-8 text-red-500" />
+          <div>
+            <h3 className="font-black text-red-500 uppercase text-sm tracking-widest">Sua produtividade está em pausa</h3>
+            <p className="text-xs font-bold text-red-500/80">O período de demonstração expirou. Reative suas ferramentas de gestão agora.</p>
+          </div>
+        </div>
       ) : (
-        <Card className="border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 shadow-none rounded-3xl">
-          <CardContent className="p-6 flex items-center justify-between">
+        <div className="bg-emerald-500/5 border border-emerald-500/20 p-6 rounded-[2rem] flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Sparkles className="h-6 w-6 text-emerald-500" />
             <div>
-              <h3 className="font-black text-lg text-emerald-800 dark:text-emerald-400 tracking-tight">Teste Grátis Ativo</h3>
-              <p className="text-sm text-emerald-600/80 dark:text-emerald-400/80 font-medium mt-1">
-                Você tem <strong>{diffDays} dias</strong> restantes. Assine agora para garantir sua vaga no plano Pro!
-              </p>
+              <h3 className="font-black text-emerald-600 dark:text-emerald-400 uppercase text-xs tracking-widest">Acesso Antecipado Ativo</h3>
+              <p className="text-xs font-bold text-muted-foreground">Você possui <span className="text-emerald-500">{diffDays} dias</span> de autonomia plena.</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* SELEÇÃO DE PLANOS */}
-      <div className="grid md:grid-cols-2 gap-4">
+      {/* SELEÇÃO DE PLANOS COM NOVA REDAÇÃO */}
+      <div className="grid md:grid-cols-2 gap-6">
         <button 
           onClick={() => setSelectedPlan('monthly')}
-          className={`p-6 rounded-[2.5rem] border-2 text-left transition-all ${selectedPlan === 'monthly' ? 'border-blue-500 bg-blue-500/5 ring-4 ring-blue-500/10' : 'border-border bg-card/50 hover:border-blue-500/30'}`}
+          className={`group p-8 rounded-[3rem] border-2 text-left transition-all duration-300 relative ${selectedPlan === 'monthly' ? 'border-blue-500 bg-blue-500/5 shadow-2xl shadow-blue-500/10' : 'border-border bg-card/50 opacity-70 hover:opacity-100 hover:border-blue-500/30'}`}
         >
-          <div className="flex justify-between items-start mb-4">
-            <div className={`p-2 rounded-xl ${selectedPlan === 'monthly' ? 'bg-blue-500 text-white' : 'bg-accent text-muted-foreground'}`}>
-              <Zap className="w-5 h-5" />
-            </div>
-            {selectedPlan === 'monthly' && <CheckCircle2 className="w-5 h-5 text-blue-500" />}
+          <div className="flex justify-between items-center mb-6">
+            <Zap className={`w-8 h-8 ${selectedPlan === 'monthly' ? 'text-blue-500' : 'text-muted-foreground'}`} />
+            {selectedPlan === 'monthly' && <CheckCircle2 className="w-6 h-6 text-blue-500" />}
           </div>
-          <h4 className="font-black text-xl tracking-tight">Mensal</h4>
-          <p className="text-muted-foreground text-xs font-medium mb-4 tracking-wide uppercase">Flexibilidade total</p>
-          <div className="text-3xl font-black tracking-tighter">R$ 19,90 <span className="text-sm font-medium text-muted-foreground">/mês</span></div>
+          <h4 className="font-black text-2xl tracking-tighter uppercase italic">Assinatura Mensal</h4>
+          <p className="text-muted-foreground text-[10px] font-black mb-6 tracking-[0.2em] uppercase">Escalabilidade & Flexibilidade</p>
+          <div className="text-4xl font-black tracking-tighter flex items-baseline gap-1">
+            R$ 19,90 <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest ml-1">/mês</span>
+          </div>
         </button>
 
         <button 
           onClick={() => setSelectedPlan('annual')}
-          className={`p-6 rounded-[2.5rem] border-2 text-left transition-all relative overflow-hidden ${selectedPlan === 'annual' ? 'border-emerald-500 bg-emerald-500/5 ring-4 ring-emerald-500/10' : 'border-border bg-card/50 hover:border-emerald-500/30'}`}
+          className={`group p-8 rounded-[3rem] border-2 text-left transition-all duration-300 relative ${selectedPlan === 'annual' ? 'border-amber-500 bg-amber-500/5 shadow-2xl shadow-amber-500/10' : 'border-border bg-card/50 opacity-70 hover:opacity-100 hover:border-amber-500/30'}`}
         >
-          <div className="absolute top-4 right-4 bg-emerald-500 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
-            Melhor Preço
+          <div className="absolute top-6 right-8 bg-amber-500 text-white text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest italic shadow-lg">
+            Visão de Longo Prazo
           </div>
-          <div className="flex justify-between items-start mb-4">
-            <div className={`p-2 rounded-xl ${selectedPlan === 'annual' ? 'bg-emerald-500 text-white' : 'bg-accent text-muted-foreground'}`}>
-              <Star className="w-5 h-5" />
-            </div>
-            {selectedPlan === 'annual' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+          <div className="flex justify-between items-center mb-6">
+            <Star className={`w-8 h-8 ${selectedPlan === 'annual' ? 'text-amber-500' : 'text-muted-foreground'}`} />
+            {selectedPlan === 'annual' && <CheckCircle2 className="w-6 h-6 text-amber-500" />}
           </div>
-          <h4 className="font-black text-xl tracking-tight">Anual</h4>
-          <p className="text-muted-foreground text-xs font-medium mb-4 tracking-wide text-emerald-600 dark:text-emerald-500 uppercase">Economize muito</p>
-          <div className="text-3xl font-black tracking-tighter">R$ 199,90 <span className="text-sm font-medium text-muted-foreground">/ano</span></div>
+          <h4 className="font-black text-2xl tracking-tighter uppercase italic">Assinatura Anual</h4>
+          <p className="text-amber-600 dark:text-amber-400 text-[10px] font-black mb-6 tracking-[0.2em] uppercase italic">Máximo Desconto</p>
+          <div className="text-4xl font-black tracking-tighter flex items-baseline gap-1">
+            R$ 199,90 <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest ml-1">/ano</span>
+          </div>
         </button>
       </div>
 
-      {/* CHECKOUT CARD */}
-      <Card className="border-border bg-card/50 backdrop-blur-sm shadow-2xl rounded-[3rem] overflow-hidden">
-        <CardHeader className="p-10 border-b border-border/50 bg-accent/10">
-          <CardTitle className="font-black text-2xl tracking-tight flex items-center gap-2">
-            <Rocket className="w-6 h-6 text-blue-500" />
-            Checkout Seguro
+      {/* CHECKOUT SECTION */}
+      <Card className="border-border bg-card/40 backdrop-blur-md shadow-3xl rounded-[3.5rem] overflow-hidden border-t-blue-500/20">
+        <CardHeader className="p-12 border-b border-border/50 bg-accent/5">
+          <CardTitle className="font-black text-3xl tracking-tighter flex items-center gap-3 uppercase italic">
+            <Rocket className="w-8 h-8 text-blue-500" />
+            Configuração de Acesso
           </CardTitle>
-          <CardDescription className="font-medium">
-            Assinatura do plano <strong>{selectedPlan === 'monthly' ? 'Mensal' : 'Anual'}</strong>. 
-            O PIX e Cartão estão liberados.
+          <CardDescription className="text-base font-medium">
+            Você está habilitando o <strong className="text-blue-500 uppercase">{selectedPlan === 'monthly' ? 'Plano Pro Mensal' : 'Plano Pro Anual'}</strong>. 
+            Ambiente criptografado e seguro.
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="p-10 space-y-6">
-          <ul className="space-y-4">
+        <CardContent className="p-12 space-y-8">
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-10">
             {[
-              "Marketplace Hub com descontos reais",
-              "Calculadora de Custos de Impressão",
-              "Vitrine Pública para seus clientes",
-              "Gestão de Pedidos e Clientes",
-              "Notificações automáticas por e-mail"
+              "Acesso ilimitado ao Marketplace Hub",
+              "Calculadora de Custos de Alta Precisão",
+              "Vitrine Digital Profissional (Link Personalizado)",
+              "Ecossistema de Gestão de Pedidos & CRM",
+              "Mensageria de Automação via E-mail",
+              "Métricas Avançadas de Produção"
             ].map((feature, i) => (
-              <li key={i} className="flex items-center gap-3 text-sm font-bold text-foreground/80">
-                <CheckCircle2 className="w-5 h-5 text-blue-500" />
+              <li key={i} className="flex items-center gap-3 text-sm font-bold text-foreground/90">
+                <div className="bg-blue-500/10 p-1 rounded-md">
+                  <CheckCircle2 className="w-4 h-4 text-blue-500" />
+                </div>
                 {feature}
               </li>
             ))}
           </ul>
 
-          <Button 
-            onClick={handleCheckout}
-            disabled={loading}
-            className="w-full h-16 text-xl font-black bg-blue-600 hover:bg-blue-500 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/20 transition-all uppercase tracking-tight flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-6 h-6 animate-spin" />
-                Processando...
-              </>
-            ) : (
-              "Assinar Plano Pro"
-            )}
-          </Button>
+          <div className="pt-6 space-y-4">
+            <Button 
+              onClick={handleCheckout}
+              disabled={loading}
+              className="w-full h-20 text-2xl font-black bg-blue-600 hover:bg-blue-500 text-white rounded-[2rem] shadow-2xl shadow-blue-600/30 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3 active:scale-95"
+            >
+              {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : "ATIVAR ACESSO IMEDIATO"}
+            </Button>
+            
+            {/* ÁREA DE PIX RÁPIDO */}
+            <div className="mt-8 pt-8 border-t border-border/50 space-y-4">
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <CreditCard className="w-4 h-4" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Pague via PIX Copia e Cola</span>
+              </div>
+              <div className="flex items-center gap-2 bg-accent/20 p-2 rounded-2xl border border-dashed border-border/60">
+                 <code className="flex-1 text-[9px] font-mono font-bold truncate px-4 opacity-50 italic">{pixKey}</code>
+                 <Button onClick={handleCopyPix} size="sm" className="bg-foreground text-background font-black rounded-xl px-6 h-10 hover:opacity-90">
+                    <Copy className="w-4 h-4 mr-2" /> COPIAR
+                 </Button>
+              </div>
+            </div>
+          </div>
           
-          <p className="text-center text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-            Acesso imediato via PIX • Pagamento seguro via Mercado Pago
+          <p className="text-center text-[9px] text-muted-foreground font-black uppercase tracking-[0.3em] italic opacity-50">
+            Processamento Garantido via Mercado Pago • 3DCheck Security
           </p>
         </CardContent>
       </Card>
