@@ -6,7 +6,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { 
   Search, ExternalLink, Trash2, Save, Pencil,
-  Loader2, Sparkles, PackageSearch, Trophy
+  Loader2, Sparkles, PackageSearch, Trophy, Tag
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,7 +21,15 @@ export default function Marketplace() {
   const [sortBy, setSortBy] = useState('recent'); 
   const [activeCategory, setActiveCategory] = useState('Todos');
 
-  const categories = ['Todos', 'Impressoras', 'Filamentos', 'Bicos', 'Hardware', 'Acessórios'];
+  // Categorias específicas de Impressão 3D (As mais buscadas)
+  const categories = [
+    'Todos', 
+    'Impressoras FDM', 
+    'Impressoras Resina', 
+    'Filamentos', 
+    'Resinas', 
+    'Peças & Upgrades'
+  ];
 
   const isAdmin = profile?.role === 'admin';
 
@@ -51,9 +59,13 @@ export default function Marketplace() {
       .eq('id', product.id);
   }
 
-  // Função unificada para Postar novo ou Atualizar existente
   async function handlePost() {
     if (!importingProduct) return;
+    if (!importingProduct.category || importingProduct.category === 'Todos') {
+        toast.error("Selecione uma categoria para o produto");
+        return;
+    }
+
     setIsSaving(true);
     try {
       const productData = {
@@ -64,19 +76,18 @@ export default function Marketplace() {
         discount: importingProduct.discount,
         image: importingProduct.image,
         url: importingProduct.url,
+        category: importingProduct.category, // Salvando a categoria selecionada
         user_id: user?.id,
       };
 
       let error;
       if (importingProduct.id) {
-        // Se tem ID, atualiza
         const { error: updateError } = await supabase
           .from('marketplace_products')
           .update(productData)
           .eq('id', importingProduct.id);
         error = updateError;
       } else {
-        // Se não tem ID, insere novo
         const { error: insertError } = await supabase
           .from('marketplace_products')
           .insert([{ ...productData, clicks: 0 }]);
@@ -105,12 +116,12 @@ export default function Marketplace() {
     }
   }
 
+  // Lógica de Filtragem Corrigida
   const filteredProducts = savedProducts
     .filter(p => {
       const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = activeCategory === 'Todos' || 
-                             p.title.toLowerCase().includes(activeCategory.toLowerCase()) ||
-                             (p.description && p.description.toLowerCase().includes(activeCategory.toLowerCase()));
+      // Agora a categoria é comparada com o campo 'category' do banco de dados
+      const matchesCategory = activeCategory === 'Todos' || p.category === activeCategory;
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
@@ -133,9 +144,10 @@ export default function Marketplace() {
           <h2 className="text-4xl font-black tracking-tight text-foreground uppercase">
             Marketplace <span className="text-blue-500">Hub</span>
           </h2>
-          <p className="text-muted-foreground font-medium">Curadoria técnica de equipamentos e insumos.</p>
+          <p className="text-muted-foreground font-medium">Equipamentos e insumos selecionados para Impressão 3D.</p>
         </div>
 
+        {/* Botões de Categorias */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {categories.map((cat) => (
             <button
@@ -175,40 +187,55 @@ export default function Marketplace() {
         </div>
       </div>
 
-      {/* ÁREA ADMINISTRATIVA: Importador e Edição */}
+      {/* ÁREA ADMINISTRATIVA EXCLUSIVA */}
       {isAdmin && (
         <div className="animate-in fade-in slide-in-from-top-4 duration-500 bg-blue-500/5 p-6 rounded-[2.5rem] border border-dashed border-blue-500/20">
           <ProductImporter onImport={(data: any) => setImportingProduct(data)} />
           {importingProduct && (
-            <div className="mt-6 p-6 bg-background rounded-3xl border border-blue-500/20 space-y-6">
+            <div className="mt-6 p-6 bg-background rounded-3xl border border-blue-500/20 space-y-6 text-foreground">
                <div className="flex gap-6 items-center">
                   <img src={importingProduct.image} className="w-24 h-24 rounded-2xl object-cover shadow-lg" />
                   <div className="flex-1 space-y-2">
                     <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest">
-                      {importingProduct.id ? 'Editando Produto' : 'Revisão de Título'}
+                      {importingProduct.id ? 'Editando Produto' : 'Novo Produto'}
                     </span>
                     <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold" />
                   </div>
                </div>
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Preço Atual</span>
-                    <Input value={importingProduct.price} onChange={(e) => setImportingProduct({...importingProduct, price: e.target.value})} className="font-black text-blue-500" />
+                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1 flex items-center gap-1"><Tag className="w-3 h-3"/> Categoria</span>
+                    <select 
+                        value={importingProduct.category || ''} 
+                        onChange={(e) => setImportingProduct({...importingProduct, category: e.target.value})}
+                        className="w-full h-10 px-3 rounded-md bg-accent/20 text-sm font-medium border-none outline-none"
+                    >
+                        <option value="">Selecione...</option>
+                        {categories.filter(c => c !== 'Todos').map(c => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1 text-blue-500">Preço Atual</span>
+                    <Input value={importingProduct.price} onChange={(e) => setImportingProduct({...importingProduct, price: e.target.value})} className="font-black" />
                   </div>
                   <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Preço Original</span>
                     <Input value={importingProduct.originalPrice || importingProduct.original_price} onChange={(e) => setImportingProduct({...importingProduct, originalPrice: e.target.value})} />
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Tag de Desconto</span>
-                    <Input value={importingProduct.discount} onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})} className="text-green-500 font-bold" />
+                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1 text-green-500">Tag Desconto</span>
+                    <Input value={importingProduct.discount} onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})} className="font-bold text-green-500" />
                   </div>
                </div>
+
                <div className="flex gap-3">
-                 <button onClick={handlePost} disabled={isSaving} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black flex justify-center items-center gap-2 hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20">
+                 <button onClick={handlePost} disabled={isSaving} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black flex justify-center items-center gap-2 hover:bg-blue-500 transition-all">
                    {isSaving ? <Loader2 className="animate-spin w-5 h-5" /> : <><Save className="w-5 h-5" /> {importingProduct.id ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR POSTAGEM'}</>}
                  </button>
-                 <button onClick={() => setImportingProduct(null)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all">
+                 <button onClick={() => setImportingProduct(null)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 transition-all">
                    <Trash2 className="w-6 h-6" />
                  </button>
                </div>
@@ -217,6 +244,7 @@ export default function Marketplace() {
         </div>
       )}
 
+      {/* Grid de Itens */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map((item) => (
@@ -266,14 +294,13 @@ export default function Marketplace() {
                     )}
                   </div>
                   
-                  {/* BOTÕES DE ADMIN: Apenas visíveis para o ADM */}
                   {isAdmin && (
                     <div className="flex gap-1">
                       <button 
                         onClick={(e) => { 
                           e.stopPropagation(); 
-                          setImportingProduct(item); // Carrega o produto no formulário superior
-                          window.scrollTo({ top: 0, behavior: 'smooth' }); // Sobe a página para editar
+                          setImportingProduct(item); 
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
                         }} 
                         className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-xl transition-colors"
                       >
@@ -298,7 +325,7 @@ export default function Marketplace() {
           <div className="bg-blue-500/10 p-10 rounded-full mb-8">
             <PackageSearch className="w-20 h-20 text-blue-500 opacity-40" />
           </div>
-          <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Pesquisa sem resultados</h2>
+          <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Nenhum produto encontrado</h2>
           <button 
             onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }}
             className="mt-10 px-10 py-4 bg-foreground text-background rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-widest"
