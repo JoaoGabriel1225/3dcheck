@@ -30,19 +30,19 @@ type OrderContext = {
 }
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth(); // Adicionamos 'user' aqui para pegar os metadados
   const [stats, setStats] = useState<OrderContext>({ total: 0, newOrders: 0, inProgress: 0, completed: 0, revenue: 0, cost: 0, profit: 0 });
   const [loading, setLoading] = useState(true);
-
-  // Alteração: Lógica robusta para capturar o nome da loja ou nome completo nos metadados
-  // Prioriza full_name e store_name para evitar que o e-mail seja exibido
-  const storeDisplayName = profile?.user_metadata?.full_name || 
-                           profile?.user_metadata?.store_name || 
-                           (profile?.name && !profile.name.includes('@') ? profile.name.split(' ')[0] : 'Empreendedor');
 
   // LÓGICA DE INSTALAÇÃO DO APP (PWA)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+  // NOVA LÓGICA DE NOME: Verifica primeiro os metadados onde o Supabase salvou (full_name)
+  const storeDisplayName = user?.user_metadata?.full_name || 
+                           user?.user_metadata?.store_name || 
+                           profile?.name || 
+                           'Empreendedor';
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -154,7 +154,6 @@ export default function Dashboard() {
 
       {/* MÉTRICAS FINANCEIRAS */}
       <div className="grid gap-6 md:grid-cols-3">
-        {/* FATURAMENTO */}
         <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group hover:border-blue-500/50 transition-all duration-300">
           <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
           <CardContent className="p-8">
@@ -171,7 +170,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* CUSTOS */}
         <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group hover:border-red-500/50 transition-all duration-300">
           <div className="absolute top-0 left-0 w-1 h-full bg-red-500/50" />
           <CardContent className="p-8">
@@ -188,7 +186,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* LUCRO LÍQUIDO */}
         <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group hover:border-emerald-500/50 transition-all duration-300 shadow-lg shadow-emerald-500/5">
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
           <CardContent className="p-8">
