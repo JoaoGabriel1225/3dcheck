@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Lock, Mail, ArrowRight, UserPlus } from 'lucide-react';
+import { Lock, Mail, ArrowRight, UserPlus, Store } from 'lucide-react'; // Adicionado ícone Store
 import { toast } from 'sonner';
 
 export default function Login() {
-  const [isSignUp, setIsSignUp] = useState(false); // Estado para alternar entre Login e Cadastro
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [storeName, setStoreName] = useState(''); // Novo estado para o nome da loja
   const [loading, setLoading] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -19,15 +20,20 @@ export default function Login() {
 
     try {
       if (isSignUp) {
-        // --- LÓGICA DE CADASTRO ---
+        // --- LÓGICA DE CADASTRO COM NOME DA LOJA ---
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              store_name: storeName, // Salva o nome da loja nos metadados do usuário
+            }
+          }
         });
 
         if (error) throw error;
-        toast.success('Cadastro realizado! Verifique seu e-mail para confirmar.');
-        setIsSignUp(false); // Volta para o login após cadastrar
+        toast.success('Cadastro realizado! Verifique seu e-mail.');
+        setIsSignUp(false);
       } else {
         // --- LÓGICA DE LOGIN ---
         const { error } = await supabase.auth.signInWithPassword({
@@ -99,12 +105,11 @@ export default function Login() {
               </span>
             </div>
 
-            {/* Títulos Dinâmicos */}
             <h2 className="text-3xl font-extrabold text-white tracking-tight">
               {isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}
             </h2>
             <p className="text-slate-400 mt-2 font-medium">
-              {isSignUp ? 'Preencha os dados para começar a gerenciar sua produção.' : 'Insira suas credenciais para acessar o painel.'}
+              {isSignUp ? 'Defina o nome da sua marca e comece agora.' : 'Insira suas credenciais para acessar o painel.'}
             </p>
           </div>
 
@@ -112,6 +117,27 @@ export default function Login() {
             <CardContent className="p-6 sm:p-8">
               <form onSubmit={handleAuth} className="space-y-6">
                 
+                {/* CAMPO NOVO: NOME DA LOJA (Só aparece no Cadastro) */}
+                {isSignUp && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label htmlFor="storeName" className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Nome da Loja / Marca
+                    </Label>
+                    <div className="relative">
+                      <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                      <Input 
+                        id="storeName" 
+                        type="text" 
+                        placeholder="Ex: João 3D Prints" 
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
+                        className="pl-10 h-12 bg-[#050505] border-white/10 text-white placeholder:text-slate-600 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required={isSignUp}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-slate-400">
                     Email
@@ -160,12 +186,11 @@ export default function Login() {
                   disabled={loading}
                   className="w-full h-12 font-bold text-base bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] flex items-center justify-center gap-2 group border-0"
                 >
-                  {loading ? 'Aguarde...' : (isSignUp ? 'Criar Conta' : 'Acessar Painel')}
+                  {loading ? 'Aguarde...' : (isSignUp ? 'Criar Minha Loja' : 'Acessar Painel')}
                   {!loading && (isSignUp ? <UserPlus className="w-5 h-5" /> : <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />)}
                 </Button>
               </form>
 
-              {/* Toggle de Alternância */}
               <div className="mt-6 text-center">
                 <p className="text-sm text-slate-400 font-medium">
                   {isSignUp ? 'Já possui uma conta?' : 'Ainda não tem uma conta?'}
