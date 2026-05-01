@@ -34,6 +34,9 @@ export default function Dashboard() {
   const [stats, setStats] = useState<OrderContext>({ total: 0, newOrders: 0, inProgress: 0, completed: 0, revenue: 0, cost: 0, profit: 0 });
   const [loading, setLoading] = useState(true);
 
+  // Alteração: Lógica para capturar o nome da loja cadastrada
+  const storeDisplayName = profile?.user_metadata?.store_name || profile?.name?.split(' ')[0];
+
   // LÓGICA DE INSTALAÇÃO DO APP (PWA)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
@@ -139,7 +142,7 @@ export default function Dashboard() {
           Visão Geral
         </div>
         <h2 className="text-4xl font-black tracking-tight text-foreground">
-          Olá, {profile?.name?.split(' ')[0]} <span className="text-blue-500">.</span>
+          Olá, {storeDisplayName} <span className="text-blue-500">.</span>
         </h2>
         <p className="text-muted-foreground font-medium max-w-2xl">
           Acompanhe o desempenho da sua produção 3D e o resumo financeiro atualizado.
