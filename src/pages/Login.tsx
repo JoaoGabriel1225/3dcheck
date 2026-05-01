@@ -14,6 +14,29 @@ export default function Login() {
   const [storeName, setStoreName] = useState(''); // Novo estado para o nome da loja
   const [loading, setLoading] = useState(false);
 
+  // NOVA FUNÇÃO: Recuperação de Senha
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast.error('Por favor, digite seu e-mail primeiro para recuperar a senha.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+      toast.success('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+    } catch (error: any) {
+      console.error('Erro na recuperação:', error);
+      toast.error(error.message || 'Erro ao enviar e-mail de recuperação.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -163,9 +186,13 @@ export default function Login() {
                       Senha
                     </Label>
                     {!isSignUp && (
-                      <a href="#" className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors">
+                      <button 
+                        type="button"
+                        onClick={handleResetPassword}
+                        className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors"
+                      >
                         Esqueceu a senha?
-                      </a>
+                      </button>
                     )}
                   </div>
                   <div className="relative">
