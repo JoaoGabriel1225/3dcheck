@@ -14,7 +14,8 @@ import {
   Circle,
   Download,
   Smartphone,
-  Settings2 // IMPORTAÇÃO ADICIONADA AQUI
+  Settings2,
+  ShoppingBag // IMPORTAÇÃO ADICIONADA AQUI
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -135,6 +136,13 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 Produtos
               </NavLink>
             </li>
+            {/* NOVO LINK PARA O MARKETPLACE */}
+            <li>
+              <NavLink to="/app/marketplace" onClick={onClose} className={navLinkClass}>
+                <ShoppingBag className="h-5 w-5 transition-transform group-hover:scale-110" />
+                Marketplace
+              </NavLink>
+            </li>
 
             <NavGroupLabel>Configurações</NavGroupLabel>
             <li>
@@ -143,7 +151,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 Configurações da Loja
               </NavLink>
             </li>
-            {/* ROTA ADICIONADA AQUI EMBAIXO DA LOJA */}
             <li>
               <NavLink to="/app/settings" onClick={onClose} className={navLinkClass}>
                 <Settings2 className="h-5 w-5 transition-transform group-hover:scale-110" />
