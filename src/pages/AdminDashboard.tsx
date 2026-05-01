@@ -23,12 +23,12 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       
-      // 1. Busca solicitações com join explícito e tratamento de erro detalhado
+      // 1. Busca simplificada para garantir compatibilidade com o relacionamento do banco
       const { data: pendingData, error: reqError } = await supabase
         .from('subscriptions_pending')
         .select(`
           *,
-          profiles:user_id (
+          profiles (
             name,
             email,
             plan_status
@@ -36,13 +36,7 @@ export default function AdminDashboard() {
         `)
         .order('created_at', { ascending: false });
         
-      if (reqError) {
-        console.error('Erro na busca de solicitações:', reqError);
-        throw reqError;
-      }
-
-      // Log para debug no console do navegador (F12)
-      console.log('Dados recebidos das solicitações:', pendingData);
+      if (reqError) throw reqError;
       setRequests(pendingData || []);
 
       // 2. Busca todos os perfis
@@ -51,16 +45,12 @@ export default function AdminDashboard() {
         .select('*')
         .order('created_at', { ascending: false });
         
-      if (profError) {
-        console.error('Erro na busca de perfis:', profError);
-        throw profError;
-      }
-      
+      if (profError) throw profError;
       setUsers(profiles || []);
 
     } catch (e: any) {
-      console.error('Erro Geral Admin:', e);
-      toast.error(`Erro: ${e.message || 'Falha ao carregar dados'}`);
+      console.error('Erro Admin:', e);
+      toast.error('Falha ao sincronizar dados administrativos.');
     } finally {
       setLoading(false);
     }
@@ -72,6 +62,7 @@ export default function AdminDashboard() {
 
   const handleApprove = async (requestId: string, userId: string, userName: string) => {
     try {
+      // Chama a função SQL que criamos para processar tudo em um clique
       const { error } = await supabase.rpc('approve_subscription', { 
         target_user_id: userId, 
         pending_id: requestId 
@@ -79,10 +70,10 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      toast.success(`Acesso liberado para ${userName}!`);
+      toast.success(`Elite ativada para ${userName}!`);
       fetchData();
     } catch (err: any) {
-      toast.error('Erro ao aprovar assinatura via RPC');
+      toast.error('Erro ao aprovar assinatura.');
     }
   };
 
@@ -95,57 +86,58 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      toast.error('Pagamento rejeitado.');
+      toast.error('Solicitação rejeitada.');
       fetchData();
     } catch (err: any) {
-      toast.error('Erro ao processar rejeição');
+      toast.error('Erro ao processar rejeição.');
     }
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-20">
+    <div className="space-y-8 max-w-7xl mx-auto pb-20 px-4">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl font-black tracking-tighter text-foreground uppercase italic">
             Admin <span className="text-blue-500">Control</span>
           </h2>
-          <p className="text-muted-foreground font-medium italic">Gestão de ecossistema e validação de ativos.</p>
+          <p className="text-muted-foreground font-medium italic">Sincronização global do ecossistema 3DCheck.</p>
         </div>
-        <Button onClick={fetchData} variant="outline" size="icon" className="rounded-full">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        <Button onClick={fetchData} variant="outline" size="icon" className="rounded-full hover:bg-blue-500/10 border-blue-500/20">
+          <RefreshCw className={`w-4 h-4 text-blue-500 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
+      {/* VALIDAÇÃO DE PIX */}
       <Card className="rounded-[2.5rem] border-border bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl">
         <CardHeader className="bg-accent/5 border-b border-border/50 p-8">
-          <CardTitle className="font-black text-xl flex items-center gap-3 uppercase">
+          <CardTitle className="font-black text-xl flex items-center gap-3 uppercase italic">
             <Wallet className="w-6 h-6 text-blue-500" />
-            Validação de Pix Manual
+            Solicitações de Acesso Pro
           </CardTitle>
         </CardHeader>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border/50">
-                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Data</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Usuário</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Comprovante</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Registro</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Operador</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Ativo</TableHead>
                 <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Status</TableHead>
                 <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 font-bold opacity-50 uppercase tracking-widest text-xs">Sincronizando banco de dados...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 font-black text-xs uppercase opacity-50 tracking-widest">Consultando Supabase...</TableCell></TableRow>
               ) : requests.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium italic">Nenhuma solicitação encontrada no banco de dados.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium italic">Sem solicitações pendentes no momento.</TableCell></TableRow>
               ) : (
                 requests.map((req) => (
                   <TableRow key={req.id} className="hover:bg-accent/5 border-border/50 transition-colors">
                     <TableCell className="py-6 px-8 text-xs font-bold">{new Date(req.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="py-6 px-8">
-                      <div className="font-black text-sm uppercase italic">{req.profiles?.name || 'Sem Nome'}</div>
-                      <div className="text-[10px] font-bold text-muted-foreground">{req.profiles?.email || 'Sem Email'}</div>
+                      <div className="font-black text-sm uppercase italic">{req.profiles?.name || 'Inexistente'}</div>
+                      <div className="text-[10px] font-bold text-muted-foreground">{req.profiles?.email || '---'}</div>
                     </TableCell>
                     <TableCell className="py-6 px-8">
                       <Button 
@@ -165,27 +157,14 @@ export default function AdminDashboard() {
                         req.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
                         'bg-red-500/10 text-red-500 border border-red-500/20'
                       }`}>
-                        {req.status === 'pending' ? 'Pendente' : req.status === 'approved' ? 'Aprovado' : 'Rejeitado'}
+                        {req.status === 'pending' ? 'Em Análise' : req.status === 'approved' ? 'Liberado' : 'Rejeitado'}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-6 px-8 text-right">
                       {req.status === 'pending' && (
                         <div className="flex gap-2 justify-end">
-                          <Button 
-                            size="sm" 
-                            className="bg-emerald-600 hover:bg-emerald-500 font-black text-[10px] rounded-xl"
-                            onClick={() => handleApprove(req.id, req.user_id, req.profiles?.name)}
-                          >
-                            <CheckCircle className="w-3 h-3 mr-1" /> APROVAR
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
-                            className="font-black text-[10px] rounded-xl"
-                            onClick={() => handleReject(req.id)}
-                          >
-                            <XCircle className="w-3 h-3 mr-1" /> REJEITAR
-                          </Button>
+                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 font-black text-[10px] rounded-xl shadow-lg shadow-emerald-500/20" onClick={() => handleApprove(req.id, req.user_id, req.profiles?.name)}>APROVAR</Button>
+                          <Button size="sm" variant="destructive" className="font-black text-[10px] rounded-xl" onClick={() => handleReject(req.id)}>REJEITAR</Button>
                         </div>
                       )}
                     </TableCell>
@@ -197,23 +176,23 @@ export default function AdminDashboard() {
         </div>
       </Card>
 
-      {/* SEÇÃO DE USUÁRIOS */}
+      {/* GESTÃO DE USUÁRIOS */}
       <Card className="rounded-[2.5rem] border-border bg-card/50 overflow-hidden shadow-xl">
         <CardHeader className="bg-accent/5 border-b border-border/50 p-8">
-          <CardTitle className="font-black text-xl flex items-center gap-3 uppercase">
+          <CardTitle className="font-black text-xl flex items-center gap-3 uppercase italic">
             <UserCog className="w-6 h-6 text-blue-500" />
-            Gestão de Contas
+            Base de Operadores
           </CardTitle>
         </CardHeader>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border/50">
-                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Perfil</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Nível</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Status</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Vencimento</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em] text-right">Loja</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Operador</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Plano</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Sinal</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Expiração</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em] text-right">Acesso</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -227,7 +206,7 @@ export default function AdminDashboard() {
                     <Badge variant="outline" className={`font-black text-[9px] uppercase tracking-widest ${
                       u.plan_status === 'pro' ? 'border-blue-500 text-blue-500' : 'border-muted-foreground/30 text-muted-foreground'
                     }`}>
-                      {u.plan_status === 'pro' ? 'PLATINUM PRO' : 'FREE USER'}
+                      {u.plan_status === 'pro' ? 'ELITE PRO' : 'STARTER'}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-6 px-8">
@@ -236,7 +215,7 @@ export default function AdminDashboard() {
                        u.status === 'trial' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-red-500'
                      }`} />
                   </TableCell>
-                  <TableCell className="py-6 px-8 text-xs font-bold text-muted-foreground uppercase">
+                  <TableCell className="py-6 px-8 text-xs font-bold text-muted-foreground italic uppercase">
                     {u.trialEndsAt ? new Date(u.trialEndsAt).toLocaleDateString() : 'N/A'}
                   </TableCell>
                   <TableCell className="py-6 px-8 text-right">
@@ -246,7 +225,7 @@ export default function AdminDashboard() {
                       rel="noreferrer" 
                       className="text-[10px] font-black text-blue-500 uppercase italic hover:underline"
                     >
-                      Acessar
+                      Visualizar
                     </a>
                   </TableCell>
                 </TableRow>
