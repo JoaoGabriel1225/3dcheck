@@ -1,22 +1,86 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabase'; // Certifique-se de que o caminho está correto
 import { ProductImporter } from '../components/ProductImporter'; 
 import { Card, CardContent } from '../../components/ui/card'; 
 import { Input } from '../../components/ui/input';
-import { ShoppingBag, Zap, ArrowRight, ExternalLink, Trash2, Save } from 'lucide-react';
+import { ShoppingBag, Zap, ExternalLink, Trash2, Save, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Marketplace() {
-  const { profile } = useAuth(); 
-  const [product, setProduct] = useState<any>(null);
+  const { profile, user } = useAuth(); 
+  const [importingProduct, setImportingProduct] = useState<any>(null);
+  const [savedProducts, setSavedProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
   const isAdmin = profile?.role === 'admin';
 
-  // Função para limpar a seleção atual
-  const clearProduct = () => setProduct(null);
+  // 1. CARREGAR PRODUTOS DO BANCO
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
-  // Função para atualizar os campos manualmente
-  const handleUpdate = (field: string, value: string) => {
-    setProduct((prev: any) => ({ ...prev, [field]: value }));
-  };
+  async function fetchProducts() {
+    try {
+      const { data, error } = await supabase
+        .from('marketplace_products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSavedProducts(data || []);
+    } catch (err) {
+      toast.error('Erro ao carregar vitrine');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 2. SALVAR NO BANCO DE DADOS
+  async function handlePost() {
+    if (!importingProduct) return;
+    setIsSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from('marketplace_products')
+        .insert([{
+          title: importingProduct.title,
+          description: importingProduct.description,
+          price: importingProduct.price,
+          image: importingProduct.image,
+          url: importingProduct.url,
+          user_id: user?.id
+        }]);
+
+      if (error) throw error;
+
+      toast.success('Produto postado com sucesso!');
+      setImportedProduct(null); // Limpa a área de importação
+      fetchProducts(); // Atualiza a lista automaticamente
+    } catch (err) {
+      toast.error('Erro ao salvar no banco de dados');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // 3. DELETAR DO BANCO (Apenas Admin)
+  async function handleDelete(id: string) {
+    try {
+      const { error } = await supabase
+        .from('marketplace_products')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setSavedProducts(prev => prev.filter(p => p.id !== id));
+      toast.success('Removido da vitrine');
+    } catch (err) {
+      toast.error('Erro ao deletar');
+    }
+  }
 
   return (
     <div className="space-y-10 pb-20">
@@ -24,100 +88,73 @@ export default function Marketplace() {
         <h2 className="text-4xl font-black tracking-tight text-foreground">
           Marketplace <span className="text-blue-500">Hub</span>
         </h2>
-        <p className="text-muted-foreground font-medium">
-          Curadoria de hardware e insumos para sua produção.
-        </p>
+        <p className="text-muted-foreground font-medium">Hardware e filamentos selecionados para você.</p>
       </div>
 
-      {/* FERRAMENTA DE ADMIN: Apenas você vê a barra de importação */}
       {isAdmin && (
-        <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-          <ProductImporter onImport={(data: any) => setProduct(data)} />
+        <div className="animate-in fade-in duration-500">
+          <ProductImporter onImport={(data: any) => setImportingProduct(data)} />
+          
+          {/* PRÉ-VISUALIZAÇÃO ANTES DE POSTAR */}
+          {importingProduct && (
+            <div className="mt-6 p-6 border-2 border-dashed border-blue-500/30 rounded-[2.5rem] bg-blue-500/5">
+               <div className="flex flex-col md:flex-row gap-6 items-center">
+                  <img src={importingProduct.image} className="w-32 h-32 rounded-2xl object-cover" />
+                  <div className="flex-1 space-y-3 w-full">
+                    <Input 
+                      value={importingProduct.title} 
+                      onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})}
+                      className="font-bold"
+                    />
+                    <div className="flex gap-4">
+                      <button 
+                        onClick={handlePost}
+                        disabled={isSaving}
+                        className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black flex items-center justify-center gap-2"
+                      >
+                        {isSaving ? <Loader2 className="animate-spin" /> : <><Save className="w-4 h-4" /> CONFIRMAR E POSTAR</>}
+                      </button>
+                      <button onClick={() => setImportingProduct(null)} className="px-4 py-3 bg-red-500/10 text-red-500 rounded-xl">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+               </div>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="grid gap-6">
-        {product ? (
-          <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden animate-in fade-in zoom-in duration-500">
+      {/* VITRINE REAL (O QUE FICA SALVO) */}
+      <div className="grid gap-8">
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-500 w-10 h-10" /></div>
+        ) : savedProducts.map((item) => (
+          <Card key={item.id} className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden">
             <CardContent className="p-8">
               <div className="flex flex-col md:flex-row gap-8 items-center">
-                <img src={product.image} className="w-40 h-40 rounded-3xl object-cover shadow-2xl" alt="Preview" />
-                
-                <div className="flex-1 space-y-4 w-full">
-                  {/* EDIÇÃO: Se for Admin, mostra Inputs. Se não, mostra texto comum. */}
-                  {isAdmin ? (
-                    <div className="space-y-3">
-                      <Input 
-                        value={product.title} 
-                        onChange={(e) => handleUpdate('title', e.target.value)}
-                        className="text-xl font-black bg-accent/50 border-none h-auto py-2"
-                      />
-                      <textarea 
-                        value={product.description} 
-                        onChange={(e) => handleUpdate('description', e.target.value)}
-                        className="w-full bg-accent/50 border-none rounded-xl p-3 text-sm text-muted-foreground min-h-[80px]"
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <h3 className="text-2xl font-black text-foreground">{product.title}</h3>
-                      <p className="text-muted-foreground text-sm line-clamp-2">{product.description}</p>
-                    </>
-                  )}
-                  
-                  <div className="flex flex-col md:flex-row items-center gap-4">
-                    {isAdmin ? (
-                      <div className="flex items-center gap-2 bg-blue-500/10 px-4 py-2 rounded-2xl">
-                        <span className="font-bold text-blue-500">R$</span>
-                        <input 
-                          type="text"
-                          value={product.price}
-                          onChange={(e) => handleUpdate('price', e.target.value)}
-                          className="bg-transparent font-black text-blue-500 text-2xl outline-none w-28"
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-3xl font-black text-blue-500">R$ {product.price}</span>
-                    )}
-
-                    <div className="flex gap-2 w-full md:w-auto ml-auto">
-                      {/* BOTÕES EXCLUSIVOS DO ADMIN */}
+                <img src={item.image} className="w-40 h-40 rounded-3xl object-cover" alt="Produto" />
+                <div className="flex-1 space-y-4">
+                  <h3 className="text-2xl font-black text-foreground">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm line-clamp-2">{item.description}</p>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-3xl font-black text-blue-500">R$ {item.price}</span>
+                    <div className="flex gap-2">
                       {isAdmin && (
-                        <>
-                          <button 
-                            onClick={clearProduct}
-                            className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                          <button className="flex-1 md:flex-none bg-blue-600 text-white px-6 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-blue-500 transition-all active:scale-95">
-                            <Save className="w-5 h-5" /> POSTAR NA VITRINE
-                          </button>
-                        </>
+                        <button onClick={() => handleDelete(item.id)} className="p-4 text-red-500 hover:bg-red-500/10 rounded-2xl transition-all">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
                       )}
-
-                      {/* BOTÃO DO CLIENTE */}
-                      {!isAdmin && (
-                        <a 
-                          href={product.url} 
-                          target="_blank" 
-                          className="w-full md:w-auto bg-foreground text-background px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-2"
-                        >
-                          COMPRAR AGORA <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
+                      <a href={item.url} target="_blank" className="bg-foreground text-background px-8 py-4 rounded-2xl font-black flex items-center gap-2">
+                        COMPRAR <ExternalLink className="w-4 h-4" />
+                      </a>
                     </div>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="py-20 border-2 border-dashed border-border rounded-[3rem] flex flex-col items-center justify-center text-muted-foreground opacity-30">
-             <ShoppingBag className="w-12 h-12 mb-4" />
-             <p className="font-medium italic">Seu catálogo de recomendações aparecerá aqui.</p>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );
