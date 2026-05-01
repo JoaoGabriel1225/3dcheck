@@ -17,9 +17,8 @@ export default function Marketplace() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Estados para Busca e Filtros
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('recent'); // recent, popular, price_asc, price_desc
+  const [sortBy, setSortBy] = useState('recent'); 
 
   const isAdmin = profile?.role === 'admin';
 
@@ -41,11 +40,8 @@ export default function Marketplace() {
     }
   }
 
-  // Função para abrir link e contar clique
   async function handleProductClick(product: any) {
     window.open(product.url, '_blank', 'noopener,noreferrer');
-    
-    // Incrementa clique de forma silenciosa para o ranking de popularidade
     await supabase
       .from('marketplace_products')
       .update({ clicks: (product.clicks || 0) + 1 })
@@ -91,11 +87,9 @@ export default function Marketplace() {
     }
   }
 
-  // Lógica de Filtragem e Ordenação
   const filteredProducts = savedProducts
     .filter(p => p.title.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
-      // Limpa pontos e vírgulas para ordenar preço corretamente
       const priceA = parseFloat(a.price.replace(/[^\d]/g, ''));
       const priceB = parseFloat(b.price.replace(/[^\d]/g, ''));
 
@@ -179,7 +173,6 @@ export default function Marketplace() {
         </div>
       )}
 
-      {/* Grid Balanceada: 2 colunas mobile / 3-4 colunas desktop */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map((item) => (
@@ -226,21 +219,21 @@ export default function Marketplace() {
           ))}
         </div>
       ) : !loading && (
-        /* Mensagem Amigável, Persuasiva e Profissional */
+        /* Estado Vazio Profissional e Neutro */
         <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-700">
           <div className="bg-blue-500/10 p-10 rounded-full mb-8">
             <PackageSearch className="w-20 h-20 text-blue-500 opacity-40" />
           </div>
-          <h3 className="text-3xl font-black text-foreground">Puxa, esse bico tá difícil de achar!</h3>
-          <p className="text-muted-foreground text-base max-w-md mt-3 font-medium leading-relaxed">
-            Não encontramos resultados para "<span className="text-blue-500 font-bold">{searchTerm}</span>". 
-            Mas não desanima! Nossa curadoria em <span className="text-foreground font-bold text-sm">Teresópolis</span> garimpa as melhores ofertas de hardware e filamentos todo santo dia.
+          <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Pesquisa sem resultados</h2>
+          <p className="text-muted-foreground text-base max-w-md mt-4 font-medium leading-relaxed px-4">
+            Não encontramos correspondências para "<span className="text-blue-500 font-bold">{searchTerm}</span>". 
+            Nossa vitrine é atualizada diariamente com novos hardwares e insumos; tente termos mais genéricos ou confira os destaques da semana.
           </p>
           <button 
             onClick={() => setSearchTerm('')}
-            className="mt-10 px-10 py-4 bg-foreground text-background rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-2xl active:scale-95"
+            className="mt-10 px-10 py-4 bg-foreground text-background rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-widest"
           >
-            EXPLORAR TODA A VITRINE
+            Ver catálogo completo
           </button>
         </div>
       )}
