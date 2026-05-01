@@ -14,16 +14,20 @@ export default function Login() {
   const [storeName, setStoreName] = useState(''); // Novo estado para o nome da loja
   const [loading, setLoading] = useState(false);
 
-  // NOVA FUNÇÃO: Recuperação de Senha
-  const handleResetPassword = async () => {
+  // FUNÇÃO ATUALIZADA: Recuperação de Senha com suporte a Mobile
+  const handleResetPassword = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!email) {
-      toast.error('Por favor, digite seu e-mail primeiro para recuperar a senha.');
+      toast.error('Por favor, digite seu e-mail no campo acima para recuperar a senha.');
       return;
     }
 
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        // Redireciona explicitamente para a página de troca
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
@@ -141,7 +145,6 @@ export default function Login() {
             <CardContent className="p-6 sm:p-8">
               <form onSubmit={handleAuth} className="space-y-6">
                 
-                {/* CAMPO NOVO: NOME DA LOJA (Só aparece no Cadastro) */}
                 {isSignUp && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                     <Label htmlFor="storeName" className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -189,7 +192,7 @@ export default function Login() {
                       <button 
                         type="button"
                         onClick={handleResetPassword}
-                        className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors"
+                        className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors bg-transparent border-none cursor-pointer p-0"
                       >
                         Esqueceu a senha?
                       </button>
