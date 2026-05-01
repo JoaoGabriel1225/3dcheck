@@ -15,13 +15,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { PackageSearch, Plus, Image as ImageIcon, Trash2, Eye, EyeOff, Edit2, Wand2 } from 'lucide-react';
+import { PackageSearch, Plus, Image as ImageIcon, Trash2, Eye, EyeOff, Edit2, Wand2, Calculator, Zap, Clock } from 'lucide-react';
 
 export default function Products() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Estados de Configuração Global (Padrões)
+  const [globalSettings, setGlobalSettings] = useState<any>(null);
+
   // Form state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -36,13 +39,21 @@ export default function Products() {
   // Calculator state
   const [filamentPrice, setFilamentPrice] = useState('');
   const [gramsUsed, setGramsUsed] = useState('');
-  const [energyCost, setEnergyCost] = useState('');
-  const [machineCost, setMachineCost] = useState('');
-  const [printTime, setPrintTime] = useState('');
-  const [otherCosts, setOtherCosts] = useState('');
+  const [printTime, setPrintTime] = useState(''); // Tempo em Horas
   const [profitMargin, setProfitMargin] = useState('');
   const [calculatedCost, setCalculatedCost] = useState(0);
   const [suggestedPrice, setSuggestedPrice] = useState('0.00');
+
+  // 1. Função para carregar as configurações uma única vez
+  const fetchGlobalSettings = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('store_settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+    if (data) setGlobalSettings(data);
+  };
 
   const fetchProducts = async () => {
     if (!profile) return;
@@ -64,26 +75,43 @@ export default function Products() {
 
   useEffect(() => {
     fetchProducts();
+    fetchGlobalSettings();
   }, [profile]);
 
+  // 2. Lógica da Calculadora Integrada
   useEffect(() => {
     const fPrice = parseFloat(filamentPrice) || 0;
     const gUsed = parseFloat(gramsUsed) || 0;
-    const materialCost = (fPrice / 1000) * gUsed;
-    
-    const eCost = parseFloat(energyCost) || 0;
-    const mCost = parseFloat(machineCost) || 0;
     const pTime = parseFloat(printTime) || 0;
-    const oCosts = parseFloat(otherCosts) || 0;
-    
-    const extraCost = (eCost + mCost) * pTime + oCosts;
-    const cTotal = materialCost + extraCost;
-    setCalculatedCost(cTotal);
-    
     const margin = parseFloat(profitMargin) || 0;
+
+    // Se não tiver configurações, usa valores zerados para os custos fixos
+    const setupFee = globalSettings?.setup_fee || 0;
+    const depreciation = globalSettings?.machine_depreciation_hour || 0;
+    const kwhPrice = globalSettings?.kwh_price || 0;
+    const buffer = 1 + (globalSettings?.failure_buffer_pct || 0) / 100;
+
+    // Cálculo: Material (com buffer de falha) + Operação (Energia + Depreciação) + Setup
+    const materialCost = ((fPrice / 1000) * gUsed) * buffer;
+    const energyCost = (kwhPrice * 0.15) * pTime; // Estimativa de 150W/h de consumo médio
+    const depreciationCost = depreciation * pTime;
+    
+    const cTotal = materialCost + energyCost + depreciationCost + setupFee;
+    
+    setCalculatedCost(cTotal);
     const calcPrice = cTotal * (1 + margin / 100);
     setSuggestedPrice(calcPrice.toFixed(2));
-  }, [filamentPrice, gramsUsed, energyCost, machineCost, printTime, otherCosts, profitMargin]);
+  }, [filamentPrice, gramsUsed, printTime, profitMargin, globalSettings]);
+
+  // 3. Preencher padrões ao abrir o modal para "Novo Produto"
+  const handleOpenNewProduct = () => {
+    resetForm();
+    if (globalSettings) {
+      setFilamentPrice(globalSettings.filament_avg_price?.toString() || '120.00');
+      setProfitMargin(globalSettings.profit_margin_pct?.toString() || '100');
+    }
+    setIsDialogOpen(true);
+  };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,11 +222,6 @@ export default function Products() {
     setDiscount(product.discount?.toString() || '');
     setProfitMargin(product.profit_margin?.toString() || '');
     setCalculatedCost(product.cost_total || 0);
-
-    if (product.cost_total > 0 && product.profit_margin > 0) {
-      setOtherCosts(product.cost_total.toString());
-    }
-
     setIsDialogOpen(true);
   };
 
@@ -229,10 +252,7 @@ export default function Products() {
     setDiscount('');
     setFilamentPrice('');
     setGramsUsed('');
-    setEnergyCost('');
-    setMachineCost('');
     setPrintTime('');
-    setOtherCosts('');
     setProfitMargin('');
     setCalculatedCost(0);
     setSuggestedPrice('0.00');
@@ -250,104 +270,123 @@ export default function Products() {
           setIsDialogOpen(open);
           if(!open) resetForm();
         }}>
-          <DialogTrigger asChild>
-            <Button className="h-11 px-6 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 gap-2 transition-all hover:scale-105 active:scale-95">
-              <Plus className="w-5 h-5" /> Novo Produto
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border-border bg-card shadow-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black">Configurar Produto</DialogTitle>
+          <Button onClick={handleOpenNewProduct} className="h-11 px-6 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 gap-2 transition-all hover:scale-105 active:scale-95">
+            <Plus className="w-5 h-5" /> Novo Produto
+          </Button>
+
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl border-border bg-card shadow-2xl p-0">
+            <DialogHeader className="p-8 pb-0">
+              <DialogTitle className="text-2xl font-black flex items-center gap-2">
+                <PackageSearch className="w-6 h-6 text-blue-500" /> Configurar Produto
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSaveProduct} className="space-y-6 pt-2">
+
+            <form onSubmit={handleSaveProduct} className="p-8 space-y-6">
                <div className="space-y-4">
                  <div className="space-y-2">
                    <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Nome do Produto</Label>
-                   <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required className="h-11 rounded-xl border-slate-200" />
+                   <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required className="h-12 rounded-2xl border-border bg-muted/30" placeholder="Ex: Action Figure Batman" />
                  </div>
                  <div className="space-y-2">
-                   <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Descrição</Label>
-                   <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required className="rounded-xl border-slate-200 min-h-[80px]" />
+                   <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Descrição Detalhada</Label>
+                   <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required className="rounded-2xl border-border bg-muted/30 min-h-[100px]" placeholder="Fale sobre o material, escala e acabamento..." />
                  </div>
                  
-                 <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-border">
+                 <div className="flex items-center space-x-3 bg-muted/20 p-4 rounded-2xl border border-border">
                    <Switch id="is-public" checked={isPublic} onCheckedChange={setIsPublic} />
-                   <Label htmlFor="is-public" className="font-bold text-slate-600 text-sm">Visível na Loja Pública</Label>
+                   <Label htmlFor="is-public" className="font-bold text-sm cursor-pointer">Visível na Vitrine Pública</Label>
                  </div>
                </div>
 
-              <div className="space-y-4 pt-4 border-t border-border/50">
-                <Label className="font-bold text-foreground text-base">Custos e Precificação</Label>
+              {/* CALCULADORA INTEGRADA */}
+              <div className="space-y-4 pt-6 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <Label className="font-black text-foreground text-base flex items-center gap-2">
+                    <Calculator className="w-5 h-5 text-blue-500" /> Custos de Produção
+                  </Label>
+                  <span className="text-[10px] font-bold bg-blue-500/10 text-blue-600 px-2 py-1 rounded-md">PADRÕES ATIVOS</span>
+                </div>
 
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl space-y-4 border border-border">
+                <div className="bg-muted/30 p-6 rounded-[2rem] space-y-5 border border-border">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="filPrice" className="font-black text-slate-500 text-[9px] uppercase tracking-wider">Custo Filamento / KG</Label>
-                      <Input id="filPrice" type="number" step="0.01" value={filamentPrice} onChange={(e) => setFilamentPrice(e.target.value)} required className="h-9 bg-background" />
+                      <Label htmlFor="filPrice" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider">Filamento (R$ / KG)</Label>
+                      <Input id="filPrice" type="number" step="0.01" value={filamentPrice} onChange={(e) => setFilamentPrice(e.target.value)} required className="h-11 bg-background rounded-xl border-border" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="gUsed" className="font-black text-slate-500 text-[9px] uppercase tracking-wider">Gramas Utilizadas</Label>
-                      <Input id="gUsed" type="number" step="0.01" value={gramsUsed} onChange={(e) => setGramsUsed(e.target.value)} required className="h-9 bg-background" />
+                      <Label htmlFor="gUsed" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider">Peso da Peça (g)</Label>
+                      <Input id="gUsed" type="number" step="0.1" value={gramsUsed} onChange={(e) => setGramsUsed(e.target.value)} required className="h-11 bg-background rounded-xl border-border" placeholder="Ex: 150" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pTime" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Tempo (Horas)
+                      </Label>
+                      <Input id="pTime" type="number" step="0.1" value={printTime} onChange={(e) => setPrintTime(e.target.value)} required className="h-11 bg-background rounded-xl border-border" placeholder="Ex: 4.5" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pMargin" className="font-black text-blue-600 text-[9px] uppercase tracking-wider">Lucro Desejado (%)</Label>
+                      <Input id="pMargin" type="number" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="h-11 bg-blue-500/5 border-blue-500/20 text-blue-600 font-bold rounded-xl" />
                     </div>
                   </div>
                   
-                  <div className="border-t border-border pt-4 flex flex-col gap-3">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="font-medium text-slate-500">Custo Total:</span>
-                      <span className="font-bold">R$ {calculatedCost.toFixed(2)}</span>
+                  <div className="pt-4 border-t border-border/50 flex justify-between items-center">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase">Custo de Fabricação</span>
+                      <span className="text-xl font-black text-foreground">R$ {calculatedCost.toFixed(2)}</span>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="pMargin" className="font-black text-blue-600 text-[9px] uppercase tracking-wider">Margem de Lucro (%)</Label>
-                      <Input id="pMargin" type="number" step="0.01" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="bg-blue-50/50 border-blue-100 h-10 font-bold" />
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl text-right">
+                       <span className="block text-[9px] font-black text-emerald-600 uppercase">Preço Sugerido</span>
+                       <span className="text-lg font-black text-emerald-600 tracking-tighter">R$ {suggestedPrice}</span>
+                       <Button 
+                         type="button"
+                         variant="ghost" 
+                         size="sm" 
+                         onClick={() => setPrice(suggestedPrice)}
+                         className="h-6 mt-1 text-[9px] font-black text-emerald-700 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-lg px-2"
+                       >
+                         <Wand2 className="w-3 h-3 mr-1" /> APLICAR
+                       </Button>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-4 items-end">
-                  <div className="space-y-3">
-                    <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-500/20 p-2.5 rounded-xl flex justify-between items-center">
-                       <div>
-                         <Label className="font-black text-emerald-700 text-[9px] uppercase tracking-wider block">Sugestão</Label>
-                         <span className="font-black text-emerald-600 text-sm">R$ {suggestedPrice}</span>
-                       </div>
-                       <Button 
-                         type="button" 
-                         variant="outline" 
-                         size="sm" 
-                         onClick={() => setPrice(suggestedPrice)} 
-                         className="h-7 px-2 text-[10px] border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                       >
-                         <Wand2 className="w-3 h-3 mr-1" /> Usar
-                       </Button>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="price" className="text-[10px] font-black uppercase text-slate-500">Preço Final (R$)</Label>
-                      <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required className="h-11 rounded-xl border-slate-300 font-bold" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className="text-[10px] font-black uppercase text-muted-foreground">Preço Final de Venda</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">R$</span>
+                      <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required className="h-12 pl-10 rounded-2xl border-blue-500/30 bg-blue-500/5 font-black text-lg" />
                     </div>
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="discount" className="text-[10px] font-black uppercase text-slate-500">Desconto (R$)</Label>
-                    <Input id="discount" type="number" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} className="h-11 rounded-xl" />
+                    <Label htmlFor="discount" className="text-[10px] font-black uppercase text-muted-foreground">Desconto Especial</Label>
+                    <Input id="discount" type="number" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} className="h-12 rounded-2xl border-border" placeholder="0.00" />
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
                 <div className="space-y-2">
-                  <Label htmlFor="stock" className="text-[10px] font-black uppercase text-slate-500">Estoque</Label>
-                  <Input id="stock" type="number" value={stock} onChange={(e) => setStock(e.target.value)} required className="h-11 rounded-xl" />
+                  <Label htmlFor="stock" className="text-[10px] font-black uppercase text-muted-foreground">Estoque Disponível</Label>
+                  <Input id="stock" type="number" value={stock} onChange={(e) => setStock(e.target.value)} required className="h-12 rounded-2xl border-border bg-muted/30" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-500">Imagem</Label>
-                  <Input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="h-11 rounded-xl border-dashed pt-2 text-xs" />
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Foto do Produto</Label>
+                  <div className="relative h-12">
+                    <Input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <div className="h-full border-2 border-dashed border-border rounded-2xl flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                      <ImageIcon className="w-4 h-4 mr-2" /> SELECIONAR IMAGEM
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="pt-4">
-                <Button type="submit" className="w-full h-12 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-xl shadow-blue-500/20">
-                  {editingProductId ? 'Salvar Alterações' : 'Cadastrar Produto'}
+                <Button type="submit" className="w-full h-14 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-500/20 text-lg transition-all active:scale-[0.98]">
+                  {editingProductId ? 'SALVAR ALTERAÇÕES' : 'CADASTRAR NA VITRINE'}
                 </Button>
               </div>
             </form>
@@ -357,59 +396,62 @@ export default function Products() {
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {loading ? (
-          <p className="font-bold text-slate-400 animate-pulse tracking-widest py-10 col-span-full text-center">CARREGANDO CATÁLOGO...</p>
+          <p className="font-black text-muted-foreground animate-pulse tracking-[0.3em] py-20 col-span-full text-center uppercase">Sincronizando Catálogo...</p>
         ) : products.length === 0 ? (
-          <p className="text-slate-500 font-medium col-span-full py-10 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">Comece adicionando seu primeiro produto!</p>
+          <div className="col-span-full py-20 text-center bg-muted/20 rounded-[3rem] border-2 border-dashed border-border flex flex-col items-center gap-4">
+             <PackageSearch className="w-12 h-12 text-muted-foreground/30" />
+             <p className="text-muted-foreground font-bold">Sua vitrine está vazia. Comece a lucrar agora!</p>
+          </div>
         ) : (
           products.map((product) => {
              const hasDiscount = product.discount > 0;
              const finalPriceWithDiscount = product.final_price - (product.discount || 0);
 
              return (
-              <Card key={product.id} className="overflow-hidden flex flex-col group rounded-3xl border-border bg-card/40 backdrop-blur-sm hover:border-blue-500/30 hover:shadow-xl hover:translate-y-[-4px] transition-all duration-300">
-                  <div className="aspect-square bg-slate-100 dark:bg-slate-900 flex items-center justify-center relative overflow-hidden">
+              <Card key={product.id} className="overflow-hidden flex flex-col group rounded-[2.5rem] border-border bg-card/40 backdrop-blur-sm hover:border-blue-500/30 hover:shadow-2xl hover:translate-y-[-8px] transition-all duration-500">
+                  <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden">
                     {product.main_image_url || (product.product_images && product.product_images[0]) ? (
-                      <img src={product.main_image_url || product.product_images[0].url} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <img src={product.main_image_url || product.product_images[0].url} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                     ) : (
-                      <ImageIcon className="h-12 w-12 text-slate-300" />
+                      <ImageIcon className="h-16 w-16 text-muted-foreground/20" />
                     )}
                     
-                    <div className="absolute top-3 left-3">
-                        <div className="bg-white/80 dark:bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border border-border shadow-sm">
-                          {product.is_public ? 'Visível' : 'Oculto'}
+                    <div className="absolute top-4 left-4">
+                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm backdrop-blur-md ${product.is_public ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'}`}>
+                          {product.is_public ? 'Ativo' : 'Pausado'}
                         </div>
                     </div>
                   </div>
                   
-                  <CardContent className="p-6 flex-1 flex flex-col">
-                    <h3 className="font-black text-lg text-foreground tracking-tight line-clamp-1 mb-1">{product.name}</h3>
-                    <p className="text-muted-foreground text-xs font-medium line-clamp-2 leading-relaxed mb-4 flex-1">{product.description}</p>
+                  <CardContent className="p-8 flex-1 flex flex-col">
+                    <h3 className="font-black text-xl text-foreground tracking-tight line-clamp-1 mb-2">{product.name}</h3>
+                    <p className="text-muted-foreground text-sm font-medium line-clamp-2 leading-relaxed mb-6 flex-1">{product.description}</p>
                     
-                    <div className="flex items-center justify-between mb-6 pt-4 border-t border-border/30">
+                    <div className="flex items-center justify-between mb-8 pt-6 border-t border-border">
                       <div className="flex flex-col">
                         {hasDiscount && (
-                          <span className="text-[10px] font-bold text-slate-400 line-through">R$ {product.final_price?.toFixed(2)}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground line-through decoration-red-500/50 tracking-tighter">R$ {product.final_price?.toFixed(2)}</span>
                         )}
-                        <span className={`text-xl font-black tracking-tighter ${hasDiscount ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
+                        <span className={`text-2xl font-black tracking-tighter ${hasDiscount ? 'text-emerald-500' : 'text-foreground'}`}>
                           R$ {hasDiscount ? finalPriceWithDiscount.toFixed(2) : product.final_price?.toFixed(2)}
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest">Estoque</span>
-                        <span className="text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{product.stock_quantity} un</span>
+                        <span className="block text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Estoque</span>
+                        <span className="text-xs font-black bg-blue-500/10 text-blue-600 px-3 py-1 rounded-full border border-blue-500/10">{product.stock_quantity} un</span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button variant="outline" size="sm" onClick={(e) => toggleVisibility(product, e)} className="h-9 rounded-xl border-border text-slate-500 hover:text-foreground text-[10px] font-black uppercase">
-                        {product.is_public ? <EyeOff className="h-3.5 w-3.5 mr-1" /> : <Eye className="h-3.5 w-3.5 mr-1" />}
+                    <div className="grid grid-cols-3 gap-3">
+                      <Button variant="outline" size="sm" onClick={(e) => toggleVisibility(product, e)} className="h-10 rounded-2xl border-border bg-muted/20 text-muted-foreground hover:text-foreground text-[10px] font-black uppercase tracking-tighter">
+                        {product.is_public ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
                         {product.is_public ? 'Ocultar' : 'Exibir'}
                       </Button>
-                      <Button variant="outline" size="sm" onClick={(e) => handleEditClick(product, e)} className="h-9 rounded-xl border-border text-slate-500 hover:text-blue-600 text-[10px] font-black uppercase">
-                        <Edit2 className="h-3.5 w-3.5 mr-1" /> Editar
+                      <Button variant="outline" size="sm" onClick={(e) => handleEditClick(product, e)} className="h-10 rounded-2xl border-border bg-muted/20 text-muted-foreground hover:text-blue-500 text-[10px] font-black uppercase tracking-tighter">
+                        <Edit2 className="h-4 w-4 mr-1" /> Editar
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={(e) => deleteProduct(product.id, e)} className="h-9 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors text-[10px] font-black uppercase">
-                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+                      <Button variant="ghost" size="sm" onClick={(e) => deleteProduct(product.id, e)} className="h-10 rounded-2xl text-muted-foreground hover:text-red-500 hover:bg-red-500/5 text-[10px] font-black uppercase tracking-tighter">
+                        <Trash2 className="h-4 w-4 mr-1" />
                       </Button>
                     </div>
                   </CardContent>
