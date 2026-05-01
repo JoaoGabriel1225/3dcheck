@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-// Mudamos o import de '@/components/...' para '../components/...'
-import { ProductImporter } from '../components/ProductImporter'; 
-import { Card, CardContent } from '../components/ui/card';
+// Voltamos para o padrão @/ que o seu projeto já usa nos outros arquivos
+import { ProductImporter } from '@/components/ProductImporter'; 
+import { Card, CardContent } from '@/components/ui/card';
 import { ShoppingBag, Zap, ArrowRight } from 'lucide-react';
 
 export default function Marketplace() {
