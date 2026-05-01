@@ -20,13 +20,14 @@ export default function Login() {
 
     try {
       if (isSignUp) {
-        // --- LÓGICA DE CADASTRO COM NOME DA LOJA ---
+        // --- LÓGICA DE CADASTRO ATUALIZADA ---
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              store_name: storeName, // Salva o nome da loja nos metadados do usuário
+              full_name: storeName, // Define como nome oficial no Supabase Auth
+              store_name: storeName, // Mantém a referência original para o dashboard
             }
           }
         });
