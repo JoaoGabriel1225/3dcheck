@@ -1,7 +1,7 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 // ⚠️ IMPORTANTE: Cole o seu Access Token (começa com APP_USR) aqui
-const ACCESS_TOKEN = 'APP_USR-f6d91aaa-2bd0-4549-870e-7a988139f04f'; 
+const ACCESS_TOKEN = 'APP_USR-431521461916581-050117-38539805f9f0d24d93fde7691efa5d37-3372300112'; 
 
 export default async function handler(req, res) {
   // A Vercel só permite requisições POST para criar o checkout
