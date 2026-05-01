@@ -5,7 +5,7 @@ import { ProductImporter } from '../components/ProductImporter';
 import { Card, CardContent } from '../../components/ui/card'; 
 import { Input } from '../../components/ui/input';
 import { 
-  ShoppingBag, Search, ArrowUpDown, ExternalLink, 
+  ShoppingBag, Search, ExternalLink, 
   Trash2, Save, Loader2, Sparkles, PackageSearch 
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -41,9 +41,11 @@ export default function Marketplace() {
     }
   }
 
-  // Função para contar cliques e abrir link
+  // Função para abrir link e contar clique
   async function handleProductClick(product: any) {
     window.open(product.url, '_blank', 'noopener,noreferrer');
+    
+    // Incrementa clique de forma silenciosa para o ranking de popularidade
     await supabase
       .from('marketplace_products')
       .update({ clicks: (product.clicks || 0) + 1 })
@@ -93,39 +95,45 @@ export default function Marketplace() {
   const filteredProducts = savedProducts
     .filter(p => p.title.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
-      if (sortBy === 'price_asc') return parseFloat(a.price.replace('.','')) - parseFloat(b.price.replace('.',''));
-      if (sortBy === 'price_desc') return parseFloat(b.price.replace('.','')) - parseFloat(a.price.replace('.',''));
+      // Limpa pontos e vírgulas para ordenar preço corretamente
+      const priceA = parseFloat(a.price.replace(/[^\d]/g, ''));
+      const priceB = parseFloat(b.price.replace(/[^\d]/g, ''));
+
+      if (sortBy === 'price_asc') return priceA - priceB;
+      if (sortBy === 'price_desc') return priceB - priceA;
       if (sortBy === 'popular') return (b.clicks || 0) - (a.clicks || 0);
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
   return (
-    <div className="space-y-6 pb-20 px-2 md:px-0">
+    <div className="space-y-8 pb-20 px-4 md:px-0">
       {/* Cabeçalho */}
-      <div className="flex flex-col gap-4">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-black tracking-tight">Marketplace <span className="text-blue-500">Hub</span></h2>
-          <p className="text-muted-foreground text-xs font-medium">Equipamentos e filamentos de alta performance.</p>
+      <div className="flex flex-col gap-6">
+        <div className="space-y-2">
+          <h2 className="text-4xl font-black tracking-tight text-foreground">
+            Marketplace <span className="text-blue-500">Hub</span>
+          </h2>
+          <p className="text-muted-foreground font-medium">Equipamentos e insumos para quem respira 3D.</p>
         </div>
 
-        {/* Barra de Busca e Filtros */}
-        <div className="flex flex-col md:flex-row gap-3">
+        {/* Barra de Busca e Filtros Inteligentes */}
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
             <Input 
               placeholder="O que você está procurando hoje?" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-11 rounded-xl bg-accent/20 border-none text-sm"
+              className="pl-12 h-14 rounded-2xl bg-accent/20 border-none text-base focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
           <select 
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="h-11 px-4 rounded-xl bg-accent/20 text-xs font-bold outline-none border-none cursor-pointer"
+            className="h-14 px-6 rounded-2xl bg-accent/20 text-sm font-bold outline-none border-none cursor-pointer hover:bg-accent/30 transition-colors"
           >
-            <option value="recent">Recém adicionados</option>
-            <option value="popular">Mais visitados</option>
+            <option value="recent">Adicionados recentemente</option>
+            <option value="popular">Mais procurados</option>
             <option value="price_asc">Menor preço</option>
             <option value="price_desc">Maior preço</option>
           </select>
@@ -133,88 +141,106 @@ export default function Marketplace() {
       </div>
 
       {isAdmin && (
-        <div className="animate-in fade-in duration-500 bg-blue-500/5 p-4 rounded-[2rem] border border-dashed border-blue-500/20">
+        <div className="animate-in fade-in slide-in-from-top-4 duration-500 bg-blue-500/5 p-6 rounded-[2.5rem] border border-dashed border-blue-500/20">
           <ProductImporter onImport={(data: any) => setImportingProduct(data)} />
           {importingProduct && (
-            <div className="mt-4 p-4 bg-background rounded-2xl border border-blue-500/20 space-y-4">
-               <div className="flex gap-4 items-center">
-                  <img src={importingProduct.image} className="w-16 h-16 rounded-xl object-cover" />
-                  <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold text-sm" />
+            <div className="mt-6 p-6 bg-background rounded-3xl border border-blue-500/20 space-y-6">
+               <div className="flex gap-6 items-center">
+                  <img src={importingProduct.image} className="w-24 h-24 rounded-2xl object-cover shadow-lg" />
+                  <div className="flex-1 space-y-2">
+                    <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest">Revisão de Título</span>
+                    <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold" />
+                  </div>
                </div>
-               <div className="grid grid-cols-3 gap-2">
-                  <Input value={importingProduct.price} onChange={(e) => setImportingProduct({...importingProduct, price: e.target.value})} placeholder="Preço" className="text-xs" />
-                  <Input value={importingProduct.originalPrice} onChange={(e) => setImportingProduct({...importingProduct, originalPrice: e.target.value})} placeholder="Original" className="text-xs" />
-                  <Input value={importingProduct.discount} onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})} placeholder="Tag" className="text-xs" />
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Preço Atual</span>
+                    <Input value={importingProduct.price} onChange={(e) => setImportingProduct({...importingProduct, price: e.target.value})} className="font-black text-blue-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Preço Original</span>
+                    <Input value={importingProduct.originalPrice} onChange={(e) => setImportingProduct({...importingProduct, originalPrice: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Tag de Desconto</span>
+                    <Input value={importingProduct.discount} onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})} className="text-green-500 font-bold" />
+                  </div>
                </div>
-               <button onClick={handlePost} disabled={isSaving} className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-xs flex justify-center items-center gap-2">
-                 {isSaving ? <Loader2 className="animate-spin w-4 h-4" /> : <><Save className="w-4 h-4" /> POSTAR NA VITRINE</>}
-               </button>
+               <div className="flex gap-3">
+                 <button onClick={handlePost} disabled={isSaving} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black flex justify-center items-center gap-2 hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20">
+                   {isSaving ? <Loader2 className="animate-spin w-5 h-5" /> : <><Save className="w-5 h-5" /> CONFIRMAR POSTAGEM</>}
+                 </button>
+                 <button onClick={() => setImportingProduct(null)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all">
+                   <Trash2 className="w-6 h-6" />
+                 </button>
+               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Grid de Itens: 4 colunas mobile / 8 colunas desktop */}
+      {/* Grid Balanceada: 2 colunas mobile / 3-4 colunas desktop */}
       {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map((item) => (
             <div 
               key={item.id} 
               onClick={() => handleProductClick(item)}
-              className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer relative"
+              className="group bg-card border border-border rounded-[2rem] overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 flex flex-col cursor-pointer relative"
             >
-              <div className="relative aspect-square overflow-hidden bg-white">
-                <img src={item.image} className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500" />
+              <div className="relative aspect-square overflow-hidden bg-white p-4">
+                <img src={item.image} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
                 {item.discount && (
-                  <div className="absolute top-1 left-1 bg-green-500 text-white text-[8px] font-black px-1 rounded shadow-sm">
+                  <div className="absolute top-4 left-4 bg-green-500 text-white text-[10px] md:text-xs font-black px-3 py-1 rounded-full shadow-lg">
                     {item.discount}
                   </div>
                 )}
               </div>
               
-              <div className="p-2 space-y-1 flex-1 flex flex-col">
-                <h3 className="text-[10px] md:text-xs font-bold text-foreground line-clamp-2 leading-tight flex-1">
+              <div className="p-5 space-y-3 flex-1 flex flex-col">
+                <h3 className="text-sm md:text-base font-black text-foreground line-clamp-2 leading-tight flex-1">
                   {item.title}
                 </h3>
                 
-                <div>
+                <div className="space-y-1">
                   {item.original_price && (
-                    <span className="text-[8px] line-through text-muted-foreground block">R$ {item.original_price}</span>
+                    <span className="text-[10px] md:text-xs line-through text-muted-foreground/60 font-bold">R$ {item.original_price}</span>
                   )}
-                  <div className="text-xs md:text-sm font-black text-blue-500 leading-none">R$ {item.price}</div>
+                  <div className="text-xl md:text-2xl font-black text-blue-500 tracking-tighter leading-none">R$ {item.price}</div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                  <div className="flex items-center gap-0.5 text-[8px] text-muted-foreground">
-                    <Sparkles className="w-2 h-2 text-amber-500 fill-amber-500" />
-                    {item.clicks || 0}
+                <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                  <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-muted-foreground font-black">
+                    <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    {item.clicks || 0} VISITAS
                   </div>
                   {isAdmin && (
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-1 text-red-500 hover:bg-red-500/10 rounded-md">
-                      <Trash2 className="w-3 h-3" />
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors">
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
+                  {!isAdmin && <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-blue-500 transition-colors" />}
                 </div>
               </div>
             </div>
           ))}
         </div>
       ) : !loading && (
-        /* Estado Vazio Amigável */
-        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-700">
-          <div className="bg-accent/20 p-6 rounded-full mb-4">
-            <PackageSearch className="w-12 h-12 text-muted-foreground opacity-30" />
+        /* Mensagem Amigável, Persuasiva e Profissional */
+        <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-700">
+          <div className="bg-blue-500/10 p-10 rounded-full mb-8">
+            <PackageSearch className="w-20 h-20 text-blue-500 opacity-40" />
           </div>
-          <h3 className="text-xl font-black text-foreground">Puxa, esse bico tá difícil de achar!</h3>
-          <p className="text-muted-foreground text-sm max-w-[250px] mt-2 font-medium leading-relaxed">
-            Não encontramos nada para "<span className="text-blue-500 font-bold">{searchTerm}</span>". 
-            Mas relaxa! Todo dia garimpamos as melhores ofertas de hardware para você.
+          <h3 className="text-3xl font-black text-foreground">Puxa, esse bico tá difícil de achar!</h3>
+          <p className="text-muted-foreground text-base max-w-md mt-3 font-medium leading-relaxed">
+            Não encontramos resultados para "<span className="text-blue-500 font-bold">{searchTerm}</span>". 
+            Mas não desanima! Nossa curadoria em <span className="text-foreground font-bold text-sm">Teresópolis</span> garimpa as melhores ofertas de hardware e filamentos todo santo dia.
           </p>
           <button 
             onClick={() => setSearchTerm('')}
-            className="mt-6 px-6 py-3 bg-foreground text-background rounded-xl font-black text-xs hover:scale-105 transition-all shadow-lg active:scale-95"
+            className="mt-10 px-10 py-4 bg-foreground text-background rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-2xl active:scale-95"
           >
-            VER TUDO NOVAMENTE
+            EXPLORAR TODA A VITRINE
           </button>
         </div>
       )}
