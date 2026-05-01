@@ -4,7 +4,10 @@ import { supabase } from '@/lib/supabase';
 import { ProductImporter } from '../components/ProductImporter'; 
 import { Card, CardContent } from '../../components/ui/card'; 
 import { Input } from '../../components/ui/input';
-import { ShoppingBag, Zap, ExternalLink, Trash2, Save, Loader2, Tag } from 'lucide-react';
+import { 
+  ShoppingBag, Search, ArrowUpDown, ExternalLink, 
+  Trash2, Save, Loader2, Sparkles, PackageSearch 
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Marketplace() {
@@ -13,6 +16,10 @@ export default function Marketplace() {
   const [savedProducts, setSavedProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Estados para Busca e Filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('recent'); // recent, popular, price_asc, price_desc
 
   const isAdmin = profile?.role === 'admin';
 
@@ -24,9 +31,7 @@ export default function Marketplace() {
     try {
       const { data, error } = await supabase
         .from('marketplace_products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+        .select('*');
       if (error) throw error;
       setSavedProducts(data || []);
     } catch (err) {
@@ -36,10 +41,18 @@ export default function Marketplace() {
     }
   }
 
+  // Função para contar cliques e abrir link
+  async function handleProductClick(product: any) {
+    window.open(product.url, '_blank', 'noopener,noreferrer');
+    await supabase
+      .from('marketplace_products')
+      .update({ clicks: (product.clicks || 0) + 1 })
+      .eq('id', product.id);
+  }
+
   async function handlePost() {
     if (!importingProduct) return;
     setIsSaving(true);
-
     try {
       const { error } = await supabase
         .from('marketplace_products')
@@ -47,17 +60,16 @@ export default function Marketplace() {
           title: importingProduct.title,
           description: importingProduct.description,
           price: importingProduct.price,
-          original_price: importingProduct.originalPrice, // Salvando preço antigo
-          discount: importingProduct.discount,           // Salvando tag de desconto
+          original_price: importingProduct.originalPrice,
+          discount: importingProduct.discount,
           image: importingProduct.image,
           url: importingProduct.url,
-          user_id: user?.id
+          user_id: user?.id,
+          clicks: 0
         }]);
-
       if (error) throw error;
-
       toast.success('Produto postado com sucesso!');
-      setImportingProduct(null); // Corrigido: limpa a prévia
+      setImportingProduct(null);
       fetchProducts();
     } catch (err) {
       toast.error('Erro ao salvar no banco de dados');
@@ -68,11 +80,7 @@ export default function Marketplace() {
 
   async function handleDelete(id: string) {
     try {
-      const { error } = await supabase
-        .from('marketplace_products')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('marketplace_products').delete().eq('id', id);
       if (error) throw error;
       setSavedProducts(prev => prev.filter(p => p.id !== id));
       toast.success('Removido da vitrine');
@@ -81,193 +89,135 @@ export default function Marketplace() {
     }
   }
 
+  // Lógica de Filtragem e Ordenação
+  const filteredProducts = savedProducts
+    .filter(p => p.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'price_asc') return parseFloat(a.price.replace('.','')) - parseFloat(b.price.replace('.',''));
+      if (sortBy === 'price_desc') return parseFloat(b.price.replace('.','')) - parseFloat(a.price.replace('.',''));
+      if (sortBy === 'popular') return (b.clicks || 0) - (a.clicks || 0);
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
   return (
-    <div className="space-y-10 pb-20">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-4xl font-black tracking-tight text-foreground">
-          Marketplace <span className="text-blue-500">Hub</span>
-        </h2>
-        <p className="text-muted-foreground font-medium">Hardware e filamentos selecionados para sua produção.</p>
+    <div className="space-y-6 pb-20 px-2 md:px-0">
+      {/* Cabeçalho */}
+      <div className="flex flex-col gap-4">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-black tracking-tight">Marketplace <span className="text-blue-500">Hub</span></h2>
+          <p className="text-muted-foreground text-xs font-medium">Equipamentos e filamentos de alta performance.</p>
+        </div>
+
+        {/* Barra de Busca e Filtros */}
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              placeholder="O que você está procurando hoje?" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-11 rounded-xl bg-accent/20 border-none text-sm"
+            />
+          </div>
+          <select 
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="h-11 px-4 rounded-xl bg-accent/20 text-xs font-bold outline-none border-none cursor-pointer"
+          >
+            <option value="recent">Recém adicionados</option>
+            <option value="popular">Mais visitados</option>
+            <option value="price_asc">Menor preço</option>
+            <option value="price_desc">Maior preço</option>
+          </select>
+        </div>
       </div>
 
       {isAdmin && (
-        <div className="animate-in fade-in duration-500">
+        <div className="animate-in fade-in duration-500 bg-blue-500/5 p-4 rounded-[2rem] border border-dashed border-blue-500/20">
           <ProductImporter onImport={(data: any) => setImportingProduct(data)} />
-          
           {importingProduct && (
-            <div className="mt-6 p-8 border-2 border-dashed border-blue-500/30 rounded-[3rem] bg-blue-500/5 space-y-6">
-               <div className="flex flex-col md:flex-row gap-8 items-start">
-                  <img src={importingProduct.image} className="w-40 h-40 rounded-3xl object-cover shadow-2xl" />
-                  <div className="flex-1 space-y-4 w-full">
-                    <div className="grid grid-cols-1 gap-4">
-                      <Input 
-                        value={importingProduct.title} 
-                        onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})}
-                        placeholder="Título do Produto"
-                        className="font-bold text-lg bg-background"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase text-blue-500 ml-1">Preço Atual (R$)</span>
-                        <Input 
-                          value={importingProduct.price} 
-                          onChange={(e) => setImportingProduct({...importingProduct, price: e.target.value})}
-                          className="font-black text-blue-500 bg-background"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Preço Original</span>
-                        <Input 
-                          value={importingProduct.originalPrice} 
-                          onChange={(e) => setImportingProduct({...importingProduct, originalPrice: e.target.value})}
-                          placeholder="Ex: 7.999"
-                          className="bg-background"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase text-green-500 ml-1">Tag de Desconto</span>
-                        <Input 
-                          value={importingProduct.discount} 
-                          onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})}
-                          placeholder="Ex: 29% OFF"
-                          className="bg-background text-green-500 font-bold"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4 pt-4">
-                      <button 
-                        onClick={handlePost}
-                        disabled={isSaving}
-                        className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
-                      >
-                        {isSaving ? <Loader2 className="animate-spin" /> : <><Save className="w-5 h-5" /> CONFIRMAR E POSTAR</>}
-                      </button>
-                      <button onClick={() => setImportingProduct(null)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all">
-                        <Trash2 className="w-6 h-6" />
-                      </button>
-                    </div>
-                  </div>
+            <div className="mt-4 p-4 bg-background rounded-2xl border border-blue-500/20 space-y-4">
+               <div className="flex gap-4 items-center">
+                  <img src={importingProduct.image} className="w-16 h-16 rounded-xl object-cover" />
+                  <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold text-sm" />
                </div>
+               <div className="grid grid-cols-3 gap-2">
+                  <Input value={importingProduct.price} onChange={(e) => setImportingProduct({...importingProduct, price: e.target.value})} placeholder="Preço" className="text-xs" />
+                  <Input value={importingProduct.originalPrice} onChange={(e) => setImportingProduct({...importingProduct, originalPrice: e.target.value})} placeholder="Original" className="text-xs" />
+                  <Input value={importingProduct.discount} onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})} placeholder="Tag" className="text-xs" />
+               </div>
+               <button onClick={handlePost} disabled={isSaving} className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-xs flex justify-center items-center gap-2">
+                 {isSaving ? <Loader2 className="animate-spin w-4 h-4" /> : <><Save className="w-4 h-4" /> POSTAR NA VITRINE</>}
+               </button>
             </div>
           )}
         </div>
       )}
 
-      <div className="grid gap-8">
-        {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-500 w-10 h-10" /></div>
-        ) : savedProducts.map((item) => (
-          <Card key={item.id} className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden hover:border-blue-500/30 transition-colors">
-            <CardContent className="p-8">
-              <div className="flex flex-col md:flex-row gap-8 items-center">
-                <img src={item.image} className="w-44 h-44 rounded-[2rem] object-cover shadow-sm" alt="Produto" />
-                <div className="flex-1 space-y-4 w-full">
-                  <h3 className="text-2xl font-black text-foreground leading-tight">{item.title}</h3>
-                  <p className="text-muted-foreground text-sm line-clamp-2">{item.description}</p>
-                  
-                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {item.original_price && (
-                          <span className="text-sm line-through text-muted-foreground font-medium">R$ {item.original_price}</span>
-                        )}
-                        {item.discount && (
-                          <span className="text-green-500 text-xs font-black bg-green-500/10 px-2 py-0.5 rounded-md uppercase">
-                            {item.discount}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-4xl font-black text-blue-500 tracking-tighter">R$ {item.price}</div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {isAdmin && (
-                        <button onClick={() => handleDelete(item.id)} className="p-4 text-red-500 hover:bg-red-500/10 rounded-2xl transition-all border border-transparent hover:border-red-500/20">
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      )}
-                      <a 
-                        href={item.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex-1 md:flex-none bg-foreground text-background px-10 py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-md"
-                      >
-                        COMPRAR AGORA <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-// ... (mantenha todo o código superior igual)
-
-      {/* VITRINE EM GRADE: 4 colunas no mobile (grid-cols-4) e 8 no PC (lg:grid-cols-8) */}
-      <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 md:gap-4">
-        {loading ? (
-          <div className="col-span-full flex justify-center py-20">
-            <Loader2 className="animate-spin text-blue-500 w-10 h-10" />
-          </div>
-        ) : savedProducts.map((item) => (
-          <Card key={item.id} className="rounded-2xl border-border bg-card overflow-hidden hover:border-blue-500/30 transition-all flex flex-col group relative">
-            <CardContent className="p-2 md:p-3 flex flex-col h-full">
-              {/* Imagem Quadrada e Menor */}
-              <div className="relative aspect-square mb-2">
-                <img src={item.image} className="w-full h-full object-cover rounded-xl" alt="Produto" />
+      {/* Grid de Itens: 4 colunas mobile / 8 colunas desktop */}
+      {filteredProducts.length > 0 ? (
+        <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 md:gap-4">
+          {filteredProducts.map((item) => (
+            <div 
+              key={item.id} 
+              onClick={() => handleProductClick(item)}
+              className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer relative"
+            >
+              <div className="relative aspect-square overflow-hidden bg-white">
+                <img src={item.image} className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500" />
                 {item.discount && (
-                  <span className="absolute top-1 left-1 bg-green-500 text-[8px] md:text-[10px] text-white font-black px-1 rounded shadow-sm">
+                  <div className="absolute top-1 left-1 bg-green-500 text-white text-[8px] font-black px-1 rounded shadow-sm">
                     {item.discount}
-                  </span>
+                  </div>
                 )}
               </div>
-
-              <div className="flex-1 flex flex-col justify-between">
-                {/* Título muito menor e truncado em 2 linhas */}
-                <h3 className="text-[10px] md:text-xs font-bold text-foreground leading-tight line-clamp-2 mb-1">
+              
+              <div className="p-2 space-y-1 flex-1 flex flex-col">
+                <h3 className="text-[10px] md:text-xs font-bold text-foreground line-clamp-2 leading-tight flex-1">
                   {item.title}
                 </h3>
                 
-                <div className="mt-auto">
-                  {/* Preços em escala menor */}
+                <div>
                   {item.original_price && (
-                    <div className="text-[8px] md:text-[10px] line-through text-muted-foreground leading-none">
-                      R$ {item.original_price}
-                    </div>
+                    <span className="text-[8px] line-through text-muted-foreground block">R$ {item.original_price}</span>
                   )}
-                  <div className="text-xs md:text-base font-black text-blue-500 tracking-tighter">
-                    R$ {item.price}
+                  <div className="text-xs md:text-sm font-black text-blue-500 leading-none">R$ {item.price}</div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                  <div className="flex items-center gap-0.5 text-[8px] text-muted-foreground">
+                    <Sparkles className="w-2 h-2 text-amber-500 fill-amber-500" />
+                    {item.clicks || 0}
                   </div>
+                  {isAdmin && (
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-1 text-red-500 hover:bg-red-500/10 rounded-md">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
-
-              {/* Botão de Ação: No mobile vira um link invisível no card inteiro, no PC aparece o botão */}
-              <div className="mt-2 flex gap-1">
-                {isAdmin && (
-                  <button onClick={(e) => { e.preventDefault(); handleDelete(item.id); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg">
-                    <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
-                  </button>
-                )}
-                <a 
-                  href={item.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex-1 bg-foreground text-background text-[10px] md:text-xs py-1.5 rounded-lg font-black flex items-center justify-center gap-1 hover:opacity-90"
-                >
-                  <span className="hidden md:inline">VER</span> <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
+      ) : !loading && (
+        /* Estado Vazio Amigável */
+        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-700">
+          <div className="bg-accent/20 p-6 rounded-full mb-4">
+            <PackageSearch className="w-12 h-12 text-muted-foreground opacity-30" />
+          </div>
+          <h3 className="text-xl font-black text-foreground">Puxa, esse bico tá difícil de achar!</h3>
+          <p className="text-muted-foreground text-sm max-w-[250px] mt-2 font-medium leading-relaxed">
+            Não encontramos nada para "<span className="text-blue-500 font-bold">{searchTerm}</span>". 
+            Mas relaxa! Todo dia garimpamos as melhores ofertas de hardware para você.
+          </p>
+          <button 
+            onClick={() => setSearchTerm('')}
+            className="mt-6 px-6 py-3 bg-foreground text-background rounded-xl font-black text-xs hover:scale-105 transition-all shadow-lg active:scale-95"
+          >
+            VER TUDO NOVAMENTE
+          </button>
+        </div>
+      )}
     </div>
   );
 }
