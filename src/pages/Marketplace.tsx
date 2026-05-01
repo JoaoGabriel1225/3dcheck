@@ -208,3 +208,66 @@ export default function Marketplace() {
     </div>
   );
 }
+// ... (mantenha todo o código superior igual)
+
+      {/* VITRINE EM GRADE: 4 colunas no mobile (grid-cols-4) e 8 no PC (lg:grid-cols-8) */}
+      <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 md:gap-4">
+        {loading ? (
+          <div className="col-span-full flex justify-center py-20">
+            <Loader2 className="animate-spin text-blue-500 w-10 h-10" />
+          </div>
+        ) : savedProducts.map((item) => (
+          <Card key={item.id} className="rounded-2xl border-border bg-card overflow-hidden hover:border-blue-500/30 transition-all flex flex-col group relative">
+            <CardContent className="p-2 md:p-3 flex flex-col h-full">
+              {/* Imagem Quadrada e Menor */}
+              <div className="relative aspect-square mb-2">
+                <img src={item.image} className="w-full h-full object-cover rounded-xl" alt="Produto" />
+                {item.discount && (
+                  <span className="absolute top-1 left-1 bg-green-500 text-[8px] md:text-[10px] text-white font-black px-1 rounded shadow-sm">
+                    {item.discount}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex-1 flex flex-col justify-between">
+                {/* Título muito menor e truncado em 2 linhas */}
+                <h3 className="text-[10px] md:text-xs font-bold text-foreground leading-tight line-clamp-2 mb-1">
+                  {item.title}
+                </h3>
+                
+                <div className="mt-auto">
+                  {/* Preços em escala menor */}
+                  {item.original_price && (
+                    <div className="text-[8px] md:text-[10px] line-through text-muted-foreground leading-none">
+                      R$ {item.original_price}
+                    </div>
+                  )}
+                  <div className="text-xs md:text-base font-black text-blue-500 tracking-tighter">
+                    R$ {item.price}
+                  </div>
+                </div>
+              </div>
+
+              {/* Botão de Ação: No mobile vira um link invisível no card inteiro, no PC aparece o botão */}
+              <div className="mt-2 flex gap-1">
+                {isAdmin && (
+                  <button onClick={(e) => { e.preventDefault(); handleDelete(item.id); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg">
+                    <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                  </button>
+                )}
+                <a 
+                  href={item.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-foreground text-background text-[10px] md:text-xs py-1.5 rounded-lg font-black flex items-center justify-center gap-1 hover:opacity-90"
+                >
+                  <span className="hidden md:inline">VER</span> <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
