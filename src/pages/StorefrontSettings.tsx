@@ -40,7 +40,6 @@ export default function StorefrontSettings() {
   const [currentLogo, setCurrentLogo] = useState('');
   const [currentBanner, setCurrentBanner] = useState('');
 
-  // Lógica do Link Mascarado e Amigável
   const storeSlug = storeName 
     ? storeName.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') 
     : 'minha-loja';
@@ -134,12 +133,12 @@ export default function StorefrontSettings() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1">
           <p className="text-blue-500 font-bold text-xs uppercase tracking-widest">Painel de Identidade</p>
-          <h2 className="text-4xl font-black tracking-tight">Design da Vitrine</h2>
+          <h2 className="text-4xl font-black tracking-tight text-foreground">Design da Vitrine</h2>
         </div>
       </div>
 
-      {/* NOVO: CARD DE LINK COMPARTILHÁVEL COM O NOVO BOTÃO */}
-      <Card className="rounded-[2rem] border-blue-500/20 bg-blue-500/5 shadow-xl overflow-hidden border-2">
+      {/* CARD DE LINK COMPARTILHÁVEL */}
+      <Card className="rounded-[2rem] border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/10 shadow-xl overflow-hidden border-2">
         <CardContent className="p-8">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="h-16 w-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20 shrink-0">
@@ -153,24 +152,26 @@ export default function StorefrontSettings() {
               </p>
               
               <div className="flex flex-col lg:flex-row items-center gap-4 mt-4">
-                {/* Visor do Link */}
-                <div className="flex-1 w-full bg-background border-2 border-slate-200 h-12 rounded-xl flex items-center px-4 font-mono text-sm text-blue-600 overflow-hidden group hover:border-blue-500/50 transition-colors">
+                {/* Ajuste de legibilidade do Link no modo escuro */}
+                <div className="flex-1 w-full bg-background dark:bg-zinc-900/50 border-2 border-slate-200 dark:border-white/10 h-12 rounded-xl flex items-center px-4 font-mono text-sm text-blue-600 overflow-hidden group hover:border-blue-500/50 transition-colors">
                   <LinkIcon className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span className="truncate">3dcheck.app/<span className="font-bold text-slate-900">{storeSlug}</span>/produtos</span>
+                  <span className="truncate">
+                    3dcheck.app/
+                    <span className="font-bold text-slate-900 dark:text-white">{storeSlug}</span>
+                    /produtos
+                  </span>
                 </div>
                 
-                {/* Grupo de Botões (Copiar + Ver Vitrine) */}
                 <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                   <Button 
                     type="button"
                     onClick={handleCopyLink}
-                    className={`h-12 px-6 rounded-xl font-bold transition-all w-full sm:w-auto ${copied ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg'}`}
+                    className={`h-12 px-6 rounded-xl font-bold transition-all w-full sm:w-auto ${copied ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-900 dark:bg-zinc-100 dark:text-zinc-900 hover:bg-slate-800 text-white shadow-lg'}`}
                   >
                     {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
                     {copied ? 'COPIADO' : 'COPIAR LINK'}
                   </Button>
                   
-                  {/* BOTÃO VER MINHA VITRINE */}
                   <Button 
                     type="button"
                     variant="outline"
@@ -191,40 +192,46 @@ export default function StorefrontSettings() {
 
       <form onSubmit={handleSave} className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
-          <Card className="rounded-[2rem] border-slate-200 shadow-xl overflow-hidden">
-             <CardHeader className="bg-slate-50 border-b border-slate-100 p-8">
-               <CardTitle className="text-xl font-black flex items-center gap-2"><Globe className="w-5 h-5 text-blue-500" /> Informações Gerais</CardTitle>
+          <Card className="rounded-[2rem] border-slate-200 dark:border-white/10 shadow-xl overflow-hidden dark:bg-zinc-900/20">
+             {/* Correção do cabeçalho branco para modo escuro */}
+             <CardHeader className="bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-100 dark:border-white/10 p-8">
+               <CardTitle className="text-xl font-black flex items-center gap-2 text-foreground">
+                 <Globe className="w-5 h-5 text-blue-500" /> Informações Gerais
+               </CardTitle>
              </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-500">Nome Comercial</Label>
-                <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} required className="h-12 rounded-xl border-slate-200" />
+                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">Nome Comercial</Label>
+                <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} required className="h-12 rounded-xl border-slate-200 dark:border-white/10 dark:bg-zinc-950 dark:text-white" />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-500">Descrição da Bio</Label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-xl min-h-[100px] border-slate-200 leading-relaxed" />
+                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">Descrição da Bio</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="rounded-xl min-h-[100px] border-slate-200 dark:border-white/10 dark:bg-zinc-950 dark:text-white leading-relaxed" />
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-pink-600">User Instagram (sem @)</Label>
-                  <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="minhaloj3d" className="h-12 rounded-xl border-slate-200" />
+                  <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="minhaloj3d" className="h-12 rounded-xl border-slate-200 dark:border-white/10 dark:bg-zinc-950 dark:text-white" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-emerald-600">WhatsApp (DDD + Número)</Label>
-                  <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="11999998888" className="h-12 rounded-xl border-slate-200" />
+                  <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="11999998888" className="h-12 rounded-xl border-slate-200 dark:border-white/10 dark:bg-zinc-950 dark:text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-[2rem] border-slate-200 shadow-xl overflow-hidden">
-            <CardHeader className="bg-slate-50 border-b border-slate-100 p-8">
-               <CardTitle className="text-xl font-black flex items-center gap-2"><Settings2 className="w-5 h-5 text-blue-500" /> Modo de Visualização</CardTitle>
+          <Card className="rounded-[2rem] border-slate-200 dark:border-white/10 shadow-xl overflow-hidden dark:bg-zinc-900/20">
+            {/* Correção do cabeçalho branco para modo escuro */}
+            <CardHeader className="bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-100 dark:border-white/10 p-8">
+               <CardTitle className="text-xl font-black flex items-center gap-2 text-foreground">
+                 <Settings2 className="w-5 h-5 text-blue-500" /> Modo de Visualização
+               </CardTitle>
              </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="grid grid-cols-3 gap-3">
                 {['dark', 'light', 'colored'].map((s) => (
-                  <button key={s} type="button" onClick={() => setThemeStyle(s)} className={`p-4 rounded-2xl border-2 font-black uppercase text-[10px] transition-all ${themeStyle === s ? 'border-blue-600 bg-blue-50 text-blue-600 ring-4 ring-blue-50' : 'border-slate-200 text-slate-400'}`}>
+                  <button key={s} type="button" onClick={() => setThemeStyle(s)} className={`p-4 rounded-2xl border-2 font-black uppercase text-[10px] transition-all ${themeStyle === s ? 'border-blue-600 bg-blue-50 dark:bg-blue-600/20 text-blue-600 ring-4 ring-blue-50 dark:ring-blue-600/10' : 'border-slate-200 dark:border-white/5 text-slate-400'}`}>
                     {s === 'dark' ? 'Dark Mode' : s === 'light' ? 'Light Mode' : 'Cor Custom'}
                   </button>
                 ))}
@@ -234,40 +241,40 @@ export default function StorefrontSettings() {
         </div>
 
         <div className="space-y-8">
-          <Card className="rounded-[2rem] border-slate-200 shadow-xl">
+          <Card className="rounded-[2rem] border-slate-200 dark:border-white/10 shadow-xl dark:bg-zinc-900/20">
             <CardContent className="p-8 space-y-8">
               <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-slate-500">Cor Principal da Marca</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">Cor Principal da Marca</Label>
                 <div className="flex gap-2">
-                  <Input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-16 h-14 p-1 rounded-xl cursor-pointer border-slate-200" />
-                  <Input value={primaryColor} readOnly className="h-14 rounded-xl font-mono font-bold border-slate-200 uppercase" />
+                  <Input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-16 h-14 p-1 rounded-xl cursor-pointer border-slate-200 dark:border-white/10 dark:bg-zinc-950" />
+                  <Input value={primaryColor} readOnly className="h-14 rounded-xl font-mono font-bold border-slate-200 dark:border-white/10 dark:bg-zinc-950 text-foreground uppercase" />
                 </div>
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-slate-100">
-                <Label className="text-[10px] font-black uppercase text-slate-500">Logotipo</Label>
-                <div className="relative aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">Logotipo</Label>
+                <div className="relative aspect-square rounded-2xl bg-slate-50 dark:bg-zinc-950 border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center overflow-hidden">
                   {currentLogo ? (
                     <div className="relative w-full h-full p-4 group">
                       <img src={currentLogo} className="w-full h-full object-contain" />
                       <button type="button" onClick={() => handleRemoveImage('logo')} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"><X className="w-4 h-4" /></button>
                     </div>
-                  ) : <ImageIcon className="opacity-10 w-12 h-12" />}
+                  ) : <ImageIcon className="opacity-10 w-12 h-12 text-foreground" />}
                 </div>
-                <Input type="file" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="h-10 rounded-lg text-[10px] font-bold" />
+                <Input type="file" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="h-10 rounded-lg text-[10px] font-bold dark:border-white/10 dark:bg-zinc-950" />
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-slate-100">
-                <Label className="text-[10px] font-black uppercase text-slate-500">Banner de Fundo</Label>
-                <div className="relative aspect-video rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                <Label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">Banner de Fundo</Label>
+                <div className="relative aspect-video rounded-2xl bg-slate-50 dark:bg-zinc-950 border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center overflow-hidden">
                   {currentBanner ? (
                     <div className="relative w-full h-full group">
                       <img src={currentBanner} className="w-full h-full object-cover" />
                       <button type="button" onClick={() => handleRemoveImage('banner')} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"><X className="w-4 h-4" /></button>
                     </div>
-                  ) : <Layout className="opacity-10 w-12 h-12" />}
+                  ) : <Layout className="opacity-10 w-12 h-12 text-foreground" />}
                 </div>
-                <Input type="file" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} className="h-10 rounded-lg text-[10px] font-bold" />
+                <Input type="file" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} className="h-10 rounded-lg text-[10px] font-bold dark:border-white/10 dark:bg-zinc-950" />
               </div>
             </CardContent>
           </Card>
