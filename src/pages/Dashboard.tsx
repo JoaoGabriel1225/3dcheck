@@ -34,8 +34,11 @@ export default function Dashboard() {
   const [stats, setStats] = useState<OrderContext>({ total: 0, newOrders: 0, inProgress: 0, completed: 0, revenue: 0, cost: 0, profit: 0 });
   const [loading, setLoading] = useState(true);
 
-  // Alteração: Lógica para capturar o nome da loja cadastrada
-  const storeDisplayName = profile?.user_metadata?.store_name || profile?.name?.split(' ')[0];
+  // Alteração: Lógica robusta para capturar o nome da loja ou nome completo nos metadados
+  // Prioriza full_name e store_name para evitar que o e-mail seja exibido
+  const storeDisplayName = profile?.user_metadata?.full_name || 
+                           profile?.user_metadata?.store_name || 
+                           (profile?.name && !profile.name.includes('@') ? profile.name.split(' ')[0] : 'Empreendedor');
 
   // LÓGICA DE INSTALAÇÃO DO APP (PWA)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
