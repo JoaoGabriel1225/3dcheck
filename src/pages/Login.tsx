@@ -1,44 +1,53 @@
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase'; // Importando o supabase direto
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Lock, Mail, ArrowRight } from 'lucide-react';
-import { toast } from 'sonner'; // Para os avisos de erro/sucesso
+import { Lock, Mail, ArrowRight, UserPlus } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Login() {
+  const [isSignUp, setIsSignUp] = useState(false); // Estado para alternar entre Login e Cadastro
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      // Faz o login diretamente pelo Supabase
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      if (isSignUp) {
+        // --- LÓGICA DE CADASTRO ---
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
 
-      if (error) {
-        // Se der erro (senha errada, etc), avisa na tela
-        toast.error('Erro ao acessar: Verifique seu email e senha.');
-        console.error(error);
-        return;
+        if (error) throw error;
+        toast.success('Cadastro realizado! Verifique seu e-mail para confirmar.');
+        setIsSignUp(false); // Volta para o login após cadastrar
+      } else {
+        // --- LÓGICA DE LOGIN ---
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          toast.error('Erro ao acessar: Verifique seu email e senha.');
+          return;
+        }
+
+        toast.success('Login realizado com sucesso!');
+        setTimeout(() => {
+          window.location.href = '/app';
+        }, 500);
       }
-
-     // Se der certo, avisa e redireciona para o painel principal!
-      toast.success('Login realizado com sucesso!');
-      
-      setTimeout(() => {
-        window.location.href = '/app';
-      }, 500);
-      
-    } catch (error) {
-      console.error('Erro inesperado:', error);
-      toast.error('Ocorreu um erro inesperado.');
+    } catch (error: any) {
+      console.error('Erro na autenticação:', error);
+      toast.error(error.message || 'Ocorreu um erro inesperado.');
     } finally {
       setLoading(false);
     }
@@ -53,12 +62,9 @@ export default function Login() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-900/15 rounded-full blur-[120px] pointer-events-none" />
         
         <div className="relative z-10 flex items-center gap-4">
-          {/* AUMENTADO AQUI (PC): de h-10 para h-28 */}
           <div className="h-28 flex items-center justify-center">
-            {/* O nome do arquivo está como logo.jpg.png - mude aqui se lá no GitHub estiver diferente! */}
             <img src="/logo.jpg.png" alt="3dCheck Logo" className="h-full w-auto object-contain drop-shadow-[0_0_20px_rgba(37,99,235,0.6)]" />
           </div>
-          {/* Texto aumentado para acompanhar a logo grande */}
           <span className="text-5xl font-extrabold tracking-tight text-white">
             <span className="text-blue-500">3d</span>Check
           </span>
@@ -78,34 +84,33 @@ export default function Login() {
         </div>
       </div>
 
-      {/* LADO DIREITO: Formulário (Mobile e Login) */}
+      {/* LADO DIREITO: Formulário */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10">
-        
         <div className="absolute inset-0 lg:hidden bg-gradient-to-br from-[#0a0a0c] via-[#050505] to-[#0a192f] pointer-events-none" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] lg:hidden bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
-
+        
         <div className="w-full max-w-md space-y-8 relative z-20">
-          
           <div className="text-center lg:text-left">
             <div className="flex lg:hidden justify-center items-center gap-3 mb-8">
-              {/* AUMENTADO AQUI (Mobile): de h-10 para h-16 */}
               <div className="h-16 flex items-center justify-center">
-                {/* O nome do arquivo está como logo.jpg.png - mude aqui se lá no GitHub estiver diferente! */}
                 <img src="/logo.jpg.png" alt="3dCheck Logo" className="h-full w-auto object-contain drop-shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
               </div>
-              {/* Texto aumentado no mobile */}
               <span className="text-4xl font-extrabold tracking-tight text-white">
                 <span className="text-blue-500">3d</span>Check
               </span>
             </div>
 
-            <h2 className="text-3xl font-extrabold text-white tracking-tight">Bem-vindo de volta</h2>
-            <p className="text-slate-400 mt-2 font-medium">Insira suas credenciais para acessar o painel.</p>
+            {/* Títulos Dinâmicos */}
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">
+              {isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}
+            </h2>
+            <p className="text-slate-400 mt-2 font-medium">
+              {isSignUp ? 'Preencha os dados para começar a gerenciar sua produção.' : 'Insira suas credenciais para acessar o painel.'}
+            </p>
           </div>
 
           <Card className="border-white/10 shadow-2xl bg-white/[0.02] backdrop-blur-xl">
             <CardContent className="p-6 sm:p-8">
-              <form onSubmit={handleLogin} className="space-y-6">
+              <form onSubmit={handleAuth} className="space-y-6">
                 
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -130,9 +135,11 @@ export default function Login() {
                     <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-slate-400">
                       Senha
                     </Label>
-                    <a href="#" className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors">
-                      Esqueceu a senha?
-                    </a>
+                    {!isSignUp && (
+                      <a href="#" className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors">
+                        Esqueceu a senha?
+                      </a>
+                    )}
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
@@ -153,10 +160,23 @@ export default function Login() {
                   disabled={loading}
                   className="w-full h-12 font-bold text-base bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] flex items-center justify-center gap-2 group border-0"
                 >
-                  {loading ? 'Entrando...' : 'Acessar Painel'}
-                  {!loading && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+                  {loading ? 'Aguarde...' : (isSignUp ? 'Criar Conta' : 'Acessar Painel')}
+                  {!loading && (isSignUp ? <UserPlus className="w-5 h-5" /> : <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />)}
                 </Button>
               </form>
+
+              {/* Toggle de Alternância */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-slate-400 font-medium">
+                  {isSignUp ? 'Já possui uma conta?' : 'Ainda não tem uma conta?'}
+                  <button 
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="ml-2 text-blue-500 hover:text-blue-400 font-bold transition-colors underline-offset-4 hover:underline"
+                  >
+                    {isSignUp ? 'Faça login' : 'Cadastre-se agora'}
+                  </button>
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
