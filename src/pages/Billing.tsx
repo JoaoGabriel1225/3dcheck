@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   AlertTriangle, CheckCircle2, ShieldCheck, Zap, 
-  Star, Rocket, Loader2, Copy, CreditCard, Sparkles 
+  Star, Rocket, Loader2, Copy, CreditCard, Sparkles,
+  Image as ImageIcon, SendHorizontal, FileUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -12,6 +14,7 @@ export default function Billing() {
   const { profile } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
   // SUA CHAVE PIX ATUALIZADA
   const pixKey = "24971502-ab9f-4837-88ff-73eea13fa78a";
@@ -34,6 +37,55 @@ export default function Billing() {
     toast.success("Chave PIX copiada! Agora é só pagar no seu banco.");
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+      toast.info(`Arquivo ${e.target.files[0].name} selecionado.`);
+    }
+  };
+
+  // FUNÇÃO PARA ATIVAÇÃO MANUAL (PIX COM COMPROVANTE)
+  const submitManualPayment = async () => {
+    if (!file) {
+      toast.error("Por favor, anexe o comprovante do Pix para validação.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1. Upload para o Storage (Bucket: comprovantes)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `pix_${profile?.id}_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('comprovantes')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Registro na tabela subscriptions_pending
+      const { error: dbError } = await supabase
+        .from('subscriptions_pending')
+        .insert([{ 
+          user_id: profile?.id, 
+          user_email: profile?.email,
+          receipt_url: fileName,
+          status: 'pending'
+        }]);
+
+      if (dbError) throw dbError;
+
+      toast.success("Comprovante enviado com sucesso! João Gabriel (Dev) validará seu acesso em breve.");
+      setFile(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao processar envio. Verifique sua conexão.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // CHECKOUT AUTOMÁTICO (CARTÃO/MERCADO PAGO)
   const handleCheckout = async () => {
     if (selectedPlan !== 'monthly') {
       toast.info("O plano anual estará disponível em breve! Use o Mensal por enquanto.");
@@ -86,12 +138,12 @@ export default function Billing() {
         </div>
       </div>
 
-      {/* STATUS DO TRIAL DINÂMICO */}
+      {/* STATUS DO TRIAL */}
       {isExpired ? (
         <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-[2rem] flex items-center gap-4 animate-pulse">
           <AlertTriangle className="h-8 w-8 text-red-500" />
           <div>
-            <h3 className="font-black text-red-500 uppercase text-sm tracking-widest">Sua produtividade está em pausa</h3>
+            <h3 className="font-black text-red-500 uppercase text-sm tracking-widest uppercase">Sua produtividade está em pausa</h3>
             <p className="text-xs font-bold text-red-500/80">O período de demonstração expirou. Reative suas ferramentas de gestão agora.</p>
           </div>
         </div>
@@ -107,7 +159,7 @@ export default function Billing() {
         </div>
       )}
 
-      {/* SELEÇÃO DE PLANOS COM NOVA REDAÇÃO */}
+      {/* SELEÇÃO DE PLANOS */}
       <div className="grid md:grid-cols-2 gap-6">
         <button 
           onClick={() => setSelectedPlan('monthly')}
@@ -151,15 +203,15 @@ export default function Billing() {
             Configuração de Acesso
           </CardTitle>
           <CardDescription className="text-base font-medium">
-            Você está habilitando o <strong className="text-blue-500 uppercase">{selectedPlan === 'monthly' ? 'Plano Pro Mensal' : 'Plano Pro Anual'}</strong>. 
-            Ambiente criptografado e seguro.
+            Ative o <strong className="text-blue-500 uppercase">{selectedPlan === 'monthly' ? 'Plano Pro Mensal' : 'Plano Pro Anual'}</strong>. 
+            Suporte direto com o desenvolvedor.
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="p-12 space-y-8">
+        <CardContent className="p-12 space-y-10">
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-10">
             {[
-              "Acesso ilimitado ao Marketplace Hub",
+              "Marketplace Hub com descontos reais",
               "Calculadora de Custos de Alta Precisão",
               "Vitrine Digital Profissional (Link Personalizado)",
               "Ecossistema de Gestão de Pedidos & CRM",
@@ -175,32 +227,58 @@ export default function Billing() {
             ))}
           </ul>
 
-          <div className="pt-6 space-y-4">
+          <div className="space-y-8">
+            {/* BOTÃO PARA CARTÃO (MERCADO PAGO) */}
             <Button 
               onClick={handleCheckout}
               disabled={loading}
               className="w-full h-20 text-2xl font-black bg-blue-600 hover:bg-blue-500 text-white rounded-[2rem] shadow-2xl shadow-blue-600/30 transition-all uppercase tracking-tighter italic flex items-center justify-center gap-3 active:scale-95"
             >
-              {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : "ATIVAR ACESSO IMEDIATO"}
+              {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : <><CreditCard className="w-6 h-6" /> PAGAR COM CARTÃO</>}
             </Button>
             
-            {/* ÁREA DE PIX RÁPIDO */}
-            <div className="mt-8 pt-8 border-t border-border/50 space-y-4">
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                <CreditCard className="w-4 h-4" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Pague via PIX Copia e Cola</span>
+            {/* ÁREA DE PIX MANUAL (JOÃO GABRIEL) */}
+            <div className="pt-8 border-t border-border/50 space-y-6">
+              <div className="text-center space-y-2">
+                <div className="flex items-center justify-center gap-2 text-blue-500">
+                  <Zap className="w-4 h-4 fill-blue-500" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Ativação Manual via PIX</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground font-bold">Pague ao desenvolvedor João Gabriel e anexe o comprovante abaixo.</p>
               </div>
+
               <div className="flex items-center gap-2 bg-accent/20 p-2 rounded-2xl border border-dashed border-border/60">
                  <code className="flex-1 text-[9px] font-mono font-bold truncate px-4 opacity-50 italic">{pixKey}</code>
                  <Button onClick={handleCopyPix} size="sm" className="bg-foreground text-background font-black rounded-xl px-6 h-10 hover:opacity-90">
                     <Copy className="w-4 h-4 mr-2" /> COPIAR
                  </Button>
               </div>
+
+              {/* UPLOAD DO COMPROVANTE */}
+              <div className="grid gap-4">
+                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-border rounded-[2.5rem] cursor-pointer hover:bg-blue-500/5 hover:border-blue-500/30 transition-all group">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <FileUp className="w-10 h-10 text-muted-foreground mb-3 group-hover:text-blue-500 transition-colors" />
+                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                      {file ? file.name : "ANEXAR COMPROVANTE DO PIX"}
+                    </p>
+                  </div>
+                  <input type="file" className="hidden" onChange={handleFileUpload} accept="image/*" />
+                </label>
+
+                <Button 
+                  onClick={submitManualPayment}
+                  disabled={loading || !file}
+                  className="w-full h-16 text-lg font-black bg-emerald-600 hover:bg-emerald-500 text-white rounded-[1.5rem] shadow-xl transition-all uppercase flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : <><SendHorizontal className="w-5 h-5" /> VALIDAR PAGAMENTO</>}
+                </Button>
+              </div>
             </div>
           </div>
           
           <p className="text-center text-[9px] text-muted-foreground font-black uppercase tracking-[0.3em] italic opacity-50">
-            Processamento Garantido via Mercado Pago • 3DCheck Security
+            Suporte VIP Direto • 3DCheck Security Integration
           </p>
         </CardContent>
       </Card>
