@@ -21,7 +21,6 @@ export default function Marketplace() {
   const [sortBy, setSortBy] = useState('recent'); 
   const [activeCategory, setActiveCategory] = useState('Todos');
 
-  // Categorias Atualizadas
   const categories = [
     'Todos', 
     'Impressoras 3D', 
@@ -39,11 +38,21 @@ export default function Marketplace() {
     fetchProducts();
   }, []);
 
+  // Função para calcular o desconto automaticamente
+  const autoCalculateDiscount = (currentPrice: string, oldPrice: string) => {
+    const p = parseFloat(currentPrice.replace(/[^\d.,]/g, '').replace(',', '.'));
+    const op = parseFloat(oldPrice.replace(/[^\d.,]/g, '').replace(',', '.'));
+
+    if (p && op && op > p) {
+      const discountPercent = Math.round(((op - p) / op) * 100);
+      return `${discountPercent}% OFF`;
+    }
+    return '';
+  };
+
   async function fetchProducts() {
     try {
-      const { data, error } = await supabase
-        .from('marketplace_products')
-        .select('*');
+      const { data, error } = await supabase.from('marketplace_products').select('*');
       if (error) throw error;
       setSavedProducts(data || []);
     } catch (err) {
@@ -55,10 +64,7 @@ export default function Marketplace() {
 
   async function handleProductClick(product: any) {
     window.open(product.url, '_blank', 'noopener,noreferrer');
-    await supabase
-      .from('marketplace_products')
-      .update({ clicks: (product.clicks || 0) + 1 })
-      .eq('id', product.id);
+    await supabase.from('marketplace_products').update({ clicks: (product.clicks || 0) + 1 }).eq('id', product.id);
   }
 
   async function handlePost() {
@@ -84,25 +90,19 @@ export default function Marketplace() {
 
       let error;
       if (importingProduct.id) {
-        const { error: updateError } = await supabase
-          .from('marketplace_products')
-          .update(productData)
-          .eq('id', importingProduct.id);
+        const { error: updateError } = await supabase.from('marketplace_products').update(productData).eq('id', importingProduct.id);
         error = updateError;
       } else {
-        const { error: insertError } = await supabase
-          .from('marketplace_products')
-          .insert([{ ...productData, clicks: 0 }]);
+        const { error: insertError } = await supabase.from('marketplace_products').insert([{ ...productData, clicks: 0 }]);
         error = insertError;
       }
 
       if (error) throw error;
-      toast.success(importingProduct.id ? 'Atualizado com sucesso!' : 'Postado com sucesso!');
+      toast.success(importingProduct.id ? 'Atualizado!' : 'Postado!');
       setImportingProduct(null);
       fetchProducts();
     } catch (err) {
-      console.error(err);
-      toast.error('Erro no banco de dados. Verificou se a coluna category existe?');
+      toast.error('Erro no banco de dados');
     } finally {
       setIsSaving(false);
     }
@@ -134,9 +134,7 @@ export default function Marketplace() {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-  const topProductId = filteredProducts.length > 0 
-    ? [...filteredProducts].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0].id 
-    : null;
+  const topProductId = filteredProducts.length > 0 ? [...filteredProducts].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0].id : null;
 
   return (
     <div className="space-y-8 pb-20 px-4 md:px-0">
@@ -148,16 +146,13 @@ export default function Marketplace() {
           <p className="text-muted-foreground font-medium">Equipamentos e insumos profissionais.</p>
         </div>
 
-        {/* Tabs de Categorias */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={`px-6 py-2 rounded-full text-[10px] font-black transition-all whitespace-nowrap border-2 ${
-                activeCategory === cat 
-                ? 'bg-blue-500 border-blue-500 text-white shadow-lg' 
-                : 'bg-transparent border-accent/20 text-muted-foreground hover:border-blue-500/30'
+                activeCategory === cat ? 'bg-blue-500 border-blue-500 text-white shadow-lg' : 'bg-transparent border-accent/20 text-muted-foreground hover:border-blue-500/30'
               }`}
             >
               {cat.toUpperCase()}
@@ -217,14 +212,41 @@ export default function Marketplace() {
                         ))}
                     </select>
                   </div>
+
                   <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase text-blue-500 ml-1">Preço Atual</span>
-                    <Input value={importingProduct.price} onChange={(e) => setImportingProduct({...importingProduct, price: e.target.value})} className="font-black" />
+                    <Input 
+                      value={importingProduct.price} 
+                      onChange={(e) => {
+                        const newPrice = e.target.value;
+                        const oldPrice = importingProduct.originalPrice || importingProduct.original_price || "0";
+                        setImportingProduct({
+                          ...importingProduct, 
+                          price: newPrice,
+                          discount: autoCalculateDiscount(newPrice, oldPrice)
+                        });
+                      }} 
+                      className="font-black" 
+                    />
                   </div>
+
                   <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Preço Original</span>
-                    <Input value={importingProduct.original_price || importingProduct.originalPrice} onChange={(e) => setImportingProduct({...importingProduct, originalPrice: e.target.value})} />
+                    <Input 
+                      value={importingProduct.originalPrice || importingProduct.original_price} 
+                      onChange={(e) => {
+                        const newOriginal = e.target.value;
+                        const currentPrice = importingProduct.price || "0";
+                        setImportingProduct({
+                          ...importingProduct, 
+                          originalPrice: newOriginal,
+                          original_price: newOriginal,
+                          discount: autoCalculateDiscount(currentPrice, newOriginal)
+                        });
+                      }} 
+                    />
                   </div>
+
                   <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase text-green-500 ml-1">Tag Desconto</span>
                     <Input value={importingProduct.discount} onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})} className="font-bold text-green-500" />
@@ -244,6 +266,7 @@ export default function Marketplace() {
         </div>
       )}
 
+      {/* Grid de Itens */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 text-foreground">
           {filteredProducts.map((item) => (
