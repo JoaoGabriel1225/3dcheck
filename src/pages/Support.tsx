@@ -16,7 +16,7 @@ import {
   Trash2, 
   History, 
   FileCheck,
-  Search // ADICIONADO
+  Search 
 } from 'lucide-react';
 
 export default function Support() {
@@ -24,8 +24,6 @@ export default function Support() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  
-  // NOVOS ESTADOS PARA PESQUISA E ABAS
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSubTab, setActiveSubTab] = useState<'active' | 'history'>('active');
 
@@ -38,7 +36,31 @@ export default function Support() {
     setTickets(data || []);
   };
 
-  useEffect(() => { fetchTickets(); }, [user]);
+  // CONFIGURAÇÃO DE TEMPO REAL: Notifica o usuário quando o Admin responde
+  useEffect(() => { 
+    fetchTickets(); 
+
+    if (user) {
+      const subscription = supabase
+        .channel('user_support_channel')
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'support_tickets',
+          filter: `user_id=eq.${user.id}` 
+        }, (payload) => {
+          if (payload.new.has_unread_reply) {
+            toast.info("Você recebeu uma nova resposta do suporte!", {
+              icon: <Bell className="text-blue-500" />,
+            });
+            fetchTickets();
+          }
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(subscription); };
+    }
+  }, [user]);
 
   const markAsRead = async (ticketId: string, hasUnread: boolean) => {
     if (!hasUnread) return;
@@ -61,13 +83,12 @@ export default function Support() {
       if (error) throw error;
       
       toast.success("Conversa removida.");
-      setTickets(prev => prev.filter(t => t.id !== ticketId)); // Atualiza sem precisar de fetch
+      setTickets(prev => prev.filter(t => t.id !== ticketId));
     } catch (err: any) {
       toast.error("Erro ao excluir.");
     }
   };
 
-  // LÓGICA DE FILTRAGEM (ABAS + PESQUISA)
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = 
       t.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,20 +105,17 @@ export default function Support() {
     
     let attachmentPath = null;
     if (file) {
-      const fileName = `${Date.now()}-${file.name}`;
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
       const { data, error } = await supabase.storage
         .from('support-attachments')
-        .upload(`${user.id}/${fileName}`, file);
+        .upload(`${user?.id}/${fileName}`, file);
       
-      if (error) {
-        toast.error("Erro ao subir anexo");
-      } else {
-        attachmentPath = data.path;
-      }
+      if (error) toast.error("Erro ao subir anexo");
+      else attachmentPath = data.path;
     }
 
     const { error } = await supabase.from('support_tickets').insert({
-      user_id: user.id,
+      user_id: user?.id,
       subject: formData.get('subject'),
       message: formData.get('message'),
       attachment_url: attachmentPath,
@@ -125,7 +143,6 @@ export default function Support() {
         <History className="w-8 h-8 text-blue-500/20" />
       </header>
 
-      {/* FORMULÁRIO DE ENVIO */}
       <Card className="bg-card/50 p-8 rounded-[2.5rem] border-border border shadow-2xl backdrop-blur-sm">
         <form onSubmit={handleSendTicket} className="space-y-6">
           <div className="space-y-4">
@@ -143,7 +160,7 @@ export default function Support() {
               <Label className="flex items-center gap-3 cursor-pointer bg-blue-500/5 text-blue-500 px-5 py-3 rounded-2xl border border-blue-500/20 hover:bg-blue-500/10 transition-all">
                 <Paperclip className="w-4 h-4" />
                 <span className="text-[10px] font-black uppercase">
-                  {file ? file.name : 'Anexar evidência (Foto)'}
+                  {file ? file.name : 'Anexar evidência'}
                 </span>
                 <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </Label>
@@ -156,7 +173,6 @@ export default function Support() {
         </form>
       </Card>
 
-      {/* FILTROS E PESQUISA */}
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <div className="flex bg-muted/50 p-1 rounded-xl w-fit border border-border">
@@ -172,7 +188,7 @@ export default function Support() {
               onClick={() => setActiveSubTab('history')}
               className="rounded-lg font-black text-[10px] uppercase h-9"
             >
-              Histórico
+              Respostas
             </Button>
           </div>
           
@@ -187,7 +203,6 @@ export default function Support() {
           </div>
         </div>
 
-        {/* LISTA DE CHAMADOS FILTRADA */}
         <div className="space-y-6">
           {filteredTickets.length === 0 ? (
             <div className="py-16 text-center border-2 border-dashed border-border rounded-[3rem] opacity-40 italic font-medium">
@@ -244,12 +259,14 @@ export default function Support() {
                 <p className="text-sm font-medium opacity-70 mb-4 leading-relaxed">{ticket.message}</p>
 
                 {ticket.admin_reply && (
-                  <div className="mt-6 p-6 bg-background/50 border-l-4 border-blue-600 rounded-r-3xl">
+                  <div className="mt-6 p-6 bg-blue-500/5 border-l-4 border-blue-600 rounded-r-3xl">
                     <div className="flex items-center gap-2 mb-2 text-blue-500">
                       <CheckCircle2 className="w-4 h-4" />
                       <span className="text-[10px] font-black uppercase tracking-tighter">Resposta da Equipe 3DCheck</span>
                     </div>
-                    <p className="font-bold text-sm italic text-foreground/90">{ticket.admin_reply}</p>
+                    <p className="font-bold text-sm italic text-foreground/90 leading-relaxed">
+                      {ticket.admin_reply}
+                    </p>
                   </div>
                 )}
               </div>
