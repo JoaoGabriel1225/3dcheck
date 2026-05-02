@@ -16,12 +16,13 @@ import Settings from './pages/Settings';
 import Billing from './pages/Billing';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
-import Marketplace from './pages/Marketplace'; // IMPORTAÇÃO ADICIONADA
+import Marketplace from './pages/Marketplace';
 import Orders from './pages/Orders';
 import StorefrontSettings from './pages/StorefrontSettings';
 import AdminDashboard from './pages/AdminDashboard';
 import Storefront from './pages/Storefront';
 import Clients from './pages/Clients';
+import Support from './pages/Support'; // IMPORTAÇÃO DA NOVA PÁGINA
 
 export default function App() {
   return (
@@ -38,9 +39,10 @@ export default function App() {
               <Route path="clients" element={<Clients />} />
               <Route path="orders" element={<Orders />} />
               <Route path="products" element={<Products />} />
-              <Route path="marketplace" element={<Marketplace />} /> {/* ROTA ADICIONADA AQUI */}
+              <Route path="marketplace" element={<Marketplace />} />
               <Route path="storefront-settings" element={<StorefrontSettings />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="support" element={<Support />} /> {/* ROTA DE SUPORTE ADICIONADA AQUI */}
             </Route>
             
             <Route element={<ProtectedLayout />}>
