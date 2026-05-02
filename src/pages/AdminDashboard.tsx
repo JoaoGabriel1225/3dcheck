@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/table';
+} from '@/components/ui/table';
 import { toast } from 'sonner';
 import { 
   CheckCircle, XCircle, ExternalLink, UserCog, 
@@ -21,7 +21,6 @@ import {
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'finance' | 'users' | 'support'>('finance');
-  // NOVOS ESTADOS PARA SUPORTE
   const [supportSubTab, setSupportSubTab] = useState<'pending' | 'history'>('pending');
   const [supportSearch, setSupportSearch] = useState('');
   
@@ -52,7 +51,7 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // --- FUNÇÕES DE AÇÃO FINANCEIRA (ADICIONADAS PARA CORRIGIR O ERRO) ---
+  // --- FUNÇÕES DE AÇÃO FINANCEIRA (RESTAURADAS) ---
   const handleApprove = async (requestId: string, userId: string, userName: string) => {
     try {
       const { error } = await supabase.rpc('approve_subscription', { 
@@ -87,7 +86,7 @@ export default function AdminDashboard() {
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // NOVA LÓGICA DE FILTRAGEM E PESQUISA PARA SUPORTE
+  // Lógica de filtragem e pesquisa para suporte
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = 
       t.subject?.toLowerCase().includes(supportSearch.toLowerCase()) ||
@@ -109,7 +108,7 @@ export default function AdminDashboard() {
       if (error) throw error;
       toast.success("Resposta enviada!");
       setReplyTexts(prev => ({ ...prev, [ticketId]: '' }));
-      fetchData(); // Move automaticamente para o histórico
+      fetchData();
     } catch (err) {
       toast.error("Erro ao enviar.");
     }
@@ -117,7 +116,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20 px-4">
-      {/* HEADER E NAVEGAÇÃO POR ABAS (Original mantido) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black tracking-tighter uppercase italic">Admin <span className="text-blue-500">Control</span></h2>
@@ -227,10 +225,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ABA SUPORTE: ATUALIZADA COM SUB-ABAS E PESQUISA */}
       {activeTab === 'support' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          
           <div className="flex flex-col md:flex-row justify-between gap-4">
             <div className="flex bg-muted/30 p-1 rounded-xl w-fit">
               <Button 
