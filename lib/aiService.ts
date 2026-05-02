@@ -1,52 +1,51 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+// Usaremos o fetch direto para não precisar instalar bibliotecas novas no GitHub
+const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
 const SYSTEM_INSTRUCTION = `
-Você é o "CheckBot", o especialista nível sênior do 3DCheck. 
-Sua missão é ser o suporte mais inteligente do mundo maker.
+Você é o "CheckBot", o assistente oficial do 3DCheck. 
+Seu tom é amigável e focado em produtividade para o mundo Maker.
 
-### 📚 BASE DE DADOS 3DCHECK:
-1. PRECIFICAÇÃO: O app calcula: Material + Depreciação da Máquina + Energia + Lucro + Taxas.
-2. ELITE PRO (R$ 19,90): Libera Vitrine Online, Relatórios Financeiros e remove anúncios.
-3. SUPORTE: Pagamentos via PIX são validados pelo João (Admin) em até 24h úteis.
-4. ESTOQUE: Controle grama a grama de PLA, ABS e PETG.
+CONHECIMENTO:
+- Precificação: Soma material, tempo de máquina, energia e lucro.
+- Elite Pro: R$ 19,90/mês com Vitrine Online e relatórios.
+- Pagamentos: Via PIX, aprovados pelo João (Admin) em até 24h úteis.
 
-### 🤖 COMPORTAMENTO:
-- Chame o usuário de "Maker". 🚀
-- Se o usuário perguntar algo avançado sobre "fatiamento" ou "custo fixo", responda como um consultor de negócios.
-- Nunca diga "não sei"; se for um erro do app, diga que o João já está analisando.
+REGRAS: Sempre chame o usuário de "Maker". Use emojis como 🚀 e 🖨️.
 `;
 
 export const getAIResponse = async (userMessage: string, chatHistory: any[] = []) => {
-  if (!genAI) return "Maker, a chave API não foi configurada corretamente na Vercel.";
+  if (!API_KEY) return "Maker, a chave da Groq não foi configurada na Vercel.";
 
   try {
-    // Mudamos para 'gemini-1.5-flash-latest' para evitar o erro 404 da v1beta
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash-latest" 
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile", // Um dos modelos mais inteligentes do mundo
+        messages: [
+          { role: "system", content: SYSTEM_INSTRUCTION },
+          ...chatHistory.map(msg => ({
+            role: msg.role === 'assistant' ? 'assistant' : 'user',
+            content: msg.content
+          })),
+          { role: "user", content: userMessage }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      })
     });
 
-    const history = chatHistory
-      .filter((msg, index) => !(index === 0 && msg.role === 'assistant'))
-      .map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }],
-      }));
-
-    const chat = model.startChat({
-      history: history,
-      generationConfig: { maxOutputTokens: 1000, temperature: 0.7 }
-    });
-
-    // Injetamos a inteligência de sistema diretamente no prompt para garantir eficácia
-    const prompt = `[INSTRUÇÕES OBRIGATÓRIAS: ${SYSTEM_INSTRUCTION}]\n\nPergunta: ${userMessage}`;
-    const result = await chat.sendMessage(prompt);
+    const data = await response.json();
     
-    return result.response.text();
+    if (data.error) throw new Error(data.error.message);
+    
+    return data.choices[0].message.content;
+
   } catch (error: any) {
-    console.error("Erro detectado:", error);
-    return "Maker, tive um erro de conexão. Verifique se sua chave API na Vercel é nova e do modelo 1.5 Flash.";
+    console.error("Erro na Groq:", error);
+    return "Maker, tive um soluço técnico! 🔌 Tente novamente ou acione o suporte humano.";
   }
 };
