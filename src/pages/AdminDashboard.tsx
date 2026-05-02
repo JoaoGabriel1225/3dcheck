@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { 
   CheckCircle, XCircle, ExternalLink, UserCog, 
   Wallet, RefreshCw, MessageSquare, Send, Paperclip, Search, Users, ShieldAlert,
-  Bell // ADICIONADO
+  Bell 
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -44,19 +44,18 @@ export default function AdminDashboard() {
       setUsers(profs.data || []);
       setTickets(tix.data || []);
     } catch (e: any) {
-      toast.error('Falha ao sincronizar dados.');
+      toast.error('Falha ao sincronizar dados administrativos.');
     } finally {
       setLoading(false);
     }
   };
 
-  // --- CONFIGURAÇÃO DE TEMPO REAL E NOTIFICAÇÕES (MUDANÇA PRINCIPAL) ---
+  // --- CONFIGURAÇÃO DE TEMPO REAL E NOTIFICAÇÕES ---
   useEffect(() => {
     fetchData();
 
     const adminChannel = supabase
       .channel('admin_realtime_updates')
-      // Ouve novos comprovantes de pagamento
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'subscriptions_pending' }, () => {
         toast.success("NOVO COMPROVANTE!", {
           description: "Um operador enviou um pagamento para validação.",
@@ -65,7 +64,6 @@ export default function AdminDashboard() {
         });
         fetchData();
       })
-      // Ouve novas mensagens no suporte
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_tickets' }, () => {
         toast.info("NOVO CHAMADO DE SUPORTE!", {
           description: "Um usuário abriu uma nova solicitação de ajuda.",
@@ -130,23 +128,30 @@ export default function AdminDashboard() {
     try {
       const { error } = await supabase
         .from('support_tickets')
-        .update({ admin_reply: reply, status: 'responded', has_unread_reply: true })
+        .update({ 
+          admin_reply: reply, 
+          status: 'responded', 
+          has_unread_reply: true 
+        })
         .eq('id', ticketId);
+
       if (error) throw error;
-      toast.success("Resposta enviada!");
+      
+      toast.success("Resposta enviada com sucesso!");
       setReplyTexts(prev => ({ ...prev, [ticketId]: '' }));
       fetchData();
-    } catch (err) {
-      toast.error("Erro ao enviar.");
+    } catch (err: any) {
+      toast.error("Erro ao registrar resposta. Verifique as permissões de Admin.");
     }
   };
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20 px-4">
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black tracking-tighter uppercase italic">Admin <span className="text-blue-500">Control</span></h2>
-          <p className="text-muted-foreground font-medium italic">Gestão centralizada do ecossistema 3DCheck.</p>
+          <p className="text-muted-foreground font-medium italic">Sincronização global do ecossistema 3DCheck.</p>
         </div>
         
         <div className="flex bg-muted/50 p-1.5 rounded-2xl border border-border shrink-0">
@@ -163,6 +168,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* ABA FINANCEIRO */}
       {activeTab === 'finance' && (
         <Card className="rounded-[2.5rem] border-border bg-card/50 overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <CardHeader className="p-8 border-b border-border/50 bg-blue-500/5">
@@ -184,8 +190,8 @@ export default function AdminDashboard() {
                 <TableRow key={req.id} className="border-border/50 hover:bg-accent/5">
                   <TableCell className="px-8 py-6 font-bold text-xs">{new Date(req.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="px-8 py-6">
-                    <div className="font-black text-sm uppercase italic">{req.profiles?.name}</div>
-                    <div className="text-[10px] font-bold opacity-50">{req.profiles?.email}</div>
+                    <div className="font-black text-sm uppercase italic">{req.profiles?.name || 'Inexistente'}</div>
+                    <div className="text-[10px] font-bold opacity-50">{req.profiles?.email || '---'}</div>
                   </TableCell>
                   <TableCell className="px-8 py-6">
                     <Button variant="link" className="text-blue-500 font-black italic p-0 h-auto flex items-center gap-1" onClick={() => window.open(supabase.storage.from('comprovantes').getPublicUrl(req.receipt_url).data.publicUrl, '_blank')}>
@@ -207,6 +213,7 @@ export default function AdminDashboard() {
         </Card>
       )}
 
+      {/* ABA USUÁRIOS */}
       {activeTab === 'users' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="relative max-w-md group">
@@ -252,6 +259,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* ABA SUPORTE */}
       {activeTab === 'support' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -259,6 +267,7 @@ export default function AdminDashboard() {
               <Button size="sm" variant={supportSubTab === 'pending' ? 'default' : 'ghost'} onClick={() => setSupportSubTab('pending')} className="rounded-lg font-black text-[10px] uppercase h-9">Pendentes ({tickets.filter(t => !t.admin_reply).length})</Button>
               <Button size="sm" variant={supportSubTab === 'history' ? 'default' : 'ghost'} onClick={() => setSupportSubTab('history')} className="rounded-lg font-black text-[10px] uppercase h-9">Histórico ({tickets.filter(t => t.admin_reply).length})</Button>
             </div>
+            
             <div className="relative w-full md:w-80 group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30 group-focus-within:text-blue-500 transition-colors" />
               <Input placeholder="Pesquisar no suporte..." value={supportSearch} onChange={(e) => setSupportSearch(e.target.value)} className="pl-10 rounded-xl h-11 border-border shadow-sm" />
@@ -276,8 +285,9 @@ export default function AdminDashboard() {
                     </div>
                     <h3 className="text-xl font-black italic uppercase tracking-tighter">{ticket.subject}</h3>
                     <div className="p-6 bg-background/50 rounded-2xl border border-border text-sm font-medium leading-relaxed italic opacity-80">"{ticket.message}"</div>
+                    
                     {ticket.attachment_url && (
-                      <Button variant="outline" size="sm" className="rounded-xl border-blue-500/20 text-blue-500 bg-blue-500/5 font-black italic uppercase text-[10px] gap-2 h-10 px-4" onClick={() => window.open(supabase.storage.from('support-attachments').getPublicUrl(ticket.attachment_url).data.publicUrl, '_blank')}>
+                      <Button variant="outline" size="sm" className="rounded-xl border-blue-500/20 text-blue-500 bg-blue-500/5 hover:bg-blue-500/10 font-black italic uppercase text-[10px] gap-2 h-10 px-4" onClick={() => window.open(supabase.storage.from('support-attachments').getPublicUrl(ticket.attachment_url).data.publicUrl, '_blank')}>
                         <Paperclip className="w-4 h-4" /> Ver Anexo de Evidência
                       </Button>
                     )}
@@ -289,6 +299,7 @@ export default function AdminDashboard() {
                       <div className="font-black text-sm italic uppercase">{ticket.profiles?.name}</div>
                       <div className="text-[9px] font-bold opacity-50">{ticket.profiles?.email}</div>
                     </div>
+                    
                     <div className="pt-4 border-t border-border/50">
                       {ticket.admin_reply ? (
                         <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-[11px] font-bold italic text-emerald-700">
@@ -306,6 +317,11 @@ export default function AdminDashboard() {
                 </div>
               </Card>
             ))}
+            {filteredTickets.length === 0 && (
+              <div className="py-20 text-center opacity-40 italic font-medium border-2 border-dashed border-border rounded-[2.5rem]">
+                Nenhum chamado encontrado nesta categoria.
+              </div>
+            )}
           </div>
         </div>
       )}
