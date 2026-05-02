@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/table';
 import { toast } from 'sonner';
 import { 
   CheckCircle, XCircle, ExternalLink, UserCog, 
@@ -51,6 +51,35 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // --- FUNÇÕES DE AÇÃO FINANCEIRA (ADICIONADAS PARA CORRIGIR O ERRO) ---
+  const handleApprove = async (requestId: string, userId: string, userName: string) => {
+    try {
+      const { error } = await supabase.rpc('approve_subscription', { 
+        target_user_id: userId, 
+        pending_id: requestId 
+      });
+      if (error) throw error;
+      toast.success(`Elite ativada para ${userName}!`);
+      fetchData();
+    } catch (err: any) {
+      toast.error('Erro ao aprovar assinatura.');
+    }
+  };
+
+  const handleReject = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('subscriptions_pending')
+        .update({ status: 'rejected' })
+        .eq('id', requestId);
+      if (error) throw error;
+      toast.error('Solicitação rejeitada.');
+      fetchData();
+    } catch (err: any) {
+      toast.error('Erro ao processar rejeição.');
+    }
+  };
 
   // Lógica da Barra de Pesquisa de Usuários
   const filteredUsers = users.filter(u => 
