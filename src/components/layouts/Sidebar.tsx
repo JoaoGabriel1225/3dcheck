@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabase'; // Importação do supabase para checar notificações
 import { 
   LayoutDashboard, 
   PackageSearch,
@@ -15,17 +16,35 @@ import {
   Download,
   Smartphone,
   Settings2,
-  ShoppingBag // IMPORTAÇÃO ADICIONADA AQUI
+  ShoppingBag,
+  MessageSquare, // Ícone de Suporte
+  Bell // Ícone de Notificação
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth(); // Pegando 'user' para a busca no Supabase
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAppMode, setIsAppMode] = useState(false);
+  const [hasUnreadSupport, setHasUnreadSupport] = useState(false); // Estado para notificação de suporte
+
+  // Função para checar se há respostas não lidas no suporte
+  const checkSupportNotifications = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('support_tickets')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('has_unread_reply', true)
+      .limit(1);
+    
+    setHasUnreadSupport(data && data.length > 0);
+  };
 
   useEffect(() => {
+    checkSupportNotifications();
+
     // 1. Detecta se o usuário já está navegando de dentro do App instalado
     const checkAppMode = window.matchMedia('(display-mode: standalone)').matches 
       || (window.navigator as any).standalone 
@@ -36,42 +55,30 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     // 2. Tenta "pescar" o sinal global que o main.tsx capturou
     if ((window as any).deferredPrompt) {
       setDeferredPrompt((window as any).deferredPrompt);
-      console.log("⚓ Sidebar: Sinal de instalação recuperado da memória global!");
     }
 
     // 3. Captura o evento caso ele ocorra após a montagem da Sidebar
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      (window as any).deferredPrompt = e; // Sincroniza com a memória global
+      (window as any).deferredPrompt = e;
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+    // Opcional: Criar um intervalo para checar notificações de suporte a cada 2 minutos
+    const interval = setInterval(checkSupportNotifications, 120000);
 
-  const handleInstallClick = async () => {
-    // Prioriza o prompt capturado na memória global ou no estado local
-    const promptToUse = deferredPrompt || (window as any).deferredPrompt;
-
-    if (promptToUse) {
-      promptToUse.prompt();
-      const { outcome } = await promptToUse.userChoice;
-      
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-        (window as any).deferredPrompt = null; // Limpa o global após sucesso
-      }
-    } else {
-      console.log("Aguardando sinal do navegador para instalação automática.");
-    }
-  };
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      clearInterval(interval);
+    };
+  }, [user]);
 
   if (!profile) return null;
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) => 
-    `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
+    `flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group ${
       isActive 
         ? 'bg-blue-500/10 text-blue-500 font-bold shadow-sm shadow-blue-500/5' 
         : 'text-muted-foreground hover:bg-accent hover:text-foreground font-medium'
@@ -112,55 +119,88 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             <NavGroupLabel>Principal</NavGroupLabel>
             <li>
               <NavLink to="/app" end onClick={onClose} className={navLinkClass}>
-                <LayoutDashboard className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Dashboard
+                <div className="flex items-center gap-3">
+                  <LayoutDashboard className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Dashboard
+                </div>
               </NavLink>
             </li>
 
             <NavGroupLabel>Gestão Operacional</NavGroupLabel>
             <li>
               <NavLink to="/app/clients" onClick={onClose} className={navLinkClass}>
-                <Users className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Clientes
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Clientes
+                </div>
               </NavLink>
             </li>
             <li>
               <NavLink to="/app/orders" onClick={onClose} className={navLinkClass}>
-                <ShoppingCart className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Pedidos
+                <div className="flex items-center gap-3">
+                  <ShoppingCart className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Pedidos
+                </div>
               </NavLink>
             </li>
             <li>
               <NavLink to="/app/products" onClick={onClose} className={navLinkClass}>
-                <PackageSearch className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Produtos
+                <div className="flex items-center gap-3">
+                  <PackageSearch className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Produtos
+                </div>
               </NavLink>
             </li>
-            {/* NOVO LINK PARA O MARKETPLACE */}
             <li>
               <NavLink to="/app/marketplace" onClick={onClose} className={navLinkClass}>
-                <ShoppingBag className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Marketplace
+                <div className="flex items-center gap-3">
+                  <ShoppingBag className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Marketplace
+                </div>
               </NavLink>
             </li>
 
             <NavGroupLabel>Configurações</NavGroupLabel>
             <li>
               <NavLink to="/app/storefront-settings" onClick={onClose} className={navLinkClass}>
-                <Store className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Configurações da Loja
+                <div className="flex items-center gap-3">
+                  <Store className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Configurações da Loja
+                </div>
               </NavLink>
             </li>
             <li>
               <NavLink to="/app/settings" onClick={onClose} className={navLinkClass}>
-                <Settings2 className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Configurações Globais
+                <div className="flex items-center gap-3">
+                  <Settings2 className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Configurações Globais
+                </div>
               </NavLink>
             </li>
             <li>
               <NavLink to="/billing" onClick={onClose} className={navLinkClass}>
-                <CreditCard className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Financeiro
+                <div className="flex items-center gap-3">
+                  <CreditCard className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Financeiro
+                </div>
+              </NavLink>
+            </li>
+
+            {/* ITEM DE SUPORTE ADICIONADO */}
+            <li>
+              <NavLink to="/app/support" onClick={onClose} className={navLinkClass}>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <MessageSquare className="h-5 w-5 transition-transform group-hover:scale-110" />
+                    {hasUnreadSupport && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                      </span>
+                    )}
+                  </div>
+                  Suporte & Feedback
+                </div>
               </NavLink>
             </li>
             
@@ -169,8 +209,10 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 <NavGroupLabel>Segurança</NavGroupLabel>
                 <li>
                   <NavLink to="/admin" onClick={onClose} className={navLinkClass}>
-                    <ShieldCheck className="h-5 w-5 transition-transform group-hover:scale-110" />
-                    Painel Admin
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck className="h-5 w-5 transition-transform group-hover:scale-110" />
+                      Painel Admin
+                    </div>
                   </NavLink>
                 </li>
               </>
@@ -180,8 +222,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
         {/* Rodapé da Sidebar */}
         <div className="mt-auto pt-6 border-t border-border/50 space-y-4">
-          
-          {/* BANNER DE INSTALAÇÃO - Sincronizado com a memória global */}
           {!isAppMode && (
             <div className="px-2 animate-in slide-in-from-bottom-2 duration-500">
               <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3">
