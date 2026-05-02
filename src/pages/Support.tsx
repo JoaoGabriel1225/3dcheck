@@ -5,9 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card'; // Importação adicionada para corrigir o erro
+import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { MessageSquare, Paperclip, Send, Bell, CheckCircle2 } from 'lucide-react';
+import { 
+  MessageSquare, 
+  Paperclip, 
+  Send, 
+  Bell, 
+  CheckCircle2, 
+  Trash2, 
+  History, 
+  FileCheck 
+} from 'lucide-react';
 
 export default function Support() {
   const { user } = useAuth();
@@ -26,16 +35,32 @@ export default function Support() {
 
   useEffect(() => { fetchTickets(); }, [user]);
 
-  // Função para limpar a notificação quando o usuário ler a resposta
   const markAsRead = async (ticketId: string, hasUnread: boolean) => {
     if (!hasUnread) return;
-    
     await supabase
       .from('support_tickets')
       .update({ has_unread_reply: false })
       .eq('id', ticketId);
+    fetchTickets();
+  };
+
+  // NOVA FUNÇÃO: Excluir chamado do histórico
+  const handleDeleteTicket = async (ticketId: string) => {
+    if (!confirm("Deseja realmente remover esta conversa do seu histórico?")) return;
     
-    fetchTickets(); // Atualiza a lista para sumir o aviso
+    try {
+      const { error } = await supabase
+        .from('support_tickets')
+        .delete()
+        .eq('id', ticketId);
+
+      if (error) throw error;
+      
+      toast.success("Conversa removida do histórico.");
+      fetchTickets();
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + err.message);
+    }
   };
 
   const handleSendTicket = async (e: any) => {
@@ -75,12 +100,15 @@ export default function Support() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8 space-y-12 pb-20">
-      <header className="flex flex-col gap-2">
-        <h2 className="text-3xl font-black uppercase italic tracking-tighter text-foreground">
-          Central de <span className="text-blue-500">Suporte</span>
-        </h2>
-        <p className="text-muted-foreground font-medium italic">Feedback e auxílio técnico para sua operação.</p>
+    <div className="max-w-4xl mx-auto p-8 space-y-10 pb-20">
+      <header className="flex items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-3xl font-black uppercase italic tracking-tighter text-foreground">
+            Suporte <span className="text-blue-500">& Feedback</span>
+          </h2>
+          <p className="text-muted-foreground font-medium text-xs uppercase tracking-widest opacity-60">Canal direto com a equipe 3DCheck</p>
+        </div>
+        <History className="w-8 h-8 text-blue-500/20" />
       </header>
 
       {/* FORMULÁRIO DE ENVIO */}
@@ -88,23 +116,25 @@ export default function Support() {
         <form onSubmit={handleSendTicket} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Assunto</Label>
-              <Input name="subject" required className="h-12 rounded-2xl bg-muted/20" placeholder="Ex: Dúvida sobre faturamento" />
+              <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Qual o assunto?</Label>
+              <Input name="subject" required className="h-12 rounded-2xl bg-muted/20 border-border" placeholder="Ex: Problema com pagamento ou Sugestão" />
             </div>
             
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Mensagem</Label>
-              <Textarea name="message" required className="min-h-[120px] rounded-2xl bg-muted/20" placeholder="Como podemos te ajudar hoje?" />
+              <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Detalhes</Label>
+              <Textarea name="message" required className="min-h-[120px] rounded-2xl bg-muted/20 border-border" placeholder="Explique aqui o que aconteceu..." />
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <Label className="flex items-center gap-2 cursor-pointer bg-blue-500/10 text-blue-500 p-4 rounded-2xl hover:bg-blue-500/20 transition-all border border-blue-500/20">
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+              <Label className="flex items-center gap-3 cursor-pointer bg-blue-500/5 text-blue-500 px-5 py-3 rounded-2xl border border-blue-500/20 hover:bg-blue-500/10 transition-all">
                 <Paperclip className="w-4 h-4" />
-                <span className="text-[10px] font-black uppercase">{file ? file.name : 'Anexar Imagem'}</span>
+                <span className="text-[10px] font-black uppercase">
+                  {file ? file.name : 'Anexar evidência (Foto)'}
+                </span>
                 <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </Label>
 
-              <Button type="submit" disabled={loading} className="h-14 px-10 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-2xl shadow-lg shadow-blue-600/20 ml-auto">
+              <Button type="submit" disabled={loading} className="h-14 px-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-2xl shadow-xl shadow-blue-600/20">
                 {loading ? 'Sincronizando...' : 'Enviar Mensagem'} <Send className="w-4 h-4 ml-2" />
               </Button>
             </div>
@@ -113,50 +143,70 @@ export default function Support() {
       </Card>
 
       {/* LISTA DE CHAMADOS */}
-      <div className="space-y-4">
-        <h3 className="font-black text-[10px] uppercase tracking-[0.3em] opacity-40">Histórico de Conversas</h3>
+      <div className="space-y-6">
+        <h3 className="font-black text-[10px] uppercase tracking-[0.3em] opacity-40">Histórico de Atendimento</h3>
         
         {tickets.length === 0 ? (
-          <div className="py-10 text-center border-2 border-dashed border-border rounded-[2rem] opacity-50 italic font-medium">
-            Nenhum chamado aberto.
+          <div className="py-16 text-center border-2 border-dashed border-border rounded-[3rem] opacity-40 italic font-medium">
+            Nenhuma conversa no histórico.
           </div>
         ) : (
           tickets.map(ticket => (
             <div 
               key={ticket.id} 
               onClick={() => markAsRead(ticket.id, ticket.has_unread_reply)}
-              className={`p-8 border rounded-[2rem] transition-all cursor-pointer group ${
+              className={`group p-8 border rounded-[2.5rem] transition-all cursor-pointer relative ${
                 ticket.has_unread_reply 
-                ? 'bg-blue-500/5 border-blue-500/40 shadow-lg shadow-blue-500/5' 
-                : 'bg-card/30 border-border hover:border-blue-500/20'
+                ? 'bg-blue-500/5 border-blue-500/40 shadow-xl' 
+                : 'bg-card/40 border-border hover:border-blue-500/20'
               }`}
             >
               <div className="flex justify-between items-start mb-4">
-                <div>
+                <div className="space-y-1">
                   <h4 className="font-black uppercase italic text-lg leading-tight group-hover:text-blue-500 transition-colors">
                     {ticket.subject}
                   </h4>
-                  <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
-                    {new Date(ticket.created_at).toLocaleDateString()}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
+                      {new Date(ticket.created_at).toLocaleDateString()}
+                    </span>
+                    {ticket.attachment_url && (
+                      <span className="flex items-center gap-1 text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                        <FileCheck className="w-3 h-3" /> Contém Anexo
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
-                {ticket.has_unread_reply && (
-                  <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-[9px] font-black flex items-center gap-1 animate-pulse">
-                    <Bell className="w-3 h-3" /> NOVA RESPOSTA
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {ticket.has_unread_reply && (
+                    <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-[9px] font-black animate-pulse">
+                      NOVA RESPOSTA
+                    </div>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTicket(ticket.id);
+                    }}
+                    className="rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
-              <p className="text-sm font-medium opacity-70 mb-4">{ticket.message}</p>
+              <p className="text-sm font-medium opacity-70 mb-4 leading-relaxed">{ticket.message}</p>
 
               {ticket.admin_reply && (
-                <div className="mt-6 p-6 bg-background/50 border-l-4 border-blue-500 rounded-r-2xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle2 className="w-4 h-4 text-blue-500" />
-                    <span className="text-[10px] font-black text-blue-500 uppercase">Resposta da Equipe 3DCheck</span>
+                <div className="mt-6 p-6 bg-background/50 border-l-4 border-blue-600 rounded-r-3xl">
+                  <div className="flex items-center gap-2 mb-2 text-blue-500">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-[10px] font-black uppercase tracking-tighter">Resposta da Equipe 3DCheck</span>
                   </div>
-                  <p className="font-bold text-sm italic">{ticket.admin_reply}</p>
+                  <p className="font-bold text-sm italic text-foreground/90">{ticket.admin_reply}</p>
                 </div>
               )}
             </div>
