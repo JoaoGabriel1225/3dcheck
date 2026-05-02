@@ -1,9 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Recupera a chave de ambiente do Vite
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
-// Inicializa o SDK apenas se a chave existir
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 const SYSTEM_INSTRUCTION = `
@@ -29,47 +26,38 @@ Sua missão é ser o braço direito do Maker, ajudando na gestão de negócios d
 `;
 
 export const getAIResponse = async (userMessage: string, chatHistory: any[] = []) => {
-  // 1. Verifica se o SDK foi inicializado (evita o erro do seu print)
   if (!genAI) {
     return "Maker, o sistema de IA está sem a chave de acesso (API Key). Verifique as configurações na Vercel.";
   }
 
   try {
-    // 2. Define o modelo e injeta a inteligência de sistema (System Instruction)
     const model = genAI.getGenerativeModel({ 
       model: "gemini-1.5-flash",
       systemInstruction: SYSTEM_INSTRUCTION,
     });
 
-    // 3. Formata o histórico corretamente para o padrão do Google
-    const chat = model.startChat({
-      history: chatHistory.map(msg => ({
+    // CORREÇÃO CRÍTICA: Filtra a saudação inicial do assistente para o histórico começar com 'user'
+    const formattedHistory = chatHistory
+      .filter((msg, index) => !(index === 0 && msg.role === 'assistant'))
+      .map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
-      })),
+      }));
+
+    const chat = model.startChat({
+      history: formattedHistory,
       generationConfig: {
         maxOutputTokens: 1000,
-        temperature: 0.7, // Criatividade equilibrada para não inventar fatos
+        temperature: 0.7,
       },
     });
 
-    // 4. Envia a mensagem
     const result = await chat.sendMessage(userMessage);
     const response = await result.response;
-    const text = response.text();
-
-    if (!text) throw new Error("Resposta vazia da IA");
-    
-    return text;
+    return response.text();
 
   } catch (error: any) {
     console.error("Erro na IA 3DCheck:", error);
-    
-    // Mensagens de erro amigáveis baseadas no problema real
-    if (error.message?.includes("API_KEY_INVALID")) {
-      return "Maker, minha chave de API parece inválida. Peça ao desenvolvedor para revisar o painel da Google Cloud.";
-    }
-    
     return "Maker, tive uma falha de conexão no meu processador! 🔌 Tente perguntar novamente ou chame o suporte humano abaixo.";
   }
 };
