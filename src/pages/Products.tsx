@@ -8,14 +8,16 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { PackageSearch, Plus, Image as ImageIcon, Trash2, Eye, EyeOff, Edit2, Wand2, Calculator, Zap, Clock } from 'lucide-react';
+import { 
+  PackageSearch, Plus, Image as ImageIcon, Trash2, Eye, EyeOff, 
+  Edit2, Wand2, Calculator, Zap, Clock, RotateCcw, ShieldAlert 
+} from 'lucide-react';
 
 export default function Products() {
   const { profile, user } = useAuth();
@@ -36,15 +38,21 @@ export default function Products() {
   const [isPublic, setIsPublic] = useState(true);
   const [discount, setDiscount] = useState('');
   
-  // Calculator state
+  // Calculator state (Campos Customizáveis)
   const [filamentPrice, setFilamentPrice] = useState('');
   const [gramsUsed, setGramsUsed] = useState('');
-  const [printTime, setPrintTime] = useState(''); // Tempo em Horas
+  const [printTime, setPrintTime] = useState('');
   const [profitMargin, setProfitMargin] = useState('');
+  
+  // Novos estados para transparência de custos (Overrides)
+  const [kwhPrice, setKwhPrice] = useState('');
+  const [depreciation, setDepreciation] = useState('');
+  const [setupFee, setSetupFee] = useState('');
+  const [failureBuffer, setFailureBuffer] = useState('');
+
   const [calculatedCost, setCalculatedCost] = useState(0);
   const [suggestedPrice, setSuggestedPrice] = useState('0.00');
 
-  // 1. Função para carregar as configurações uma única vez
   const fetchGlobalSettings = async () => {
     if (!user) return;
     const { data } = await supabase
@@ -53,6 +61,19 @@ export default function Products() {
       .eq('user_id', user.id)
       .single();
     if (data) setGlobalSettings(data);
+  };
+
+  // Função para resetar os campos da calculadora para os padrões globais
+  const applyGlobalDefaults = () => {
+    if (globalSettings) {
+      setFilamentPrice(globalSettings.filament_avg_price?.toString() || '120.00');
+      setProfitMargin(globalSettings.profit_margin_pct?.toString() || '100');
+      setKwhPrice(globalSettings.kwh_price?.toString() || '0.85');
+      setDepreciation(globalSettings.machine_depreciation_hour?.toString() || '1.50');
+      setSetupFee(globalSettings.setup_fee?.toString() || '5.00');
+      setFailureBuffer(globalSettings.failure_buffer_pct?.toString() || '5');
+      toast.info('Padrões globais aplicados à calculadora.');
+    }
   };
 
   const fetchProducts = async () => {
@@ -78,37 +99,34 @@ export default function Products() {
     fetchGlobalSettings();
   }, [profile]);
 
-  // 2. Lógica da Calculadora Integrada
+  // Lógica da Calculadora com Overrides Manuais
   useEffect(() => {
     const fPrice = parseFloat(filamentPrice) || 0;
     const gUsed = parseFloat(gramsUsed) || 0;
     const pTime = parseFloat(printTime) || 0;
     const margin = parseFloat(profitMargin) || 0;
 
-    // Se não tiver configurações, usa valores zerados para os custos fixos
-    const setupFee = globalSettings?.setup_fee || 0;
-    const depreciation = globalSettings?.machine_depreciation_hour || 0;
-    const kwhPrice = globalSettings?.kwh_price || 0;
-    const buffer = 1 + (globalSettings?.failure_buffer_pct || 0) / 100;
+    // Valores locais (podem ser editados manualmente no modal)
+    const sFee = parseFloat(setupFee) || 0;
+    const dep = parseFloat(depreciation) || 0;
+    const kwh = parseFloat(kwhPrice) || 0;
+    const buff = 1 + (parseFloat(failureBuffer) || 0) / 100;
 
-    // Cálculo: Material (com buffer de falha) + Operação (Energia + Depreciação) + Setup
-    const materialCost = ((fPrice / 1000) * gUsed) * buffer;
-    const energyCost = (kwhPrice * 0.15) * pTime; // Estimativa de 150W/h de consumo médio
-    const depreciationCost = depreciation * pTime;
+    const materialCost = ((fPrice / 1000) * gUsed) * buff;
+    const energyCost = (kwh * 0.15) * pTime; 
+    const depreciationCost = dep * pTime;
     
-    const cTotal = materialCost + energyCost + depreciationCost + setupFee;
+    const cTotal = materialCost + energyCost + depreciationCost + sFee;
     
     setCalculatedCost(cTotal);
     const calcPrice = cTotal * (1 + margin / 100);
     setSuggestedPrice(calcPrice.toFixed(2));
-  }, [filamentPrice, gramsUsed, printTime, profitMargin, globalSettings]);
+  }, [filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer]);
 
-  // 3. Preencher padrões ao abrir o modal para "Novo Produto"
   const handleOpenNewProduct = () => {
     resetForm();
     if (globalSettings) {
-      setFilamentPrice(globalSettings.filament_avg_price?.toString() || '120.00');
-      setProfitMargin(globalSettings.profit_margin_pct?.toString() || '100');
+      applyGlobalDefaults();
     }
     setIsDialogOpen(true);
   };
@@ -222,6 +240,15 @@ export default function Products() {
     setDiscount(product.discount?.toString() || '');
     setProfitMargin(product.profit_margin?.toString() || '');
     setCalculatedCost(product.cost_total || 0);
+    
+    // Em edição, tentamos manter o que está no banco ou puxar globais se estiver vazio
+    if (globalSettings) {
+        setKwhPrice(globalSettings.kwh_price?.toString());
+        setDepreciation(globalSettings.machine_depreciation_hour?.toString());
+        setSetupFee(globalSettings.setup_fee?.toString());
+        setFailureBuffer(globalSettings.failure_buffer_pct?.toString());
+    }
+    
     setIsDialogOpen(true);
   };
 
@@ -254,6 +281,10 @@ export default function Products() {
     setGramsUsed('');
     setPrintTime('');
     setProfitMargin('');
+    setKwhPrice('');
+    setDepreciation('');
+    setSetupFee('');
+    setFailureBuffer('');
     setCalculatedCost(0);
     setSuggestedPrice('0.00');
   };
@@ -298,13 +329,28 @@ export default function Products() {
                  </div>
                </div>
 
-              {/* CALCULADORA INTEGRADA */}
+              {/* CALCULADORA INTEGRADA COM TRANSPARÊNCIA */}
               <div className="space-y-4 pt-6 border-t border-border">
                 <div className="flex items-center justify-between">
                   <Label className="font-black text-foreground text-base flex items-center gap-2">
                     <Calculator className="w-5 h-5 text-blue-500" /> Custos de Produção
                   </Label>
-                  <span className="text-[10px] font-bold bg-blue-500/10 text-blue-600 px-2 py-1 rounded-md">PADRÕES ATIVOS</span>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={applyGlobalDefaults}
+                    className="text-[9px] font-black bg-blue-500/10 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-500/20"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-1" /> RESETAR PADRÕES
+                  </Button>
+                </div>
+
+                <div className="bg-blue-500/5 border border-blue-500/10 p-4 rounded-2xl flex items-start gap-3">
+                    <ShieldAlert className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                    <p className="text-[10px] font-bold text-blue-700/80 leading-relaxed italic">
+                        Os valores abaixo refletem suas <strong className="underline">Configurações Globais</strong>. Altere manualmente para este produto ou ajuste os padrões no menu de configurações para todo o catálogo.
+                    </p>
                 </div>
 
                 <div className="bg-muted/30 p-6 rounded-[2rem] space-y-5 border border-border">
@@ -316,6 +362,26 @@ export default function Products() {
                     <div className="space-y-2">
                       <Label htmlFor="gUsed" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider">Peso da Peça (g)</Label>
                       <Input id="gUsed" type="number" step="0.1" value={gramsUsed} onChange={(e) => setGramsUsed(e.target.value)} required className="h-11 bg-background rounded-xl border-border" placeholder="Ex: 150" />
+                    </div>
+                  </div>
+
+                  {/* SEÇÃO CUSTOMIZÁVEL - TRANSPARÊNCIA DE CUSTOS */}
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-background/50 rounded-2xl border border-dashed border-border/50">
+                    <div className="space-y-1">
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
+                      <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-8 text-xs rounded-lg" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Depreciação (R$/h)</Label>
+                      <Input type="number" value={depreciation} onChange={(e) => setDepreciation(e.target.value)} className="h-8 text-xs rounded-lg" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
+                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-8 text-xs rounded-lg" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Buffer Falha (%)</Label>
+                      <Input type="number" value={failureBuffer} onChange={(e) => setFailureBuffer(e.target.value)} className="h-8 text-xs rounded-lg" />
                     </div>
                   </div>
 
@@ -335,11 +401,11 @@ export default function Products() {
                   <div className="pt-4 border-t border-border/50 flex justify-between items-center">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-black text-muted-foreground uppercase">Custo de Fabricação</span>
-                      <span className="text-xl font-black text-foreground">R$ {calculatedCost.toFixed(2)}</span>
+                      <span className="text-xl font-black text-foreground tracking-tighter">R$ {calculatedCost.toFixed(2)}</span>
                     </div>
                     <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl text-right">
                        <span className="block text-[9px] font-black text-emerald-600 uppercase">Preço Sugerido</span>
-                       <span className="text-lg font-black text-emerald-600 tracking-tighter">R$ {suggestedPrice}</span>
+                       <span className="text-lg font-black text-emerald-600 tracking-tighter leading-none">R$ {suggestedPrice}</span>
                        <Button 
                          type="button"
                          variant="ghost" 
@@ -424,7 +490,7 @@ export default function Products() {
                   </div>
                   
                   <CardContent className="p-8 flex-1 flex flex-col">
-                    <h3 className="font-black text-xl text-foreground tracking-tight line-clamp-1 mb-2">{product.name}</h3>
+                    <h3 className="font-black text-xl text-foreground tracking-tight line-clamp-1 mb-2 italic uppercase tracking-tighter">{product.name}</h3>
                     <p className="text-muted-foreground text-sm font-medium line-clamp-2 leading-relaxed mb-6 flex-1">{product.description}</p>
                     
                     <div className="flex items-center justify-between mb-8 pt-6 border-t border-border">
@@ -432,7 +498,7 @@ export default function Products() {
                         {hasDiscount && (
                           <span className="text-[10px] font-bold text-muted-foreground line-through decoration-red-500/50 tracking-tighter">R$ {product.final_price?.toFixed(2)}</span>
                         )}
-                        <span className={`text-2xl font-black tracking-tighter ${hasDiscount ? 'text-emerald-500' : 'text-foreground'}`}>
+                        <span className={`text-2xl font-black tracking-tighter italic ${hasDiscount ? 'text-emerald-500' : 'text-foreground'}`}>
                           R$ {hasDiscount ? finalPriceWithDiscount.toFixed(2) : product.final_price?.toFixed(2)}
                         </span>
                       </div>
