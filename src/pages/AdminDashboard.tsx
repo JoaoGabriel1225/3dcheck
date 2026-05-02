@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -12,28 +13,26 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { CheckCircle, XCircle, ExternalLink, UserCog, Wallet, RefreshCw } from 'lucide-react';
+import { 
+  CheckCircle, XCircle, ExternalLink, UserCog, 
+  Wallet, RefreshCw, MessageSquare, Send, Paperclip 
+} from 'lucide-react';
 
 export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]); // Novo estado para suporte
   const [loading, setLoading] = useState(true);
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({}); // Controle de inputs de resposta
 
   const fetchData = async () => {
     try {
       setLoading(true);
       
-      // 1. Busca simplificada para garantir compatibilidade com o relacionamento do banco
+      // 1. Busca solicitações Pix
       const { data: pendingData, error: reqError } = await supabase
         .from('subscriptions_pending')
-        .select(`
-          *,
-          profiles (
-            name,
-            email,
-            plan_status
-          )
-        `)
+        .select(`*, profiles (name, email, plan_status)`)
         .order('created_at', { ascending: false });
         
       if (reqError) throw reqError;
@@ -47,6 +46,15 @@ export default function AdminDashboard() {
         
       if (profError) throw profError;
       setUsers(profiles || []);
+
+      // 3. NOVO: Busca chamados de suporte
+      const { data: supportData, error: supportError } = await supabase
+        .from('support_tickets')
+        .select(`*, profiles (name, email)`)
+        .order('created_at', { ascending: false });
+
+      if (supportError) throw supportError;
+      setTickets(supportData || []);
 
     } catch (e: any) {
       console.error('Erro Admin:', e);
@@ -62,14 +70,11 @@ export default function AdminDashboard() {
 
   const handleApprove = async (requestId: string, userId: string, userName: string) => {
     try {
-      // Chama a função SQL que criamos para processar tudo em um clique
       const { error } = await supabase.rpc('approve_subscription', { 
         target_user_id: userId, 
         pending_id: requestId 
       });
-
       if (error) throw error;
-
       toast.success(`Elite ativada para ${userName}!`);
       fetchData();
     } catch (err: any) {
@@ -83,13 +88,39 @@ export default function AdminDashboard() {
         .from('subscriptions_pending')
         .update({ status: 'rejected' })
         .eq('id', requestId);
-
       if (error) throw error;
-
       toast.error('Solicitação rejeitada.');
       fetchData();
     } catch (err: any) {
       toast.error('Erro ao processar rejeição.');
+    }
+  };
+
+  // NOVO: Função para responder chamados de suporte
+  const handleAdminReply = async (ticketId: string) => {
+    const reply = replyTexts[ticketId];
+    if (!reply || reply.trim() === '') {
+      toast.error("Digite uma resposta antes de enviar.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('support_tickets')
+        .update({ 
+          admin_reply: reply,
+          status: 'responded',
+          has_unread_reply: true // Ativa a notificação no app do usuário
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+
+      toast.success("Resposta enviada com sucesso!");
+      setReplyTexts(prev => ({ ...prev, [ticketId]: '' }));
+      fetchData();
+    } catch (err: any) {
+      toast.error("Erro ao enviar resposta.");
     }
   };
 
@@ -166,6 +197,85 @@ export default function AdminDashboard() {
                           <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 font-black text-[10px] rounded-xl shadow-lg shadow-emerald-500/20" onClick={() => handleApprove(req.id, req.user_id, req.profiles?.name)}>APROVAR</Button>
                           <Button size="sm" variant="destructive" className="font-black text-[10px] rounded-xl" onClick={() => handleReject(req.id)}>REJEITAR</Button>
                         </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      {/* NOVO: GESTÃO DE SUPORTE & FEEDBACK */}
+      <Card className="rounded-[2.5rem] border-border bg-card/50 overflow-hidden shadow-xl">
+        <CardHeader className="bg-accent/5 border-b border-border/50 p-8">
+          <CardTitle className="font-black text-xl flex items-center gap-3 uppercase italic text-blue-500">
+            <MessageSquare className="w-6 h-6" />
+            Suporte & Feedback
+          </CardTitle>
+        </CardHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-border/50">
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Data/Operador</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Mensagem/Anexo</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em]">Resposta do Admin</TableHead>
+                <TableHead className="py-6 px-8 text-[10px] font-black uppercase tracking-[0.2em] text-right">Ação</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tickets.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-10 opacity-50 italic">Nenhum chamado de suporte encontrado.</TableCell></TableRow>
+              ) : (
+                tickets.map((ticket) => (
+                  <TableRow key={ticket.id} className="hover:bg-accent/5 border-border/50 transition-colors">
+                    <TableCell className="py-6 px-8">
+                      <div className="text-[10px] font-black opacity-40 mb-1">{new Date(ticket.created_at).toLocaleString()}</div>
+                      <div className="font-black text-sm uppercase italic">{ticket.profiles?.name}</div>
+                      <div className="text-[9px] font-bold text-blue-500">{ticket.subject}</div>
+                    </TableCell>
+                    <TableCell className="py-6 px-8 max-w-xs">
+                      <p className="text-xs font-medium mb-2">{ticket.message}</p>
+                      {ticket.attachment_url && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 text-[9px] font-black uppercase italic rounded-lg gap-1 border-blue-500/20 text-blue-500"
+                          onClick={() => {
+                            const { data } = supabase.storage.from('support-attachments').getPublicUrl(ticket.attachment_url);
+                            window.open(data.publicUrl, '_blank');
+                          }}
+                        >
+                          <Paperclip className="w-3 h-3" /> Abrir Anexo
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-6 px-8">
+                      {ticket.admin_reply ? (
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-xl">
+                          <span className="text-[8px] font-black text-emerald-600 block uppercase mb-1">Enviado:</span>
+                          <p className="text-xs font-bold italic">{ticket.admin_reply}</p>
+                        </div>
+                      ) : (
+                        <Input 
+                          placeholder="Digite sua resposta..." 
+                          className="h-10 text-xs rounded-xl bg-muted/30"
+                          value={replyTexts[ticket.id] || ''}
+                          onChange={(e) => setReplyTexts(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell className="py-6 px-8 text-right">
+                      {!ticket.admin_reply && (
+                        <Button 
+                          size="sm" 
+                          className="bg-blue-600 hover:bg-blue-500 font-black text-[10px] rounded-xl"
+                          onClick={() => handleAdminReply(ticket.id)}
+                        >
+                          RESPONDER <Send className="w-3 h-3 ml-1" />
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
