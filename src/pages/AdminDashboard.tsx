@@ -16,7 +16,8 @@ import {
 import { toast } from 'sonner';
 import { 
   CheckCircle, XCircle, ExternalLink, UserCog, 
-  Wallet, RefreshCw, MessageSquare, Send, Paperclip, Search, Users, ShieldAlert
+  Wallet, RefreshCw, MessageSquare, Send, Paperclip, Search, Users, ShieldAlert,
+  Bell // ADICIONADO
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -49,9 +50,37 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  // --- CONFIGURAÇÃO DE TEMPO REAL E NOTIFICAÇÕES (MUDANÇA PRINCIPAL) ---
+  useEffect(() => {
+    fetchData();
 
-  // --- FUNÇÕES DE AÇÃO FINANCEIRA (RESTAURADAS) ---
+    const adminChannel = supabase
+      .channel('admin_realtime_updates')
+      // Ouve novos comprovantes de pagamento
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'subscriptions_pending' }, () => {
+        toast.success("NOVO COMPROVANTE!", {
+          description: "Um operador enviou um pagamento para validação.",
+          icon: <Wallet className="text-emerald-500" />,
+          duration: 8000,
+        });
+        fetchData();
+      })
+      // Ouve novas mensagens no suporte
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_tickets' }, () => {
+        toast.info("NOVO CHAMADO DE SUPORTE!", {
+          description: "Um usuário abriu uma nova solicitação de ajuda.",
+          icon: <MessageSquare className="text-blue-500" />,
+          duration: 8000,
+        });
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(adminChannel);
+    };
+  }, []);
+
   const handleApprove = async (requestId: string, userId: string, userName: string) => {
     try {
       const { error } = await supabase.rpc('approve_subscription', { 
@@ -80,13 +109,11 @@ export default function AdminDashboard() {
     }
   };
 
-  // Lógica da Barra de Pesquisa de Usuários
   const filteredUsers = users.filter(u => 
     u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Lógica de filtragem e pesquisa para suporte
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = 
       t.subject?.toLowerCase().includes(supportSearch.toLowerCase()) ||
@@ -229,32 +256,12 @@ export default function AdminDashboard() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col md:flex-row justify-between gap-4">
             <div className="flex bg-muted/30 p-1 rounded-xl w-fit">
-              <Button 
-                size="sm" 
-                variant={supportSubTab === 'pending' ? 'default' : 'ghost'} 
-                onClick={() => setSupportSubTab('pending')}
-                className="rounded-lg font-black text-[10px] uppercase h-9"
-              >
-                Pendentes ({tickets.filter(t => !t.admin_reply).length})
-              </Button>
-              <Button 
-                size="sm" 
-                variant={supportSubTab === 'history' ? 'default' : 'ghost'} 
-                onClick={() => setSupportSubTab('history')}
-                className="rounded-lg font-black text-[10px] uppercase h-9"
-              >
-                Histórico ({tickets.filter(t => t.admin_reply).length})
-              </Button>
+              <Button size="sm" variant={supportSubTab === 'pending' ? 'default' : 'ghost'} onClick={() => setSupportSubTab('pending')} className="rounded-lg font-black text-[10px] uppercase h-9">Pendentes ({tickets.filter(t => !t.admin_reply).length})</Button>
+              <Button size="sm" variant={supportSubTab === 'history' ? 'default' : 'ghost'} onClick={() => setSupportSubTab('history')} className="rounded-lg font-black text-[10px] uppercase h-9">Histórico ({tickets.filter(t => t.admin_reply).length})</Button>
             </div>
-            
             <div className="relative w-full md:w-80 group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30 group-focus-within:text-blue-500 transition-colors" />
-              <Input 
-                placeholder="Pesquisar no suporte..." 
-                value={supportSearch} 
-                onChange={(e) => setSupportSearch(e.target.value)} 
-                className="pl-10 rounded-xl h-11 border-border shadow-sm" 
-              />
+              <Input placeholder="Pesquisar no suporte..." value={supportSearch} onChange={(e) => setSupportSearch(e.target.value)} className="pl-10 rounded-xl h-11 border-border shadow-sm" />
             </div>
           </div>
 
@@ -269,14 +276,8 @@ export default function AdminDashboard() {
                     </div>
                     <h3 className="text-xl font-black italic uppercase tracking-tighter">{ticket.subject}</h3>
                     <div className="p-6 bg-background/50 rounded-2xl border border-border text-sm font-medium leading-relaxed italic opacity-80">"{ticket.message}"</div>
-                    
                     {ticket.attachment_url && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-xl border-blue-500/20 text-blue-500 bg-blue-500/5 hover:bg-blue-500/10 font-black italic uppercase text-[10px] gap-2 h-10 px-4" 
-                        onClick={() => window.open(supabase.storage.from('support-attachments').getPublicUrl(ticket.attachment_url).data.publicUrl, '_blank')}
-                      >
+                      <Button variant="outline" size="sm" className="rounded-xl border-blue-500/20 text-blue-500 bg-blue-500/5 font-black italic uppercase text-[10px] gap-2 h-10 px-4" onClick={() => window.open(supabase.storage.from('support-attachments').getPublicUrl(ticket.attachment_url).data.publicUrl, '_blank')}>
                         <Paperclip className="w-4 h-4" /> Ver Anexo de Evidência
                       </Button>
                     )}
@@ -288,7 +289,6 @@ export default function AdminDashboard() {
                       <div className="font-black text-sm italic uppercase">{ticket.profiles?.name}</div>
                       <div className="text-[9px] font-bold opacity-50">{ticket.profiles?.email}</div>
                     </div>
-                    
                     <div className="pt-4 border-t border-border/50">
                       {ticket.admin_reply ? (
                         <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-[11px] font-bold italic text-emerald-700">
@@ -297,12 +297,7 @@ export default function AdminDashboard() {
                         </div>
                       ) : (
                         <>
-                          <Textarea 
-                            placeholder="Sua resposta..." 
-                            className="bg-background rounded-xl border-border text-xs min-h-[100px] mb-3"
-                            value={replyTexts[ticket.id] || ''}
-                            onChange={(e) => setReplyTexts(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                          />
+                          <Textarea placeholder="Sua resposta..." className="bg-background rounded-xl border-border text-xs min-h-[100px] mb-3" value={replyTexts[ticket.id] || ''} onChange={(e) => setReplyTexts(prev => ({ ...prev, [ticket.id]: e.target.value }))} />
                           <Button onClick={() => handleAdminReply(ticket.id)} className="w-full bg-blue-600 hover:bg-blue-500 font-black uppercase italic rounded-xl h-11">Responder <Send className="w-4 h-4 ml-2"/></Button>
                         </>
                       )}
@@ -311,11 +306,6 @@ export default function AdminDashboard() {
                 </div>
               </Card>
             ))}
-            {filteredTickets.length === 0 && (
-              <div className="py-20 text-center opacity-40 italic font-medium border-2 border-dashed border-border rounded-[2.5rem]">
-                Nenhum chamado encontrado nesta categoria.
-              </div>
-            )}
           </div>
         </div>
       )}
