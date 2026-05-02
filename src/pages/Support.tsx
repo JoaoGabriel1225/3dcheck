@@ -15,7 +15,8 @@ import {
   CheckCircle2, 
   Trash2, 
   History, 
-  FileCheck 
+  FileCheck,
+  Search // ADICIONADO
 } from 'lucide-react';
 
 export default function Support() {
@@ -23,6 +24,10 @@ export default function Support() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  
+  // NOVOS ESTADOS PARA PESQUISA E ABAS
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeSubTab, setActiveSubTab] = useState<'active' | 'history'>('active');
 
   const fetchTickets = async () => {
     if (!user) return;
@@ -44,7 +49,6 @@ export default function Support() {
     fetchTickets();
   };
 
-  // NOVA FUNÇÃO: Excluir chamado do histórico
   const handleDeleteTicket = async (ticketId: string) => {
     if (!confirm("Deseja realmente remover esta conversa do seu histórico?")) return;
     
@@ -56,12 +60,22 @@ export default function Support() {
 
       if (error) throw error;
       
-      toast.success("Conversa removida do histórico.");
-      fetchTickets();
+      toast.success("Conversa removida.");
+      setTickets(prev => prev.filter(t => t.id !== ticketId)); // Atualiza sem precisar de fetch
     } catch (err: any) {
-      toast.error("Erro ao excluir: " + err.message);
+      toast.error("Erro ao excluir.");
     }
   };
+
+  // LÓGICA DE FILTRAGEM (ABAS + PESQUISA)
+  const filteredTickets = tickets.filter(t => {
+    const matchesSearch = 
+      t.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.message?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (activeSubTab === 'active') return !t.admin_reply && matchesSearch;
+    return t.admin_reply && matchesSearch;
+  });
 
   const handleSendTicket = async (e: any) => {
     e.preventDefault();
@@ -142,76 +156,106 @@ export default function Support() {
         </form>
       </Card>
 
-      {/* LISTA DE CHAMADOS */}
+      {/* FILTROS E PESQUISA */}
       <div className="space-y-6">
-        <h3 className="font-black text-[10px] uppercase tracking-[0.3em] opacity-40">Histórico de Atendimento</h3>
-        
-        {tickets.length === 0 ? (
-          <div className="py-16 text-center border-2 border-dashed border-border rounded-[3rem] opacity-40 italic font-medium">
-            Nenhuma conversa no histórico.
-          </div>
-        ) : (
-          tickets.map(ticket => (
-            <div 
-              key={ticket.id} 
-              onClick={() => markAsRead(ticket.id, ticket.has_unread_reply)}
-              className={`group p-8 border rounded-[2.5rem] transition-all cursor-pointer relative ${
-                ticket.has_unread_reply 
-                ? 'bg-blue-500/5 border-blue-500/40 shadow-xl' 
-                : 'bg-card/40 border-border hover:border-blue-500/20'
-              }`}
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <div className="flex bg-muted/50 p-1 rounded-xl w-fit border border-border">
+            <Button 
+              variant={activeSubTab === 'active' ? 'default' : 'ghost'} 
+              onClick={() => setActiveSubTab('active')}
+              className="rounded-lg font-black text-[10px] uppercase h-9"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div className="space-y-1">
-                  <h4 className="font-black uppercase italic text-lg leading-tight group-hover:text-blue-500 transition-colors">
-                    {ticket.subject}
-                  </h4>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
-                      {new Date(ticket.created_at).toLocaleDateString()}
-                    </span>
-                    {ticket.attachment_url && (
-                      <span className="flex items-center gap-1 text-[9px] font-black text-blue-500 uppercase tracking-widest">
-                        <FileCheck className="w-3 h-3" /> Contém Anexo
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {ticket.has_unread_reply && (
-                    <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-[9px] font-black animate-pulse">
-                      NOVA RESPOSTA
-                    </div>
-                  )}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteTicket(ticket.id);
-                    }}
-                    className="rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              Ativos
+            </Button>
+            <Button 
+              variant={activeSubTab === 'history' ? 'default' : 'ghost'} 
+              onClick={() => setActiveSubTab('history')}
+              className="rounded-lg font-black text-[10px] uppercase h-9"
+            >
+              Histórico
+            </Button>
+          </div>
+          
+          <div className="relative group flex-1 max-w-sm">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30 group-focus-within:text-blue-500 transition-colors" />
+            <Input 
+              placeholder="Pesquisar mensagens..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="pl-12 rounded-2xl bg-muted/10 border-border h-11" 
+            />
+          </div>
+        </div>
 
-              <p className="text-sm font-medium opacity-70 mb-4 leading-relaxed">{ticket.message}</p>
-
-              {ticket.admin_reply && (
-                <div className="mt-6 p-6 bg-background/50 border-l-4 border-blue-600 rounded-r-3xl">
-                  <div className="flex items-center gap-2 mb-2 text-blue-500">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-[10px] font-black uppercase tracking-tighter">Resposta da Equipe 3DCheck</span>
-                  </div>
-                  <p className="font-bold text-sm italic text-foreground/90">{ticket.admin_reply}</p>
-                </div>
-              )}
+        {/* LISTA DE CHAMADOS FILTRADA */}
+        <div className="space-y-6">
+          {filteredTickets.length === 0 ? (
+            <div className="py-16 text-center border-2 border-dashed border-border rounded-[3rem] opacity-40 italic font-medium">
+              Nenhuma mensagem encontrada.
             </div>
-          ))
-        )}
+          ) : (
+            filteredTickets.map(ticket => (
+              <div 
+                key={ticket.id} 
+                onClick={() => markAsRead(ticket.id, ticket.has_unread_reply)}
+                className={`group p-8 border rounded-[2.5rem] transition-all cursor-pointer relative ${
+                  ticket.has_unread_reply 
+                  ? 'bg-blue-500/5 border-blue-500/40 shadow-xl' 
+                  : 'bg-card/40 border-border hover:border-blue-500/20'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="space-y-1">
+                    <h4 className="font-black uppercase italic text-lg leading-tight group-hover:text-blue-500 transition-colors">
+                      {ticket.subject}
+                    </h4>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
+                        {new Date(ticket.created_at).toLocaleDateString()}
+                      </span>
+                      {ticket.attachment_url && (
+                        <span className="flex items-center gap-1 text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                          <FileCheck className="w-3 h-3" /> Contém Anexo
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {ticket.has_unread_reply && (
+                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-[9px] font-black animate-pulse">
+                        NOVA RESPOSTA
+                      </div>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTicket(ticket.id);
+                      }}
+                      className="rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <p className="text-sm font-medium opacity-70 mb-4 leading-relaxed">{ticket.message}</p>
+
+                {ticket.admin_reply && (
+                  <div className="mt-6 p-6 bg-background/50 border-l-4 border-blue-600 rounded-r-3xl">
+                    <div className="flex items-center gap-2 mb-2 text-blue-500">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="text-[10px] font-black uppercase tracking-tighter">Resposta da Equipe 3DCheck</span>
+                    </div>
+                    <p className="font-bold text-sm italic text-foreground/90">{ticket.admin_reply}</p>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
