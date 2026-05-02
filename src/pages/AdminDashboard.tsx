@@ -21,6 +21,10 @@ import {
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'finance' | 'users' | 'support'>('finance');
+  // NOVOS ESTADOS PARA SUPORTE
+  const [supportSubTab, setSupportSubTab] = useState<'pending' | 'history'>('pending');
+  const [supportSearch, setSupportSearch] = useState('');
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [requests, setRequests] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -31,17 +35,14 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
       const [reqs, profs, tix] = await Promise.all([
         supabase.from('subscriptions_pending').select(`*, profiles (name, email, plan_status)`).order('created_at', { ascending: false }),
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('support_tickets').select(`*, profiles (name, email)`).order('created_at', { ascending: false })
       ]);
-
       setRequests(reqs.data || []);
       setUsers(profs.data || []);
       setTickets(tix.data || []);
-
     } catch (e: any) {
       toast.error('Falha ao sincronizar dados.');
     } finally {
@@ -57,20 +58,29 @@ export default function AdminDashboard() {
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // NOVA LÓGICA DE FILTRAGEM E PESQUISA PARA SUPORTE
+  const filteredTickets = tickets.filter(t => {
+    const matchesSearch = 
+      t.subject?.toLowerCase().includes(supportSearch.toLowerCase()) ||
+      t.profiles?.name?.toLowerCase().includes(supportSearch.toLowerCase()) ||
+      t.message?.toLowerCase().includes(supportSearch.toLowerCase());
+    
+    if (supportSubTab === 'pending') return !t.admin_reply && matchesSearch;
+    return t.admin_reply && matchesSearch;
+  });
+
   const handleAdminReply = async (ticketId: string) => {
     const reply = replyTexts[ticketId];
     if (!reply?.trim()) return toast.error("Digite uma resposta.");
-
     try {
       const { error } = await supabase
         .from('support_tickets')
         .update({ admin_reply: reply, status: 'responded', has_unread_reply: true })
         .eq('id', ticketId);
-
       if (error) throw error;
       toast.success("Resposta enviada!");
       setReplyTexts(prev => ({ ...prev, [ticketId]: '' }));
-      fetchData();
+      fetchData(); // Move automaticamente para o histórico
     } catch (err) {
       toast.error("Erro ao enviar.");
     }
@@ -78,7 +88,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20 px-4">
-      {/* HEADER E NAVEGAÇÃO POR ABAS */}
+      {/* HEADER E NAVEGAÇÃO POR ABAS (Original mantido) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black tracking-tighter uppercase italic">Admin <span className="text-blue-500">Control</span></h2>
@@ -99,7 +109,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ABA FINANCEIRO: APROVAÇÃO DE PIX */}
       {activeTab === 'finance' && (
         <Card className="rounded-[2.5rem] border-border bg-card/50 overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <CardHeader className="p-8 border-b border-border/50 bg-blue-500/5">
@@ -132,8 +141,8 @@ export default function AdminDashboard() {
                   <TableCell className="px-8 py-6 text-right flex justify-end gap-2">
                     {req.status === 'pending' ? (
                       <>
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 font-black rounded-xl">APROVAR</Button>
-                        <Button size="sm" variant="destructive" className="font-black rounded-xl">REJEITAR</Button>
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 font-black rounded-xl" onClick={() => handleApprove(req.id, req.user_id, req.profiles?.name)}>APROVAR</Button>
+                        <Button size="sm" variant="destructive" className="font-black rounded-xl" onClick={() => handleReject(req.id)}>REJEITAR</Button>
                       </>
                     ) : <Badge variant="outline" className="uppercase font-black italic">{req.status}</Badge>}
                   </TableCell>
@@ -144,7 +153,6 @@ export default function AdminDashboard() {
         </Card>
       )}
 
-      {/* ABA OPERADORES: LISTA COM PESQUISA */}
       {activeTab === 'users' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="relative max-w-md group">
@@ -190,53 +198,100 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ABA SUPORTE: CHAT DE TICKETS */}
+      {/* ABA SUPORTE: ATUALIZADA COM SUB-ABAS E PESQUISA */}
       {activeTab === 'support' && (
-        <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {tickets.map(ticket => (
-            <Card key={ticket.id} className={`rounded-[2.5rem] border-border bg-card/40 shadow-xl overflow-hidden transition-all ${!ticket.admin_reply ? 'border-blue-500/30 ring-1 ring-blue-500/10 shadow-blue-500/5' : ''}`}>
-              <div className="p-8 grid md:grid-cols-[1fr_320px] gap-8">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Badge className={ticket.admin_reply ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-600'}>{ticket.admin_reply ? 'Respondido' : 'Pendente'}</Badge>
-                    <span className="text-[10px] font-black opacity-30 uppercase">{new Date(ticket.created_at).toLocaleString()}</span>
-                  </div>
-                  <h3 className="text-xl font-black italic uppercase tracking-tighter">{ticket.subject}</h3>
-                  <div className="p-6 bg-background/50 rounded-2xl border border-border text-sm font-medium leading-relaxed italic opacity-80">"{ticket.message}"</div>
-                  
-                  {ticket.attachment_url && (
-                    <Button variant="outline" size="sm" className="rounded-xl border-blue-500/20 text-blue-500 bg-blue-500/5 hover:bg-blue-500/10 font-black italic uppercase text-[10px] gap-2 h-10 px-4" onClick={() => window.open(supabase.storage.from('support-attachments').getPublicUrl(ticket.attachment_url).data.publicUrl, '_blank')}>
-                      <Paperclip className="w-4 h-4" /> Ver Anexo de Evidência
-                    </Button>
-                  )}
-                </div>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            <div className="flex bg-muted/30 p-1 rounded-xl w-fit">
+              <Button 
+                size="sm" 
+                variant={supportSubTab === 'pending' ? 'default' : 'ghost'} 
+                onClick={() => setSupportSubTab('pending')}
+                className="rounded-lg font-black text-[10px] uppercase h-9"
+              >
+                Pendentes ({tickets.filter(t => !t.admin_reply).length})
+              </Button>
+              <Button 
+                size="sm" 
+                variant={supportSubTab === 'history' ? 'default' : 'ghost'} 
+                onClick={() => setSupportSubTab('history')}
+                className="rounded-lg font-black text-[10px] uppercase h-9"
+              >
+                Histórico ({tickets.filter(t => t.admin_reply).length})
+              </Button>
+            </div>
+            
+            <div className="relative w-full md:w-80 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30 group-focus-within:text-blue-500 transition-colors" />
+              <Input 
+                placeholder="Pesquisar no suporte..." 
+                value={supportSearch} 
+                onChange={(e) => setSupportSearch(e.target.value)} 
+                className="pl-10 rounded-xl h-11 border-border shadow-sm" 
+              />
+            </div>
+          </div>
 
-                <div className="flex flex-col gap-4 bg-accent/10 p-6 rounded-[2rem] border border-border/40">
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-black uppercase italic opacity-40">Operador</div>
-                    <div className="font-black text-sm italic uppercase">{ticket.profiles?.name}</div>
-                    <div className="text-[9px] font-bold opacity-50">{ticket.profiles?.email}</div>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-border/50">
-                    {ticket.admin_reply ? (
-                      <div className="p-4 bg-emerald-500/10 rounded-xl text-xs font-bold italic text-emerald-700">Resposta: {ticket.admin_reply}</div>
-                    ) : (
-                      <>
-                        <Textarea 
-                          placeholder="Digite sua resposta..." 
-                          className="bg-background rounded-xl border-border text-xs min-h-[100px] mb-3"
-                          value={replyTexts[ticket.id] || ''}
-                          onChange={(e) => setReplyTexts(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                        />
-                        <Button onClick={() => handleAdminReply(ticket.id)} className="w-full bg-blue-600 hover:bg-blue-500 font-black uppercase italic rounded-xl h-11">Responder <Send className="w-4 h-4 ml-2"/></Button>
-                      </>
+          <div className="grid gap-6">
+            {filteredTickets.map(ticket => (
+              <Card key={ticket.id} className={`rounded-[2.5rem] border-border bg-card/40 shadow-xl overflow-hidden transition-all ${!ticket.admin_reply ? 'border-blue-500/30 ring-1 ring-blue-500/10 shadow-blue-500/5' : ''}`}>
+                <div className="p-8 grid md:grid-cols-[1fr_320px] gap-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Badge className={ticket.admin_reply ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-blue-600'}>{ticket.admin_reply ? 'Respondido' : 'Aguardando'}</Badge>
+                      <span className="text-[10px] font-black opacity-30 uppercase">{new Date(ticket.created_at).toLocaleString()}</span>
+                    </div>
+                    <h3 className="text-xl font-black italic uppercase tracking-tighter">{ticket.subject}</h3>
+                    <div className="p-6 bg-background/50 rounded-2xl border border-border text-sm font-medium leading-relaxed italic opacity-80">"{ticket.message}"</div>
+                    
+                    {ticket.attachment_url && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="rounded-xl border-blue-500/20 text-blue-500 bg-blue-500/5 hover:bg-blue-500/10 font-black italic uppercase text-[10px] gap-2 h-10 px-4" 
+                        onClick={() => window.open(supabase.storage.from('support-attachments').getPublicUrl(ticket.attachment_url).data.publicUrl, '_blank')}
+                      >
+                        <Paperclip className="w-4 h-4" /> Ver Anexo de Evidência
+                      </Button>
                     )}
                   </div>
+
+                  <div className="flex flex-col gap-4 bg-accent/10 p-6 rounded-[2rem] border border-border/40">
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-black uppercase italic opacity-40">Operador</div>
+                      <div className="font-black text-sm italic uppercase">{ticket.profiles?.name}</div>
+                      <div className="text-[9px] font-bold opacity-50">{ticket.profiles?.email}</div>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-border/50">
+                      {ticket.admin_reply ? (
+                        <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-[11px] font-bold italic text-emerald-700">
+                          <span className="block text-[8px] uppercase not-italic opacity-50 mb-1">Resposta Enviada:</span>
+                          {ticket.admin_reply}
+                        </div>
+                      ) : (
+                        <>
+                          <Textarea 
+                            placeholder="Sua resposta..." 
+                            className="bg-background rounded-xl border-border text-xs min-h-[100px] mb-3"
+                            value={replyTexts[ticket.id] || ''}
+                            onChange={(e) => setReplyTexts(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                          />
+                          <Button onClick={() => handleAdminReply(ticket.id)} className="w-full bg-blue-600 hover:bg-blue-500 font-black uppercase italic rounded-xl h-11">Responder <Send className="w-4 h-4 ml-2"/></Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
+              </Card>
+            ))}
+            {filteredTickets.length === 0 && (
+              <div className="py-20 text-center opacity-40 italic font-medium border-2 border-dashed border-border rounded-[2.5rem]">
+                Nenhum chamado encontrado nesta categoria.
               </div>
-            </Card>
-          ))}
+            )}
+          </div>
         </div>
       )}
     </div>
