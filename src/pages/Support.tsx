@@ -24,6 +24,8 @@ export default function Support() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  
+  // NOVOS ESTADOS PARA PESQUISA E ABAS
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSubTab, setActiveSubTab] = useState<'active' | 'history'>('active');
 
@@ -83,12 +85,13 @@ export default function Support() {
       if (error) throw error;
       
       toast.success("Conversa removida.");
-      setTickets(prev => prev.filter(t => t.id !== ticketId));
+      setTickets(prev => prev.filter(t => t.id !== ticketId)); // Atualiza sem precisar de fetch
     } catch (err: any) {
       toast.error("Erro ao excluir.");
     }
   };
 
+  // LÓGICA DE FILTRAGEM (ABAS + PESQUISA)
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = 
       t.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,8 +113,11 @@ export default function Support() {
         .from('support-attachments')
         .upload(`${user?.id}/${fileName}`, file);
       
-      if (error) toast.error("Erro ao subir anexo");
-      else attachmentPath = data.path;
+      if (error) {
+        toast.error("Erro ao subir anexo");
+      } else {
+        attachmentPath = data.path;
+      }
     }
 
     const { error } = await supabase.from('support_tickets').insert({
@@ -143,6 +149,7 @@ export default function Support() {
         <History className="w-8 h-8 text-blue-500/20" />
       </header>
 
+      {/* FORMULÁRIO DE ENVIO */}
       <Card className="bg-card/50 p-8 rounded-[2.5rem] border-border border shadow-2xl backdrop-blur-sm">
         <form onSubmit={handleSendTicket} className="space-y-6">
           <div className="space-y-4">
@@ -173,6 +180,7 @@ export default function Support() {
         </form>
       </Card>
 
+      {/* FILTROS E PESQUISA */}
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <div className="flex bg-muted/50 p-1 rounded-xl w-fit border border-border">
@@ -203,6 +211,7 @@ export default function Support() {
           </div>
         </div>
 
+        {/* LISTA DE CHAMADOS FILTRADA */}
         <div className="space-y-6">
           {filteredTickets.length === 0 ? (
             <div className="py-16 text-center border-2 border-dashed border-border rounded-[3rem] opacity-40 italic font-medium">
