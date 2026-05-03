@@ -51,23 +51,29 @@ const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
   const max = Math.max(...displayData) || 1;
 
   return (
-    <div className="flex items-end gap-[2px] h-10 w-24">
+    <div className="flex items-end gap-[2px] h-12 w-24 pt-3">
       {displayData.map((val, i) => {
         const heightPercent = Math.max((val / max) * 100, 5); 
+        // Cor do texto com opacidade para ficar suave e legível
+        const textColor = `color-mix(in srgb, ${color} 70%, transparent)`; 
+        
         return (
-          <div key={i} className="relative group flex-1 h-full flex items-end">
+          <div key={i} className="relative flex-1 h-full flex items-end justify-center group cursor-pointer">
+            {/* Número sempre visível em telas pequenas e com cor suave */}
+            <div 
+              className="absolute bottom-full mb-0.5 text-[8px] font-black opacity-80"
+              style={{ color: textColor }}
+            >
+              {val > 0 ? Math.round(val) : ''}
+            </div>
+            
             <motion.div
               initial={{ height: 0 }}
               animate={{ height: `${heightPercent}%` }}
               transition={{ duration: 0.5, delay: i * 0.05 }}
-              className="w-full rounded-t-sm opacity-60 group-hover:opacity-100 transition-opacity cursor-pointer"
+              className="w-full rounded-t-sm opacity-60 group-hover:opacity-100 transition-opacity"
               style={{ backgroundColor: color }}
             />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10">
-              <div className="bg-foreground text-background text-[9px] font-black px-2 py-0.5 rounded shadow-xl whitespace-nowrap">
-                R$ {val.toFixed(2)}
-              </div>
-            </div>
           </div>
         );
       })}
@@ -160,8 +166,18 @@ export default function Dashboard() {
           dailyData[dateKey].rev += rev;
           dailyData[dateKey].cst += cst;
 
-          // Busca expandida e inteligente do nome do produto
-          const pName = order.product_name || order.item_name || order.name || order.title || order.description || order.product || order.modelo || 'Item Personalizado';
+          // Extração Profunda do Nome do Produto
+          let pName = 'Item Personalizado';
+          if (order.product_name) pName = order.product_name;
+          else if (order.item_name) pName = order.item_name;
+          else if (order.name) pName = order.name;
+          else if (order.title) pName = order.title;
+          else if (order.product) pName = order.product;
+          else if (order.modelo) pName = order.modelo;
+          // Se não achar nas colunas diretas, tenta pegar da descrição
+          else if (order.description && typeof order.description === 'string') {
+              pName = order.description.split('\n')[0].substring(0, 30); 
+          }
           
           if (!productMap[pName]) productMap[pName] = { count: 0, revenue: 0 };
           productMap[pName].count += 1;
@@ -292,7 +308,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* AÇÕES RÁPIDAS COM REDIRECIONAMENTO */}
+      {/* AÇÕES RÁPIDAS COM NAVEGAÇÃO ESPECÍFICA */}
       {(stats.newOrders > 0 || stats.ready > 0) && (
         <motion.div variants={itemVariants} className="space-y-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
@@ -301,7 +317,8 @@ export default function Dashboard() {
           <div className="grid gap-4 md:grid-cols-2">
             {stats.newOrders > 0 && (
               <div 
-                onClick={() => navigate('/app/orders')} 
+                // Navega passando parâmetro na URL para a página orders ler e filtrar
+                onClick={() => navigate('/app/orders?filter=novos')} 
                 className="flex items-center justify-between p-5 bg-blue-600/5 border border-blue-600/20 rounded-3xl group hover:bg-blue-600/10 transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-4">
@@ -316,7 +333,7 @@ export default function Dashboard() {
             )}
             {stats.ready > 0 && (
               <div 
-                onClick={() => navigate('/app/orders')} 
+                onClick={() => navigate('/app/orders?filter=prontos')} 
                 className="flex items-center justify-between p-5 bg-emerald-600/5 border border-emerald-600/20 rounded-3xl group hover:bg-emerald-600/10 transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-4">
@@ -333,7 +350,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* FLUXO DE PRODUÇÃO ATUALIZADO */}
+      {/* FLUXO DE PRODUÇÃO COM NAVEGAÇÃO ESPECÍFICA */}
       <motion.div variants={itemVariants} className="space-y-6">
         <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
           Fluxo de Produção <div className="h-[1px] flex-1 bg-border" />
@@ -341,15 +358,15 @@ export default function Dashboard() {
         </h3>
         <motion.div variants={containerVariants} className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
           {[
-            { label: 'Total', val: stats.total, icon: Package, color: 'muted' },
-            { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue' },
-            { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber' }, 
-            { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald' }
+            { label: 'Total', val: stats.total, icon: Package, color: 'muted', filterPath: 'todos' },
+            { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue', filterPath: 'novos' },
+            { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber', filterPath: 'producao' }, 
+            { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald', filterPath: 'prontos' }
           ].map((item, i) => (
             <motion.div key={i} variants={itemVariants} whileHover={{ y: -5 }}>
-              {/* Adicionado onClick e cursor-pointer para navegação nos Cards de Fluxo */}
+              {/* Adicionado o parâmetro de filtro dinâmico na URL */}
               <Card 
-                onClick={() => navigate('/app/orders')}
+                onClick={() => navigate(`/app/orders?filter=${item.filterPath}`)}
                 className={`cursor-pointer border-border bg-card/30 transition-all duration-200 hover:bg-card/50 ${item.color === 'emerald' ? 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10' : ''}`}
               >
                 <CardContent className="p-6">
