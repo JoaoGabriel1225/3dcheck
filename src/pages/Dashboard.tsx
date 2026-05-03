@@ -54,14 +54,13 @@ const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
     <div className="flex items-end gap-[3px] h-14 w-24 pt-5">
       {displayData.map((val, i) => {
         const heightPercent = Math.max((val / max) * 100, 5); 
-        const labelColor = color; 
         
         return (
           <div key={i} className="relative flex-1 h-full flex items-end justify-center group">
-            {/* CORREÇÃO: Números SEMPRE VISÍVEIS com opacidade fixa para mobile */}
+            {/* NÚMEROS: Visibilidade total e cor sólida para facilitar leitura no celular */}
             <div 
-              className="absolute bottom-full mb-1 text-[7px] font-black leading-none"
-              style={{ color: labelColor, opacity: val > 0 ? 0.8 : 0 }}
+              className="absolute bottom-full mb-1 text-[8px] font-bold"
+              style={{ color: color, opacity: val > 0 ? 1 : 0 }}
             >
               {val > 0 ? Math.round(val) : ''}
             </div>
@@ -70,7 +69,7 @@ const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
               initial={{ height: 0 }}
               animate={{ height: `${heightPercent}%` }}
               transition={{ duration: 0.5, delay: i * 0.05 }}
-              className="w-full rounded-t-[1px] opacity-70"
+              className="w-full rounded-t-[1px] opacity-80"
               style={{ backgroundColor: color }}
             />
           </div>
@@ -135,9 +134,10 @@ export default function Dashboard() {
         else if (timeFilter === 'mes') startDate.setDate(1);
         else if (timeFilter === 'todos') startDate = new Date('2020-01-01');
 
+        // BUSCA CORRIGIDA: Realiza o join com a tabela de produtos para pegar o 'name'
         const { data: orders, error } = await supabase
           .from('orders')
-          .select('*')
+          .select('*, products(name)')
           .eq('user_id', profile.id)
           .gte('created_at', startDate.toISOString())
           .order('created_at', { ascending: true });
@@ -147,7 +147,7 @@ export default function Dashboard() {
         const dailyData: Record<string, { rev: number, cst: number }> = {};
         const productMap: Record<string, { count: number, revenue: number }> = {};
         
-        const newStats = orders.reduce((acc, order) => {
+        const newStats = orders.reduce((acc, order: any) => {
           acc.total++;
           const dateKey = new Date(order.created_at).toLocaleDateString();
           if (!dailyData[dateKey]) dailyData[dateKey] = { rev: 0, cst: 0 };
@@ -165,8 +165,10 @@ export default function Dashboard() {
           dailyData[dateKey].rev += rev;
           dailyData[dateKey].cst += cst;
 
-          // CORREÇÃO DA NOMENCLATURA: Priorizando nomes curtos e técnicos do banco
-          const pName = order.product_name || order.name || order.item_name || order.item || order.product || order.subject || order.title || 'Item 3D';
+          // LÓGICA DE NOME: Captura do join 'products' ou usa a descrição curta como fallback
+          const pName = (Array.isArray(order.products) ? order.products[0]?.name : order.products?.name) 
+                        || order.description?.split('\n')[0].substring(0, 30) 
+                        || 'Item Personalizado';
           
           if (!productMap[pName]) productMap[pName] = { count: 0, revenue: 0 };
           productMap[pName].count += 1;
@@ -291,7 +293,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* AÇÕES RÁPIDAS COM REDIRECIONAMENTO ESPECÍFICO */}
+      {/* AÇÕES RÁPIDAS COM REDIRECIONAMENTO POR STATUS */}
       {(stats.newOrders > 0 || stats.ready > 0) && (
         <motion.div variants={itemVariants} className="space-y-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
@@ -299,10 +301,7 @@ export default function Dashboard() {
           </h3>
           <div className="grid gap-4 md:grid-cols-2">
             {stats.newOrders > 0 && (
-              <div 
-                onClick={() => navigate('/app/orders?status=Aguardando contato')} 
-                className="flex items-center justify-between p-5 bg-blue-500/5 border border-blue-500/20 rounded-3xl group hover:bg-blue-500/10 transition-all cursor-pointer"
-              >
+              <div onClick={() => navigate('/app/orders?status=Aguardando contato')} className="flex items-center justify-between p-5 bg-blue-500/5 border border-blue-500/20 rounded-3xl group hover:bg-blue-500/10 transition-all cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-600/20"><Clock className="w-5 h-5" /></div>
                   <div>
@@ -314,10 +313,7 @@ export default function Dashboard() {
               </div>
             )}
             {stats.ready > 0 && (
-              <div 
-                onClick={() => navigate('/app/orders?status=Pronto')} 
-                className="flex items-center justify-between p-5 bg-emerald-600/5 border border-emerald-600/20 rounded-3xl group hover:bg-emerald-600/10 transition-all cursor-pointer"
-              >
+              <div onClick={() => navigate('/app/orders?status=Pronto')} className="flex items-center justify-between p-5 bg-emerald-600/5 border border-emerald-600/20 rounded-3xl group hover:bg-emerald-600/10 transition-all cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-emerald-600 rounded-2xl text-white shadow-lg shadow-emerald-600/20"><CheckCircle2 className="w-5 h-5" /></div>
                   <div>
