@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Certifique-se de que o npm install foi feito
+import { useNavigate } from 'react-router-dom'; 
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,12 +32,12 @@ type OrderContext = {
   revenue: number;
   cost: number;
   profit: number;
-  trends: { revenue: number[]; cost: number[]; profit: number[] };
+  trends: { revenue: number[]; cost: number[]; profit: number[] }; 
 }
 
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
-// Gráfico que se adapta aos dados reais do Supabase
+// Componente de Gráfico Funcional (Sparkline Dinâmica)
 const DynamicSparkline = ({ data, color }: { data: number[], color: string }) => {
   if (!data || data.length < 2) return <div className="w-16 h-8 border-b border-dashed border-muted-foreground/20" />;
   
@@ -45,6 +45,7 @@ const DynamicSparkline = ({ data, color }: { data: number[], color: string }) =>
   const min = Math.min(...data);
   const range = max - min || 1;
   
+  // Mapeia os dados para coordenadas SVG (100x40)
   const points = data.map((val, i) => {
     const x = (i / (data.length - 1)) * 100;
     const y = 35 - ((val - min) / range) * 30; 
@@ -80,7 +81,7 @@ const itemVariants = {
 
 export default function Dashboard() {
   const { profile, user } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
   const [stats, setStats] = useState<OrderContext>({ 
     total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, cost: 0, profit: 0,
     trends: { revenue: [], cost: [], profit: [] }
@@ -131,6 +132,7 @@ export default function Dashboard() {
 
         if (error) throw error;
 
+        // Agrupamento de dados por dia para gerar os gráficos
         const dailyData: Record<string, { rev: number, cst: number }> = {};
         
         const newStats = orders.reduce((acc, order) => {
@@ -170,7 +172,6 @@ export default function Dashboard() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-10 pb-10">
       
-      {/* BANNER PWA */}
       <AnimatePresence>
         {showInstallBtn && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="p-4 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -190,7 +191,6 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* HEADER */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]"><LayoutDashboard className="w-4 h-4" />Visão Geral</div>
@@ -207,12 +207,12 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* FINANCEIRO */}
+      {/* FINANCEIRO COM GRÁFICOS REAIS */}
       <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
         {[
-          { label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', sub: 'Receita bruta' },
-          { label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', sub: 'Em insumos' },
-          { label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', sub: 'Performance Máxima', isZap: true }
+          { label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', icon: DollarSign, sub: 'Receita bruta' },
+          { label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', icon: TrendingDown, sub: 'Em insumos' },
+          { label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', icon: ArrowUpRight, sub: 'Performance Máxima', isZap: true }
         ].map((m, i) => (
           <motion.div key={i} variants={itemVariants}>
             <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300">
@@ -233,7 +233,7 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
-      {/* PRÓXIMAS AÇÕES */}
+      {/* AÇÕES RÁPIDAS COM REDIRECIONAMENTO */}
       {(stats.newOrders > 0 || stats.ready > 0) && (
         <motion.div variants={itemVariants} className="space-y-4">
           <h3 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
@@ -249,7 +249,7 @@ export default function Dashboard() {
                   <Clock className="w-5 h-5 text-blue-500" />
                   <div>
                     <p className="text-sm font-bold">{stats.newOrders} novos pedidos</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Confirmar e Iniciar</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">Aguardando confirmação</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-blue-500 group-hover:translate-x-1 transition-transform" />
@@ -264,7 +264,7 @@ export default function Dashboard() {
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                   <div>
                     <p className="text-sm font-bold">{stats.ready} peças prontas</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Organizar Entrega</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">Organizar entrega</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-1 transition-transform" />
@@ -274,17 +274,17 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* PRODUÇÃO */}
+      {/* FLUXO DE PRODUÇÃO COM NOMENCLATURA ATUALIZADA */}
       <motion.div variants={itemVariants} className="space-y-6">
         <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
-          Produção <div className="h-[1px] flex-1 bg-border" />
-          <span className="text-[10px] font-black text-muted-foreground bg-muted px-2 py-1 rounded"><Calendar className="w-3 h-3 inline mr-1" /> {timeFilter}</span>
+          Fluxo de Produção <div className="h-[1px] flex-1 bg-border" />
+          <span className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-2 py-1 rounded flex items-center gap-1"><Calendar className="w-3 h-3" /> {timeFilter}</span>
         </h3>
         <motion.div variants={containerVariants} className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
           {[
             { label: 'Total', val: stats.total, icon: Package, color: 'muted' },
             { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue' },
-            { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber' },
+            { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber' }, 
             { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald' }
           ].map((item, i) => (
             <motion.div key={i} variants={itemVariants} whileHover={{ y: -5 }}>
@@ -292,9 +292,9 @@ export default function Dashboard() {
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <item.icon className={`w-5 h-5 ${item.color === 'muted' ? 'text-muted-foreground/50' : `text-${item.color}-500/50`}`} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">{item.label}</span>
                   </div>
                   <div className={`text-2xl sm:text-3xl font-black ${item.color !== 'muted' ? `text-${item.color}-600 dark:text-${item.color}-400` : ''}`}>{loading ? '-' : item.val}</div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">{item.label}</p>
                 </CardContent>
               </Card>
             </motion.div>
