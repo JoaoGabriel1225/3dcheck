@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // Para o redirecionamento
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   PackageSearch, 
   Clock, 
-  CheckCircle, 
   Package, 
   DollarSign, 
   TrendingDown,
@@ -32,63 +32,54 @@ type OrderContext = {
   revenue: number;
   cost: number;
   profit: number;
+  trends: { revenue: number[]; cost: number[]; profit: number[] };
 }
 
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
-// Componente de Mini-Gráfico Simples (Sparkline)
-const Sparkline = ({ color }: { color: string }) => (
-  <svg className="w-16 h-8 opacity-50" viewBox="0 0 100 40">
-    <motion.path
-      d="M0 35 L20 25 L40 30 L60 10 L80 15 L100 5"
-      fill="none"
-      stroke={color}
-      strokeWidth="3"
-      strokeLinecap="round"
-      initial={{ pathLength: 0 }}
-      animate={{ pathLength: 1 }}
-      transition={{ duration: 1.5, ease: "easeInOut" }}
-    />
-  </svg>
-);
+// Lógica para gerar o gráfico funcional baseado em dados Reais
+const DynamicSparkline = ({ data, color }: { data: number[], color: string }) => {
+  if (data.length < 2) return <div className="w-16 h-8 border-b border-dashed border-muted-foreground/20" />;
+  
+  const max = Math.max(...data) || 1;
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data.map((val, i) => {
+    const x = (i / (data.length - 1)) * 100;
+    const y = 35 - ((val - min) / range) * 30; // Normaliza para o espaço do SVG (35 baseline, 30 altura)
+    return `${x},${y}`;
+  }).join(' ');
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+  return (
+    <svg className="w-16 h-8 overflow-visible" viewBox="0 0 100 40">
+      <motion.polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.6 }}
+        transition={{ duration: 1.5, ease: "easeInOut" }}
+      />
+    </svg>
+  );
 };
 
 export default function Dashboard() {
   const { profile, user } = useAuth();
-  const [stats, setStats] = useState<OrderContext>({ total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, cost: 0, profit: 0 });
+  const navigate = useNavigate(); // Hook de navegação
+  const [stats, setStats] = useState<OrderContext>({ 
+    total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, 
+    revenue: 0, cost: 0, profit: 0, 
+    trends: { revenue: [], cost: [], profit: [] } 
+  });
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('mes');
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
   const storeDisplayName = user?.user_metadata?.full_name || profile?.name || 'Empreendedor';
-
-  useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallBtn(true);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstallBtn(false);
-    setDeferredPrompt(null);
-  };
 
   useEffect(() => {
     if (!profile) return;
@@ -100,28 +91,46 @@ export default function Dashboard() {
         startDate.setHours(0, 0, 0, 0);
         if (timeFilter === 'semana') startDate.setDate(startDate.getDate() - 7);
         else if (timeFilter === 'mes') startDate.setDate(1);
-        else if (timeFilter === 'todos') startDate = new Date('2000-01-01');
+        else if (timeFilter === 'todos') startDate = new Date('2020-01-01');
 
         const { data: orders, error } = await supabase
           .from('orders')
-          .select('status, final_price, cost_total')
+          .select('status, final_price, cost_total, created_at')
           .eq('user_id', profile.id)
-          .gte('created_at', startDate.toISOString());
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: true });
 
         if (error) throw error;
 
+        // Processamento para os Gráficos
+        const dailyData: Record<string, { rev: number, cst: number }> = {};
+        
         const newStats = orders.reduce((acc, order) => {
           acc.total++;
+          const dateKey = new Date(order.created_at).toLocaleDateString();
+          if (!dailyData[dateKey]) dailyData[dateKey] = { rev: 0, cst: 0 };
+
           if (['Aguardando contato', 'Confirmado', 'Pendente'].includes(order.status)) acc.newOrders++;
           else if (['Preparação', 'Imprimindo', 'Em Andamento'].includes(order.status)) acc.inProgress++;
           else if (['Pronto', 'Aguardando Retirada'].includes(order.status)) acc.ready++;
-          else if (['Enviado', 'Concluído'].includes(order.status)) acc.completed++;
           
-          acc.revenue += Number(order.final_price) || 0;
-          acc.cost += Number(order.cost_total) || 0;
+          const rev = Number(order.final_price) || 0;
+          const cst = Number(order.cost_total) || 0;
+          
+          acc.revenue += rev;
+          acc.cost += cst;
+          dailyData[dateKey].rev += rev;
+          dailyData[dateKey].cst += cst;
+          
           return acc;
-        }, { total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, cost: 0, profit: 0 } as OrderContext);
+        }, { total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, cost: 0, profit: 0, trends: { revenue: [], cost: [], profit: [] } } as OrderContext);
 
+        // Converte o mapa de datas em arrays para os Sparklines
+        const sortedDates = Object.keys(dailyData);
+        newStats.trends.revenue = sortedDates.map(d => dailyData[d].rev);
+        newStats.trends.cost = sortedDates.map(d => dailyData[d].cst);
+        newStats.trends.profit = sortedDates.map(d => dailyData[d].rev - dailyData[d].cst);
+        
         newStats.profit = newStats.revenue - newStats.cost;
         setStats(newStats);
       } catch (error) { console.error(error); } 
@@ -131,131 +140,105 @@ export default function Dashboard() {
   }, [profile, timeFilter]);
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-10 pb-10">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 pb-10">
       
-      <AnimatePresence>
-        {showInstallBtn && (
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="p-4 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20"><Smartphone className="text-white w-6 h-6" /></div>
-              <div>
-                <h3 className="font-black text-zinc-100 uppercase text-xs tracking-widest">App 3DCheck</h3>
-                <p className="text-sm text-zinc-400">Instale para gerenciar seus pedidos com um toque.</p>
-              </div>
-            </div>
-            <Button asChild onClick={handleInstallClick}>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl px-6 h-11 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center">
-                <Download className="w-4 h-4 mr-2" /> INSTALAR AGORA
-              </motion.button>
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]"><LayoutDashboard className="w-4 h-4" />Visão Geral</div>
+          <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]"><LayoutDashboard className="w-4 h-4" />Painel de Controle</div>
           <h2 className="text-4xl font-black tracking-tight text-foreground">Olá, {storeDisplayName} <span className="text-blue-500">.</span></h2>
-          <p className="text-muted-foreground font-medium max-w-xl">Acompanhe sua produção 3D e o resumo financeiro.</p>
         </div>
-        <div className="flex items-center bg-muted/50 p-1.5 rounded-2xl border border-border overflow-x-auto hide-scrollbar">
+        
+        <div className="flex items-center bg-muted/50 p-1.5 rounded-2xl border border-border">
            {(['hoje', 'semana', 'mes', 'todos'] as const).map((filter) => (
-             <Button key={filter} variant="ghost" onClick={() => setTimeFilter(filter)} className={`h-9 px-4 rounded-xl text-xs font-bold transition-all relative ${timeFilter === filter ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-               {timeFilter === filter && <motion.div layoutId="activeFilter" className="absolute inset-0 bg-background shadow-sm rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
-               <span className="relative z-10 capitalize">{filter === 'mes' ? 'Este Mês' : filter === 'semana' ? 'Esta Semana' : filter === 'todos' ? 'Todo Período' : 'Hoje'}</span>
+             <Button key={filter} variant="ghost" onClick={() => setTimeFilter(filter)} className={`h-9 px-4 rounded-xl text-xs font-bold transition-all relative ${timeFilter === filter ? 'text-foreground' : 'text-muted-foreground'}`}>
+               {timeFilter === filter && <motion.div layoutId="activeFilter" className="absolute inset-0 bg-background shadow-sm rounded-xl" />}
+               <span className="relative z-10 capitalize">{filter === 'mes' ? 'Mês' : filter === 'semana' ? 'Semana' : filter === 'todos' ? 'Total' : 'Hoje'}</span>
              </Button>
            ))}
         </div>
-      </motion.div>
+      </div>
 
-      {/* MÉTRICAS FINANCEIRAS COM GRÁFICOS */}
-      <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
+      {/* FINANCEIRO COM GRÁFICOS FUNCIONAIS */}
+      <div className="grid gap-6 md:grid-cols-3">
         {[
-          { label: 'Faturado', val: stats.revenue, color: '#3b82f6', icon: DollarSign, sub: 'Receita bruta' },
-          { label: 'Custos', val: stats.cost, color: '#ef4444', icon: TrendingDown, sub: 'Em insumos' },
-          { label: 'Lucro Líquido', val: stats.profit, color: '#10b981', icon: ArrowUpRight, sub: 'Performance Máxima', isZap: true }
+          { label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6' },
+          { label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444' },
+          { label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981' }
         ].map((m, i) => (
-          <motion.div key={i} variants={itemVariants}>
-            <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300">
-              <CardContent className="p-8">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
-                  <Sparkline color={m.color} />
-                </div>
-                <div className={`text-4xl font-black tracking-tighter ${m.label === 'Lucro Líquido' ? 'text-emerald-500' : 'text-foreground'}`}>
-                  {loading ? <div className="h-10 w-32 bg-muted animate-pulse rounded" /> : `R$ ${m.val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                </div>
-                <div className="flex items-center gap-1.5 mt-2 text-muted-foreground text-xs font-bold uppercase tracking-wider">
-                  {m.isZap && <Zap className="w-3 h-3 text-emerald-500 fill-current" />} {m.sub}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <Card key={i} className="border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
+                <DynamicSparkline data={m.trend} color={m.color} />
+              </div>
+              <div className={`text-4xl font-black tracking-tighter ${m.label === 'Lucro Líquido' ? 'text-emerald-500' : ''}`}>
+                R$ {m.val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </motion.div>
+      </div>
 
-      {/* AÇÕES RÁPIDAS (PROXIMAS AÇÕES) */}
+      {/* PRÓXIMAS AÇÕES COM REDIRECIONAMENTO */}
       {(stats.newOrders > 0 || stats.ready > 0) && (
-        <motion.div variants={itemVariants} className="space-y-4">
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
-            <ListChecks className="w-4 h-4" /> Próximas Ações
-          </h3>
+        <div className="space-y-4">
+          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2"><ListChecks className="w-4 h-4" /> Próximas Ações</h3>
           <div className="grid gap-4 md:grid-cols-2">
             {stats.newOrders > 0 && (
-              <div className="flex items-center justify-between p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl group hover:bg-blue-500/10 transition-all cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-blue-500" />
+              <button 
+                onClick={() => navigate('/app/orders')} // Redireciona para pedidos
+                className="flex items-center justify-between p-5 bg-blue-500/5 border border-blue-500/20 rounded-3xl group hover:border-blue-500 transition-all text-left w-full"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500 rounded-2xl text-white"><Clock className="w-5 h-5" /></div>
                   <div>
-                    <p className="text-sm font-bold">{stats.newOrders} novos pedidos</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Aguardando confirmação</p>
+                    <p className="font-black uppercase text-xs tracking-tight">{stats.newOrders} novos pedidos</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Confirmar e iniciar produção</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-blue-500 group-hover:translate-x-1 transition-transform" />
-              </div>
+                <ChevronRight className="w-5 h-5 text-blue-500 group-hover:translate-x-1 transition-transform" />
+              </button>
             )}
             {stats.ready > 0 && (
-              <div className="flex items-center justify-between p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl group hover:bg-emerald-500/10 transition-all cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              <button 
+                onClick={() => navigate('/app/orders')} // Redireciona para pedidos
+                className="flex items-center justify-between p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-3xl group hover:border-emerald-500 transition-all text-left w-full"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-500 rounded-2xl text-white"><CheckCircle2 className="w-5 h-5" /></div>
                   <div>
-                    <p className="text-sm font-bold">{stats.ready} peças prontas</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Organize a entrega</p>
+                    <p className="font-black uppercase text-xs tracking-tight">{stats.ready} peças prontas</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Notificar cliente / Entregar</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-1 transition-transform" />
-              </div>
+                <ChevronRight className="w-5 h-5 text-emerald-500 group-hover:translate-x-1 transition-transform" />
+              </button>
             )}
           </div>
-        </motion.div>
+        </div>
       )}
 
-      {/* FLUXO DE PRODUÇÃO */}
-      <motion.div variants={itemVariants} className="space-y-6">
-        <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
-          Fluxo de Produção <div className="h-[1px] flex-1 bg-border" />
-          <span className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-2 py-1 rounded flex items-center gap-1"><Calendar className="w-3 h-3" /> {timeFilter}</span>
-        </h3>
-        <motion.div variants={containerVariants} className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+      {/* FLUXO DE PRODUÇÃO COM NOMENCLATURA ATUALIZADA */}
+      <div className="space-y-6">
+        <h3 className="text-xl font-black tracking-tight flex items-center gap-3">Produção <div className="h-[1px] flex-1 bg-border" /></h3>
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           {[
             { label: 'Total', val: stats.total, icon: Package, color: 'muted' },
             { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue' },
-            { label: 'Fazendo', val: stats.inProgress, icon: PackageSearch, color: 'amber' },
+            { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber' }, // Nome Atualizado
             { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald' }
           ].map((item, i) => (
-            <motion.div key={i} variants={itemVariants} whileHover={{ y: -5 }}>
-              <Card className={`border-border bg-card/30 transition-all duration-200 ${item.color === 'emerald' ? 'border-emerald-500/20 bg-emerald-500/5' : ''}`}>
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <item.icon className={`w-5 h-5 ${item.color === 'muted' ? 'text-muted-foreground/50' : `text-${item.color}-500/50`}`} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">{item.label}</span>
-                  </div>
-                  <div className={`text-2xl sm:text-3xl font-black ${item.color !== 'muted' ? `text-${item.color}-600 dark:text-${item.color}-400` : ''}`}>{loading ? '-' : item.val}</div>
-                </CardContent>
-              </Card>
-            </motion.div>
+            <Card key={i} className={`border-border bg-card/30 transition-all ${item.color === 'emerald' ? 'border-emerald-500/20' : ''}`}>
+              <CardContent className="p-6">
+                <item.icon className={`w-5 h-5 mb-4 text-${item.color === 'muted' ? 'muted-foreground/30' : `${item.color}-500/50`}`} />
+                <div className={`text-3xl font-black ${item.color !== 'muted' ? `text-${item.color}-500` : ''}`}>{loading ? '...' : item.val}</div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">{item.label}</p>
+              </CardContent>
+            </Card>
           ))}
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </motion.div>
   );
 }
