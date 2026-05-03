@@ -15,17 +15,18 @@ import {
   Download,
   Smartphone,
   X,
-  Calendar, // Novo ícone importado
-  CheckCircle2 // Novo ícone importado
+  Calendar,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion'; // Importação das ferramentas de animação
 
 type OrderContext = {
   total: number;
   newOrders: number;
   inProgress: number;
-  ready: number; // Novo status: Prontos
-  completed: number; // Enviado/Entregue
+  ready: number;
+  completed: number;
   revenue: number;
   cost: number;
   profit: number;
@@ -33,13 +34,30 @@ type OrderContext = {
 
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
+// Variantes para animações em cascata (Stagger)
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" }
+  }
+};
+
 export default function Dashboard() {
   const { profile, user } = useAuth();
   const [stats, setStats] = useState<OrderContext>({ total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, cost: 0, profit: 0 });
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('mes'); // 'mes' como padrão
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('mes');
 
-  // LÓGICA DE INSTALAÇÃO DO APP (PWA)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
@@ -74,24 +92,18 @@ export default function Dashboard() {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        // 1. Determina a data de corte com base no filtro selecionado
         let startDate = new Date();
-        startDate.setHours(0, 0, 0, 0); // Zera hora para iniciar do começo do dia
+        startDate.setHours(0, 0, 0, 0);
 
         if (timeFilter === 'hoje') {
-          // startDate já está no início de hoje
         } else if (timeFilter === 'semana') {
-          // Volta para o último domingo/segunda dependendo da configuração. Vamos usar os últimos 7 dias.
           startDate.setDate(startDate.getDate() - 7);
         } else if (timeFilter === 'mes') {
-          // Dia 1 do mês atual
           startDate.setDate(1);
         } else {
-          // 'todos': ano 2000 para pegar tudo
           startDate = new Date('2000-01-01');
         }
 
-        // 2. Busca no Supabase filtrando pela data de criação (created_at)
         const { data: orders, error } = await supabase
           .from('orders')
           .select('status, final_price, cost_total, created_at')
@@ -100,17 +112,14 @@ export default function Dashboard() {
 
         if (error) throw error;
 
-        // 3. Processa as estatísticas de acordo com os novos status
         const newStats = orders.reduce((acc, order) => {
           acc.total++;
-          
-          // Lógica atualizada de status
           if (order.status === 'Aguardando contato' || order.status === 'Confirmado' || order.status === 'Pendente') {
              acc.newOrders++;
           } else if (order.status === 'Preparação' || order.status === 'Imprimindo' || order.status === 'Em Andamento') {
              acc.inProgress++;
           } else if (order.status === 'Pronto' || order.status === 'Aguardando Retirada') {
-             acc.ready++; // <-- NOVO CONTADOR
+             acc.ready++;
           } else if (order.status === 'Enviado' || order.status === 'Concluído') {
              acc.completed++;
           }
@@ -134,43 +143,61 @@ export default function Dashboard() {
     };
 
     fetchStats();
-  }, [profile, timeFilter]); // O useEffect roda de novo sempre que 'timeFilter' muda
+  }, [profile, timeFilter]);
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 pb-10">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-10 pb-10"
+    >
       
-      {/* BANNER DE INSTALAÇÃO DO APP (PWA CTA) */}
-      {showInstallBtn && (
-        <div className="p-4 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-700">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
-              <Smartphone className="text-white w-6 h-6" />
+      {/* BANNER DE INSTALAÇÃO COM SAÍDA SUAVE */}
+      <AnimatePresence>
+        {showInstallBtn && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="p-4 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex flex-col sm:flex-row items-center justify-between gap-4"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
+                <Smartphone className="text-white w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-black text-zinc-100 uppercase text-xs tracking-widest">App 3DCheck</h3>
+                <p className="text-sm text-zinc-400">Instale para gerenciar seus pedidos com um toque.</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-black text-zinc-100 uppercase text-xs tracking-widest">App 3DCheck</h3>
-              <p className="text-sm text-zinc-400">Instale para gerenciar seus pedidos com um toque.</p>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button 
+                asChild
+                onClick={handleInstallClick}
+              >
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl px-6 h-11 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center"
+                >
+                  <Download className="w-4 h-4 mr-2" /> INSTALAR AGORA
+                </motion.button>
+              </Button>
+              <Button 
+                onClick={() => setShowInstallBtn(false)}
+                variant="ghost" 
+                className="h-11 w-11 rounded-xl text-zinc-500 hover:text-zinc-300"
+              >
+                <X className="w-5 h-5" />
+              </Button>
             </div>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button 
-              onClick={handleInstallClick}
-              className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl px-6 h-11 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
-            >
-              <Download className="w-4 h-4 mr-2" /> INSTALAR AGORA
-            </Button>
-            <Button 
-              onClick={() => setShowInstallBtn(false)}
-              variant="ghost" 
-              className="h-11 w-11 rounded-xl text-zinc-500 hover:text-zinc-300"
-            >
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* HEADER DO DASHBOARD COM FILTRO TEMPORAL */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+      {/* HEADER */}
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
             <LayoutDashboard className="w-4 h-4" />
@@ -184,151 +211,97 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* SELETOR DE FILTRO DE DATA ESTILO PILL */}
         <div className="flex items-center bg-muted/50 p-1.5 rounded-2xl border border-border overflow-x-auto hide-scrollbar">
-           <Button 
-             variant="ghost" 
-             onClick={() => setTimeFilter('hoje')}
-             className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${timeFilter === 'hoje' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-           >
-             Hoje
-           </Button>
-           <Button 
-             variant="ghost" 
-             onClick={() => setTimeFilter('semana')}
-             className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${timeFilter === 'semana' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-           >
-             Esta Semana
-           </Button>
-           <Button 
-             variant="ghost" 
-             onClick={() => setTimeFilter('mes')}
-             className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${timeFilter === 'mes' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-           >
-             Este Mês
-           </Button>
-           <Button 
-             variant="ghost" 
-             onClick={() => setTimeFilter('todos')}
-             className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${timeFilter === 'todos' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-           >
-             Todo Período
-           </Button>
+           {(['hoje', 'semana', 'mes', 'todos'] as const).map((filter) => (
+             <Button 
+               key={filter}
+               variant="ghost" 
+               onClick={() => setTimeFilter(filter)}
+               className={`h-9 px-4 rounded-xl text-xs font-bold transition-all relative ${timeFilter === filter ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+             >
+               {timeFilter === filter && (
+                 <motion.div 
+                   layoutId="activeFilter"
+                   className="absolute inset-0 bg-background shadow-sm rounded-xl"
+                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                 />
+               )}
+               <span className="relative z-10 capitalize">
+                 {filter === 'mes' ? 'Este Mês' : filter === 'semana' ? 'Esta Semana' : filter === 'todos' ? 'Todo Período' : 'Hoje'}
+               </span>
+             </Button>
+           ))}
         </div>
-      </div>
+      </motion.div>
 
-      {/* MÉTRICAS FINANCEIRAS */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group hover:border-blue-500/50 transition-all duration-300">
-          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
-          <CardContent className="p-8">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Faturado</span>
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <DollarSign className="h-5 w-5 text-blue-500" />
-              </div>
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-foreground">
-              {loading ? <div className="h-10 w-32 bg-muted animate-pulse rounded" /> : `R$ ${stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 font-medium">Receita bruta no período</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group hover:border-red-500/50 transition-all duration-300">
-          <div className="absolute top-0 left-0 w-1 h-full bg-red-500/50" />
-          <CardContent className="p-8">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Custos Operacionais</span>
-              <div className="p-2 rounded-lg bg-red-500/10">
-                <TrendingDown className="h-5 w-5 text-red-500" />
-              </div>
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-foreground">
-              {loading ? <div className="h-10 w-32 bg-muted animate-pulse rounded" /> : `R$ ${stats.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 font-medium">Investimento em insumos</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group hover:border-emerald-500/50 transition-all duration-300 shadow-lg shadow-emerald-500/5">
-          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-          <CardContent className="p-8">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Lucro Líquido</span>
-              <div className="p-2 rounded-lg bg-emerald-500/10">
-                <ArrowUpRight className="h-5 w-5 text-emerald-500" />
-              </div>
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-emerald-500 dark:text-emerald-400">
-              {loading ? <div className="h-10 w-32 bg-muted animate-pulse rounded" /> : `R$ ${stats.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            </div>
-            <div className="flex items-center gap-1.5 mt-2 text-emerald-600 dark:text-emerald-400/80 text-xs font-bold uppercase tracking-wider">
-              <Zap className="w-3 h-3 fill-current" />
-              Performance Máxima
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* MÉTRICAS FINANCEIRAS COM STAGGER */}
+      <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
+        {[
+          { label: 'Faturado', val: stats.revenue, color: 'blue', icon: DollarSign, sub: 'Receita bruta no período' },
+          { label: 'Custos Operacionais', val: stats.cost, color: 'red', icon: TrendingDown, sub: 'Investimento em insumos' },
+          { label: 'Lucro Líquido', val: stats.profit, color: 'emerald', icon: ArrowUpRight, sub: 'Performance Máxima', isZap: true }
+        ].map((m, i) => (
+          <motion.div key={i} variants={itemVariants}>
+            <Card className={`relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group hover:border-${m.color}-500/50 transition-all duration-300`}>
+              <div className={`absolute top-0 left-0 w-1 h-full bg-${m.color}-500/50`} />
+              <CardContent className="p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
+                  <div className={`p-2 rounded-lg bg-${m.color}-500/10`}>
+                    <m.icon className={`h-5 w-5 text-${m.color}-500`} />
+                  </div>
+                </div>
+                <div className={`text-4xl font-black tracking-tighter ${m.color === 'emerald' ? 'text-emerald-500' : 'text-foreground'}`}>
+                  {loading ? <div className="h-10 w-32 bg-muted animate-pulse rounded" /> : `R$ ${m.val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                </div>
+                {m.isZap ? (
+                  <div className="flex items-center gap-1.5 mt-2 text-emerald-600 dark:text-emerald-400/80 text-xs font-bold uppercase tracking-wider">
+                    <Zap className="w-3 h-3 fill-current" />
+                    {m.sub}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-2 font-medium">{m.sub}</p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
       {/* SEÇÃO DE PEDIDOS */}
-      <div className="space-y-6">
+      <motion.div variants={itemVariants} className="space-y-6">
         <h3 className="text-xl font-black tracking-tight text-foreground flex items-center gap-3">
           Fluxo de Produção
           <div className="h-[1px] flex-1 bg-border" />
-          {/* Badge que mostra o filtro atual pra reforçar o contexto visual */}
           <span className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-2 py-1 rounded flex items-center gap-1">
              <Calendar className="w-3 h-3" /> {timeFilter}
           </span>
         </h3>
 
-        <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
-          <Card className="border-border bg-card/30 hover:bg-card transition-all duration-200">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Package className="w-5 h-5 text-muted-foreground/50" />
-                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">Total</span>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black">{loading ? '-' : stats.total}</div>
-              <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:hidden uppercase font-bold tracking-widest">Total</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-border bg-card/30 hover:bg-card transition-all duration-200">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Clock className="w-5 h-5 text-blue-500/50" />
-                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">Novos</span>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-blue-500">{loading ? '-' : stats.newOrders}</div>
-              <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:hidden uppercase font-bold tracking-widest">Novos</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/30 hover:bg-card transition-all duration-200">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <PackageSearch className="w-5 h-5 text-amber-500/50" />
-                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">Em Andamento</span>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-amber-500">{loading ? '-' : stats.inProgress}</div>
-              <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:hidden uppercase font-bold tracking-widest">Fazendo</p>
-            </CardContent>
-          </Card>
-
-          {/* NOVO CARD: PRONTOS */}
-          <Card className="border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all duration-200">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500/80" />
-                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-600 dark:text-emerald-500 hidden sm:block">Prontos</span>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">{loading ? '-' : stats.ready}</div>
-              <p className="text-[9px] sm:text-xs text-emerald-600/70 dark:text-emerald-500/70 mt-1 sm:hidden uppercase font-bold tracking-widest">Prontos</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+        <motion.div variants={containerVariants} className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: 'Total', val: stats.total, icon: Package, color: 'muted' },
+            { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue' },
+            { label: 'Em Andamento', val: stats.inProgress, icon: PackageSearch, color: 'amber' },
+            { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald' }
+          ].map((item, i) => (
+            <motion.div key={i} variants={itemVariants} whileHover={{ y: -5 }}>
+              <Card className={`border-border bg-card/30 hover:bg-card transition-all duration-200 ${item.color === 'emerald' ? 'border-emerald-500/20 bg-emerald-500/5' : ''}`}>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <item.icon className={`w-5 h-5 ${item.color === 'muted' ? 'text-muted-foreground/50' : `text-${item.color}-500/50`}`} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">{item.label}</span>
+                  </div>
+                  <div className={`text-2xl sm:text-3xl font-black ${item.color !== 'muted' ? `text-${item.color}-600 dark:text-${item.color}-400` : ''}`}>
+                    {loading ? '-' : item.val}
+                  </div>
+                  <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:hidden uppercase font-bold tracking-widest">{item.label}</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }
