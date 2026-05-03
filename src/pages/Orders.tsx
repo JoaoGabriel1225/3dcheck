@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { 
   MessageCircle, Plus, Search, Trash2, ShoppingBag, Filter, 
   Calendar, User, Tag, Package, Activity, Clock, CheckCircle2,
-  Sparkles, Info
+  Sparkles, Info, DollarSign, TrendingUp // CORREÇÃO: Adicionados os ícones que estavam faltando
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -139,6 +139,10 @@ export default function Orders() {
   const aguardandoCount = orders.filter(o => ['Aguardando contato', 'Confirmado'].includes(o.status)).length;
   const emProducaoCount = orders.filter(o => o.status === 'Preparação').length;
   const prontosCount = orders.filter(o => o.status === 'Pronto').length;
+
+  // CORREÇÃO: O reduce estava usando 'o', corrigido para 'curr' que é o parâmetro definido
+  const openOrders = orders.filter(o => !['Enviado', 'Cancelado'].includes(o.status));
+  const vgvAberto = openOrders.reduce((acc, curr) => acc + (Number(curr.final_price) || 0), 0);
 
   const generateWhatsappMessage = (productName: string, status: string, clientName: string) => {
     return `Olá ${clientName || ''}, seu pedido de ${productName || 'impressão 3D'} está agora em: *${status}*.`;
@@ -269,8 +273,6 @@ export default function Orders() {
       (order.description || '').toLowerCase().includes(term)
     );
   });
-
-  const estimatedProfit = (parseFloat(orderPrice.replace(',', '.')) || 0) - (parseFloat(orderCost.replace(',', '.')) || 0);
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-10 px-1 md:px-0">
