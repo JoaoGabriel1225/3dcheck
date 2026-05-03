@@ -12,8 +12,7 @@ import {
   User as UserIcon, 
   Mail, 
   Bell,
-  MessageCircle,
-  ExternalLink
+  MessageCircle
 } from 'lucide-react';
 
 interface Message {
@@ -30,7 +29,6 @@ export default function Support() {
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Monitoramento de notificações do desenvolvedor
   useEffect(() => { 
     if (user) {
       const subscription = supabase
@@ -113,10 +111,9 @@ export default function Support() {
           )}
         </div>
 
-        {/* Área de Contato Direto (Aparece após interação) */}
         {chatMessages.length > 2 && (
           <div className="flex flex-col items-center gap-3 mb-4 animate-in zoom-in-95 duration-300">
-            <p className="text-[10px] font-black uppercase italic text-muted-foreground opacity-70">
+            <p className="text-[10px] font-black uppercase italic text-muted-foreground opacity-70 text-center">
               Não resolveu? Fale diretamente com o Desenvolvedor:
             </p>
             <div className="flex gap-3">
@@ -139,7 +136,11 @@ export default function Support() {
                 variant="outline" 
                 className="rounded-full border-blue-500/20 text-[10px] font-black uppercase italic text-blue-500 h-9 px-6 hover:bg-blue-500 hover:text-white transition-all shadow-xl"
               >
-                <a href="mailto:3dcheck.oficial@gmail.com?subject=Suporte 3DCheck">
+                {/* Ajuste no link de e-mail */}
+                <a 
+                  href="mailto:3dcheck.oficial@gmail.com?subject=Suporte%203DCheck"
+                  rel="noopener noreferrer"
+                >
                   E-mail <Mail className="w-3 h-3 ml-2" />
                 </a>
               </Button>
