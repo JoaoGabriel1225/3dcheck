@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom'; // Adicionado para capturar filtros da URL
+import { useSearchParams, useNavigate } from 'react-router-dom'; 
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Cancelado'];
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
-// Variantes de animação
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
@@ -48,12 +47,12 @@ const itemVariants = {
 export default function Orders() {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams(); // Hook para ler parâmetros da URL
+  const [searchParams] = useSearchParams(); 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('todos'); // Novo filtro de tempo
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('todos'); 
   
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [pendingWhatsappMessage, setPendingWhatsappMessage] = useState('');
@@ -75,7 +74,6 @@ export default function Orders() {
   const [orderPrice, setOrderPrice] = useState('');
   const [orderCost, setOrderCost] = useState('');
 
-  // Captura o status vindo do Dashboard via URL
   useEffect(() => {
     const statusParam = searchParams.get('status');
     if (statusParam && STATUS_OPTIONS.includes(statusParam)) {
@@ -110,9 +108,9 @@ export default function Orders() {
 
   useEffect(() => { fetchOrders(); fetchOptions(); }, [profile]);
 
-  // Cálculos de Métricas Rápidas
+  // CORREÇÃO AQUI: o parâmetro do reduce é 'curr', então usamos 'curr.final_price'
   const openOrders = orders.filter(o => !['Enviado', 'Cancelado'].includes(o.status));
-  const vgvAberto = openOrders.reduce((acc, curr) => acc + (Number(o.final_price) || 0), 0);
+  const vgvAberto = openOrders.reduce((acc, curr) => acc + (Number(curr.final_price) || 0), 0);
   const emProducaoCount = orders.filter(o => o.status === 'Preparação').length;
 
   const generateWhatsappMessage = (productName: string, status: string, clientName: string) => {
@@ -233,7 +231,6 @@ export default function Orders() {
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = statusFilter === 'Todos' || order.status === statusFilter;
     
-    // Filtro de Tempo (Lógica Simplificada)
     const orderDate = new Date(order.created_at);
     const now = new Date();
     let matchesTime = true;
@@ -256,13 +253,7 @@ export default function Orders() {
   const estimatedProfit = (parseFloat(orderPrice.replace(',', '.')) || 0) - (parseFloat(orderCost.replace(',', '.')) || 0);
 
   return (
-    <motion.div 
-      initial="hidden" 
-      animate="visible" 
-      variants={containerVariants} 
-      className="space-y-8 pb-10"
-    >
-      {/* HEADER SECTION */}
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-widest">
@@ -288,7 +279,6 @@ export default function Orders() {
             </DialogHeader>
             
             <form onSubmit={handleCreateOrder} className="p-8 pt-6 space-y-6 overflow-y-auto max-h-[80vh]">
-              {/* CLIENT SECTION */}
               <div className="space-y-4">
                 <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
                   <User className="w-3 h-3" /> Identificação do Cliente
@@ -335,7 +325,6 @@ export default function Orders() {
                 </div>
               </div>
 
-              {/* PRODUCT SECTION */}
               <div className="space-y-4 pt-4 border-t border-border">
                 <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
                   <Package className="w-3 h-3" /> Peça e Especificações
@@ -378,7 +367,6 @@ export default function Orders() {
                 />
               </div>
 
-              {/* FINANCIAL SECTION */}
               <div className="space-y-4 pt-4 border-t border-border">
                 <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
                   <DollarSign className="w-3 h-3" /> Resumo Financeiro
@@ -432,7 +420,6 @@ export default function Orders() {
         </Dialog>
       </div>
 
-      {/* METRICS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <motion.div variants={itemVariants}>
             <Card className="bg-card/50 border-border overflow-hidden relative">
@@ -460,7 +447,6 @@ export default function Orders() {
           </motion.div>
       </div>
 
-      {/* FILTER BAR */}
       <Card className="p-4 border-border bg-card/50 backdrop-blur-md shadow-sm space-y-4 rounded-2xl">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md group">
@@ -472,8 +458,6 @@ export default function Orders() {
                 className="pl-10 h-11 bg-background/50 border-border rounded-xl"
             />
           </div>
-          
-          {/* Seletor de Tempo Estilo Dashboard */}
           <div className="flex items-center bg-muted/30 p-1 rounded-xl border border-border self-start">
             {(['hoje', 'semana', 'mes', 'todos'] as const).map((t) => (
               <button
@@ -506,7 +490,6 @@ export default function Orders() {
         </div>
       </Card>
 
-      {/* ORDERS TABLE */}
       <Card className="border-border bg-card/30 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -589,7 +572,6 @@ export default function Orders() {
         </div>
       </Card>
 
-      {/* WHATSAPP MODAL - Mantido igual */}
       <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
         <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
           <DialogHeader>
