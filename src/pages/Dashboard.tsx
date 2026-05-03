@@ -54,15 +54,15 @@ const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
     <div className="flex items-end gap-[3px] h-14 w-24 pt-5">
       {displayData.map((val, i) => {
         const heightPercent = Math.max((val / max) * 100, 5); 
-        // Cor do texto mais visível e fixa para mobile
+        // Cor do texto suave baseada na cor do gráfico
         const labelColor = color; 
         
         return (
           <div key={i} className="relative flex-1 h-full flex items-end justify-center group">
-            {/* Números sempre visíveis acima das barras */}
+            {/* Números AGORA SEMPRE VISÍVEIS para mobile e desktop */}
             <div 
               className="absolute bottom-full mb-1 text-[7px] font-black leading-none"
-              style={{ color: labelColor, opacity: val > 0 ? 0.9 : 0 }}
+              style={{ color: labelColor, opacity: val > 0 ? 0.7 : 0 }}
             >
               {val > 0 ? Math.round(val) : ''}
             </div>
@@ -166,9 +166,8 @@ export default function Dashboard() {
           dailyData[dateKey].rev += rev;
           dailyData[dateKey].cst += cst;
 
-          // Extração Inteligente focada apenas no NOME (prioridade máxima)
-          const rawName = order.product_name || order.item_name || order.name || order.product || order.title || order.modelo;
-          const pName = rawName ? rawName.split('\n')[0].substring(0, 40) : 'Item 3D';
+          // CORREÇÃO: Busca focada apenas em colunas de NOME, ignorando descrições longas
+          const pName = order.product_name || order.name || order.item_name || order.product || 'Peça 3D';
           
           if (!productMap[pName]) productMap[pName] = { count: 0, revenue: 0 };
           productMap[pName].count += 1;
@@ -293,7 +292,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* AÇÕES RÁPIDAS COM FILTRO ESPECÍFICO */}
+      {/* AÇÕES RÁPIDAS COM REDIRECIONAMENTO ESPECÍFICO */}
       {(stats.newOrders > 0 || stats.ready > 0) && (
         <motion.div variants={itemVariants} className="space-y-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
@@ -328,7 +327,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* FLUXO DE PRODUÇÃO COM REDIRECIONAMENTO ESPECÍFICO */}
+      {/* FLUXO DE PRODUÇÃO COM REDIRECIONAMENTO POR STATUS */}
       <motion.div variants={itemVariants} className="space-y-6">
         <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
           Fluxo de Produção <div className="h-[1px] flex-1 bg-border" />
@@ -336,7 +335,7 @@ export default function Dashboard() {
         </h3>
         <motion.div variants={containerVariants} className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
           {[
-            { label: 'Total', val: stats.total, icon: Package, color: 'muted', status: '' },
+            { label: 'Total', val: stats.total, icon: Package, color: 'muted', status: 'todos' },
             { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue', status: 'Aguardando contato' },
             { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber', status: 'Preparação' }, 
             { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald', status: 'Pronto' }
