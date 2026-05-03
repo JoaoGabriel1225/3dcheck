@@ -37,28 +37,23 @@ type OrderContext = {
   cost: number;
   profit: number;
   trends: { revenue: number[]; cost: number[]; profit: number[] }; 
-  topProducts: TopProduct[]; // Novo: Inteligência de produtos
+  topProducts: TopProduct[];
 }
 
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
-/**
- * NOVO: Mini Gráfico de Barras (Histograma)
- * Muito mais robusto que linha SVG. Mostra barras de volume diário e valor ao passar o mouse.
- */
 const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
   if (!data || data.length === 0) {
     return <div className="h-10 w-24 flex items-end"><div className="w-full h-[2px] bg-muted-foreground/20 rounded-full" /></div>;
   }
   
-  // Pega os últimos 10 dias para não espremer o gráfico em períodos muito longos
   const displayData = data.slice(-10);
   const max = Math.max(...displayData) || 1;
 
   return (
     <div className="flex items-end gap-[2px] h-10 w-24">
       {displayData.map((val, i) => {
-        const heightPercent = Math.max((val / max) * 100, 5); // Altura mínima de 5% para dias zerados não sumirem
+        const heightPercent = Math.max((val / max) * 100, 5); 
         return (
           <div key={i} className="relative group flex-1 h-full flex items-end">
             <motion.div
@@ -68,7 +63,6 @@ const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
               className="w-full rounded-t-sm opacity-60 group-hover:opacity-100 transition-opacity cursor-pointer"
               style={{ backgroundColor: color }}
             />
-            {/* Tooltip Inteligente */}
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10">
               <div className="bg-foreground text-background text-[9px] font-black px-2 py-0.5 rounded shadow-xl whitespace-nowrap">
                 R$ {val.toFixed(2)}
@@ -136,7 +130,6 @@ export default function Dashboard() {
         else if (timeFilter === 'mes') startDate.setDate(1);
         else if (timeFilter === 'todos') startDate = new Date('2020-01-01');
 
-        // Alterado de colunas específicas para '*' para garantir a captura do nome do produto sem quebrar
         const { data: orders, error } = await supabase
           .from('orders')
           .select('*')
@@ -167,8 +160,9 @@ export default function Dashboard() {
           dailyData[dateKey].rev += rev;
           dailyData[dateKey].cst += cst;
 
-          // Inteligência para Produto Mais Vendido (Busca dinâmica da coluna)
-          const pName = order.product_name || order.item_name || order.name || order.title || 'Produto 3D Diversos';
+          // Busca expandida e inteligente do nome do produto
+          const pName = order.product_name || order.item_name || order.name || order.title || order.description || order.product || order.modelo || 'Item Personalizado';
+          
           if (!productMap[pName]) productMap[pName] = { count: 0, revenue: 0 };
           productMap[pName].count += 1;
           productMap[pName].revenue += rev;
@@ -176,14 +170,12 @@ export default function Dashboard() {
           return acc;
         }, { total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, cost: 0, profit: 0, trends: { revenue: [], cost: [], profit: [] }, topProducts: [] } as OrderContext);
 
-        // Processamento dos gráficos financeiros
         const sortedDates = Object.keys(dailyData);
         newStats.trends.revenue = sortedDates.map(d => dailyData[d].rev);
         newStats.trends.cost = sortedDates.map(d => dailyData[d].cst);
         newStats.trends.profit = sortedDates.map(d => dailyData[d].rev - dailyData[d].cst);
         newStats.profit = newStats.revenue - newStats.cost;
 
-        // Processamento Top Produtos
         const allProducts = Object.keys(productMap).map(k => ({
           name: k,
           count: productMap[k].count,
@@ -191,7 +183,7 @@ export default function Dashboard() {
           percentage: (productMap[k].revenue / (newStats.revenue || 1)) * 100
         }));
         
-        newStats.topProducts = allProducts.sort((a, b) => b.count - a.count).slice(0, 3); // Pega os 3 mais vendidos
+        newStats.topProducts = allProducts.sort((a, b) => b.count - a.count).slice(0, 3);
         setStats(newStats);
 
       } catch (error) { console.error(error); } 
@@ -241,9 +233,9 @@ export default function Dashboard() {
       {/* FINANCEIRO COM GRÁFICOS DE BARRAS REAIS */}
       <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
         {[
-          { id: 'rev', label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', sub: 'Receita bruta' },
-          { id: 'cst', label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', sub: 'Em insumos' },
-          { id: 'prf', label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', sub: 'Performance Máxima', isZap: true }
+          { id: 'rev', label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', textClass: 'text-blue-500', sub: 'Receita bruta' },
+          { id: 'cst', label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', textClass: 'text-red-500', sub: 'Em insumos' },
+          { id: 'prf', label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', textClass: 'text-emerald-500', sub: 'Performance Máxima', isZap: true }
         ].map((m, i) => (
           <motion.div key={i} variants={itemVariants}>
             <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30">
@@ -252,7 +244,8 @@ export default function Dashboard() {
                   <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
                   <MiniBarChart data={m.trend} color={m.color} />
                 </div>
-                <div className={`text-4xl font-black tracking-tighter ${m.label === 'Lucro Líquido' ? 'text-emerald-500' : 'text-foreground'}`}>
+                {/* Cor do número dinamica de acordo com o card */}
+                <div className={`text-4xl font-black tracking-tighter ${m.textClass}`}>
                   {loading ? '...' : `R$ ${m.val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2 text-muted-foreground text-[10px] font-black uppercase tracking-wider">
@@ -264,7 +257,7 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
-      {/* NOVO: INTELIGÊNCIA DE VENDAS (TOP PRODUTOS) */}
+      {/* INTELIGÊNCIA DE VENDAS (TOP PRODUTOS) */}
       {stats.topProducts.length > 0 && (
         <motion.div variants={itemVariants} className="space-y-4">
            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
@@ -284,7 +277,6 @@ export default function Dashboard() {
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">R$ {product.revenue.toFixed(2)}</p>
                     </div>
                   </div>
-                  {/* Barra horizontal de porcentagem */}
                   <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
@@ -355,7 +347,11 @@ export default function Dashboard() {
             { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald' }
           ].map((item, i) => (
             <motion.div key={i} variants={itemVariants} whileHover={{ y: -5 }}>
-              <Card className={`border-border bg-card/30 transition-all duration-200 ${item.color === 'emerald' ? 'border-emerald-500/20 bg-emerald-500/5' : ''}`}>
+              {/* Adicionado onClick e cursor-pointer para navegação nos Cards de Fluxo */}
+              <Card 
+                onClick={() => navigate('/app/orders')}
+                className={`cursor-pointer border-border bg-card/30 transition-all duration-200 hover:bg-card/50 ${item.color === 'emerald' ? 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10' : ''}`}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <item.icon className={`w-5 h-5 ${item.color === 'muted' ? 'text-muted-foreground/30' : `text-${item.color}-500/50`}`} />
