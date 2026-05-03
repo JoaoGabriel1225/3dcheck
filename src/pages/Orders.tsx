@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { 
   MessageCircle, Plus, Search, Trash2, ShoppingBag, Filter, 
   Calendar, User, Tag, Package, Activity, Clock, CheckCircle2,
-  Sparkles, Info, DollarSign, TrendingUp // CORREÇÃO: Adicionados os ícones que estavam faltando
+  Sparkles, Info, DollarSign, TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -140,7 +140,6 @@ export default function Orders() {
   const emProducaoCount = orders.filter(o => o.status === 'Preparação').length;
   const prontosCount = orders.filter(o => o.status === 'Pronto').length;
 
-  // CORREÇÃO: O reduce estava usando 'o', corrigido para 'curr' que é o parâmetro definido
   const openOrders = orders.filter(o => !['Enviado', 'Cancelado'].includes(o.status));
   const vgvAberto = openOrders.reduce((acc, curr) => acc + (Number(curr.final_price) || 0), 0);
 
@@ -414,6 +413,16 @@ export default function Orders() {
                             value={orderPrice}
                             onChange={(e) => setOrderPrice(e.target.value)}
                             className="h-12 rounded-xl font-black text-emerald-500 text-lg"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold uppercase opacity-60 ml-1">Gastos de Produção (R$)</Label>
+                        <Input 
+                            type="text"
+                            placeholder="0,00" 
+                            value={orderCost}
+                            onChange={(e) => setOrderCost(e.target.value)}
+                            className="h-12 rounded-xl font-black text-red-500 text-lg"
                         />
                     </div>
                 </div>
