@@ -25,14 +25,35 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { 
-  MessageCircle, Copy, Plus, Search, Trash2, ShoppingBag, Filter, 
-  Calendar, User, Tag, DollarSign, Calculator, ChevronDown, Package,
-  TrendingUp, Activity, ArrowRight
+  MessageCircle, Plus, Search, Trash2, ShoppingBag, Filter, 
+  Calendar, User, Tag, Package, Activity, Clock, CheckCircle2,
+  Sparkles, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Cancelado'];
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
+
+// 50 Frases de Maker/3D para dar vida ao app
+const MAKER_PHRASES = [
+  "Nivelar a mesa é a meditação do maker.", "Impressora parada não gera lucro!", "PLA: o cheiro do sucesso logo cedo.",
+  "Primeira camada perfeita = Dia feliz.", "Suporte é igual imposto: ninguém gosta, mas precisa.", "Fatiar é uma arte, imprimir é uma virtude.",
+  "Seu limite é o volume de impressão.", "Calibre o extrusor e conquiste o mundo.", "Sticks e Stringing são o terror dos makers.",
+  "Impressão 3D: onde o digital vira real.", "Cuidado: área com alta concentração de criatividade.", "O bico entupiu? Respira fundo.",
+  "A aderência da mesa é o segredo do sucesso.", "Modelar, fatiar, imprimir, repetir.", "Maker que é maker tem balde de restos.",
+  "Sua criatividade não precisa de suportes.", "Cada erro é um aprendizado em resina.", "Transformando filamento em sonhos.",
+  "Mesa quente, coração gelado.", "Um olho no G-Code, outro no bico.", "Filamento acabando no meio da noite? Quem nunca.",
+  "3DCheck: sua fábrica no seu bolso.", "Mantenha a mesa limpa e os lucros altos.", "Impressora 3D: a magia de criar átomos.",
+  "Infill de 10% é para os fracos? Depende da peça.", "Paciência é a base de qualquer impressão longa.", "O PWA é leve, sua criatividade é pesada.",
+  "Menos warping, mais faturamento.", "O mundo é feito de camadas.", "A próxima peça será a melhor de todas.",
+  "Filamento seco é cliente satisfeito.", "Z-Offset: o ajuste fino da vida.", "Maker de verdade entende de eletrônica.",
+  "Sua oficina, suas regras.", "Velocidade ou Qualidade? O dilema eterno.", "A tecnologia 3D é o futuro hoje.",
+  "Imprima felicidade, entregue qualidade.", "Organização é o segredo da escala.", "Clientes amam o detalhe.",
+  "Quanto mais camadas, mais história.", "Fatiador atualizado, mente em paz.", "O design é a alma da impressão.",
+  "Impressão em progresso... Não toque!", "A luz acabou? Oremos pelo Retomar Impressão.", "Sua marca, sua peça, seu legado.",
+  "Pense em 3D, execute em alta definição.", "Cada cliente é um novo desafio.", "Dashboard atualizado, produção garantida.",
+  "Maker: o inventor dos tempos modernos.", "O sucesso está no detalhe da última camada."
+];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -53,7 +74,8 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('todos'); 
-  
+  const [randomPhrase, setRandomPhrase] = useState('');
+
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [pendingWhatsappMessage, setPendingWhatsappMessage] = useState('');
   const [pendingWhatsappPhone, setPendingWhatsappPhone] = useState('');
@@ -73,6 +95,10 @@ export default function Orders() {
   const [orderDescription, setOrderDescription] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
   const [orderCost, setOrderCost] = useState('');
+
+  useEffect(() => {
+    setRandomPhrase(MAKER_PHRASES[Math.floor(Math.random() * MAKER_PHRASES.length)]);
+  }, []);
 
   useEffect(() => {
     const statusParam = searchParams.get('status');
@@ -108,10 +134,11 @@ export default function Orders() {
 
   useEffect(() => { fetchOrders(); fetchOptions(); }, [profile]);
 
-  // CORREÇÃO AQUI: o parâmetro do reduce é 'curr', então usamos 'curr.final_price'
-  const openOrders = orders.filter(o => !['Enviado', 'Cancelado'].includes(o.status));
-  const vgvAberto = openOrders.reduce((acc, curr) => acc + (Number(curr.final_price) || 0), 0);
+  // Cálculos de Volume Simplificados
+  const totalCount = orders.length;
+  const aguardandoCount = orders.filter(o => ['Aguardando contato', 'Confirmado'].includes(o.status)).length;
   const emProducaoCount = orders.filter(o => o.status === 'Preparação').length;
+  const prontosCount = orders.filter(o => o.status === 'Pronto').length;
 
   const generateWhatsappMessage = (productName: string, status: string, clientName: string) => {
     return `Olá ${clientName || ''}, seu pedido de ${productName || 'impressão 3D'} está agora em: *${status}*.`;
@@ -124,7 +151,7 @@ export default function Orders() {
       toast.success('Status atualizado!');
       fetchOrders();
       const phone = order.clients?.phone;
-      if (phone && newStatus !== 'Cancelado') {
+      if (phone && !['Cancelado', 'Enviado'].includes(newStatus)) {
         const msg = generateWhatsappMessage(order.products?.name, newStatus, order.clients?.name);
         const cleanPhone = phone.replace(/\D/g, '');
         const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
@@ -150,18 +177,13 @@ export default function Orders() {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  const copyMessage = (msg: string) => {
-    navigator.clipboard.writeText(msg);
-    toast.success('Copiado!');
-  };
-
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'Aguardando contato': return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
       case 'Confirmado':
       case 'Preparação': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
-      case 'Pronto':
-      case 'Enviado': return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+      case 'Pronto': return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+      case 'Enviado': return 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20';
       case 'Cancelado': return 'bg-red-500/10 text-red-600 border-red-500/20';
       default: return 'bg-slate-500/10 text-slate-600 border-slate-500/20';
     }
@@ -230,7 +252,6 @@ export default function Orders() {
 
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = statusFilter === 'Todos' || order.status === statusFilter;
-    
     const orderDate = new Date(order.created_at);
     const now = new Date();
     let matchesTime = true;
@@ -241,7 +262,6 @@ export default function Orders() {
     } else if (timeFilter === 'mes') matchesTime = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
 
     if (!searchTerm) return matchesStatus && matchesTime;
-    
     const term = searchTerm.toLowerCase();
     return matchesStatus && matchesTime && (
       (order.clients?.name || '').toLowerCase().includes(term) ||
@@ -253,7 +273,19 @@ export default function Orders() {
   const estimatedProfit = (parseFloat(orderPrice.replace(',', '.')) || 0) - (parseFloat(orderCost.replace(',', '.')) || 0);
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-10">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-10 px-1 md:px-0">
+      
+      {/* FRASES ALEATÓRIAS - VIDA AO APP */}
+      <motion.div variants={itemVariants} className="bg-blue-600/5 border border-blue-500/10 p-4 rounded-2xl flex items-center gap-4">
+        <div className="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-600/20">
+          <Sparkles className="w-5 h-5" />
+        </div>
+        <p className="text-sm font-bold text-blue-700/80 italic leading-relaxed">
+          "{randomPhrase}"
+        </p>
+      </motion.div>
+
+      {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-widest">
@@ -371,7 +403,6 @@ export default function Orders() {
                 <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
                   <DollarSign className="w-3 h-3" /> Resumo Financeiro
                 </Label>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                         <Label className="text-[9px] font-bold uppercase opacity-60 ml-1">Preço Total Acordado (R$)</Label>
@@ -382,30 +413,6 @@ export default function Orders() {
                             onChange={(e) => setOrderPrice(e.target.value)}
                             className="h-12 rounded-xl font-black text-emerald-500 text-lg"
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[9px] font-bold uppercase opacity-60 ml-1">Gastos de Produção (R$)</Label>
-                        <Input 
-                            type="text"
-                            placeholder="0,00" 
-                            value={orderCost}
-                            onChange={(e) => setOrderCost(e.target.value)}
-                            className="h-12 rounded-xl font-black text-red-500 text-lg"
-                        />
-                    </div>
-                </div>
-
-                <div className="p-5 bg-blue-500/5 rounded-3xl border border-blue-500/10 flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-border">
-                            <Calculator className="w-5 h-5 text-blue-500" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Lucro Estimado</p>
-                            <p className={`text-2xl font-black ${estimatedProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                R$ {estimatedProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                        </div>
                     </div>
                 </div>
               </div>
@@ -420,33 +427,47 @@ export default function Orders() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* NOVOS 4 CARDS DE VOLUME - SIMPLICIDADE E OPERAÇÃO */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <motion.div variants={itemVariants}>
-            <Card className="bg-card/50 border-border overflow-hidden relative">
-              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">VGV em Aberto</p>
-                  <h3 className="text-2xl font-black mt-1">R$ {vgvAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
-                </div>
-                <TrendingUp className="text-emerald-500 w-8 h-8 opacity-20" />
+            <Card className="bg-card/50 border-border overflow-hidden relative border-l-4 border-l-slate-400">
+              <CardContent className="p-4 md:p-6">
+                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Total Pedidos</p>
+                <h3 className="text-xl md:text-3xl font-black mt-1">{totalCount} <span className="text-xs text-muted-foreground">UN.</span></h3>
+                <Package className="absolute right-4 bottom-4 w-10 h-10 opacity-5" />
               </CardContent>
             </Card>
           </motion.div>
           <motion.div variants={itemVariants}>
-            <Card className="bg-card/50 border-border overflow-hidden relative">
-              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Em Produção</p>
-                  <h3 className="text-2xl font-black mt-1">{emProducaoCount} <span className="text-xs text-muted-foreground uppercase">Peças</span></h3>
-                </div>
-                <Activity className="text-blue-500 w-8 h-8 opacity-20" />
+            <Card className="bg-card/50 border-border overflow-hidden relative border-l-4 border-l-amber-500">
+              <CardContent className="p-4 md:p-6">
+                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Aguardando</p>
+                <h3 className="text-xl md:text-3xl font-black mt-1">{aguardandoCount} <span className="text-xs text-muted-foreground">UN.</span></h3>
+                <Clock className="absolute right-4 bottom-4 w-10 h-10 opacity-5" />
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <Card className="bg-card/50 border-border overflow-hidden relative border-l-4 border-l-blue-500">
+              <CardContent className="p-4 md:p-6">
+                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Em Produção</p>
+                <h3 className="text-xl md:text-3xl font-black mt-1">{emProducaoCount} <span className="text-xs text-muted-foreground">UN.</span></h3>
+                <Activity className="absolute right-4 bottom-4 w-10 h-10 opacity-5" />
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <Card className="bg-card/50 border-border overflow-hidden relative border-l-4 border-l-emerald-500">
+              <CardContent className="p-4 md:p-6">
+                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Prontos</p>
+                <h3 className="text-xl md:text-3xl font-black mt-1">{prontosCount} <span className="text-xs text-muted-foreground">UN.</span></h3>
+                <CheckCircle2 className="absolute right-4 bottom-4 w-10 h-10 opacity-5" />
               </CardContent>
             </Card>
           </motion.div>
       </div>
 
+      {/* FILTER BAR */}
       <Card className="p-4 border-border bg-card/50 backdrop-blur-md shadow-sm space-y-4 rounded-2xl">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md group">
@@ -471,14 +492,14 @@ export default function Orders() {
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50 overflow-x-auto hide-scrollbar">
           {STATUS_OPTIONS.map(status => (
              <Button
                 key={status}
                 variant={statusFilter === status ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter(status)}
-                className={`h-8 px-4 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+                className={`h-8 px-4 rounded-full text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
                   statusFilter === status 
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
                   : 'hover:bg-accent border-border text-muted-foreground'
@@ -490,8 +511,79 @@ export default function Orders() {
         </div>
       </Card>
 
-      <Card className="border-border bg-card/30 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* NOVO FORMATO: CARDS PARA CELULAR / TABELA PARA DESKTOP */}
+      <div className="space-y-4">
+        {/* VIEW MOBILE: CARDS */}
+        <div className="grid grid-cols-1 gap-4 md:hidden">
+          <AnimatePresence mode="popLayout">
+            {loading ? (
+              <p className="text-center py-10 font-bold text-muted-foreground animate-pulse">CARREGANDO...</p>
+            ) : filteredOrders.length === 0 ? (
+              <p className="text-center py-10 text-muted-foreground">Nenhum pedido encontrado.</p>
+            ) : (
+              filteredOrders.map((order) => (
+                <motion.div
+                  key={order.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-card border border-border rounded-3xl p-5 space-y-4 shadow-sm"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
+                      <h4 className="font-black text-foreground uppercase text-sm">{order.clients?.name}</h4>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(order.status)}`}>
+                      {order.status}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-muted/30 p-3 rounded-2xl flex items-center gap-3">
+                    <Package className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs font-bold text-foreground leading-none">{order.products?.name || 'Personalizado'}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 italic line-clamp-1">{order.description || 'Sem obs.'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-lg font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</span>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="icon" variant="ghost" className="h-10 w-10 rounded-2xl bg-emerald-500/10 text-emerald-500"
+                        onClick={() => {
+                          const clean = (order.clients?.phone || '').replace(/\D/g, '');
+                          if (clean) openWhatsapp(clean.startsWith('55') ? clean : `55${clean}`, generateWhatsappMessage(order.products?.name, order.status, order.clients?.name));
+                        }}
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                      </Button>
+                      <Select defaultValue={order.status} onValueChange={(val) => updateStatus(order, val)}>
+                        <SelectTrigger className="h-10 w-10 p-0 rounded-2xl bg-accent flex justify-center border-none">
+                          <Activity className="w-4 h-4" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.filter(s => s !== 'Todos').map(s => <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        size="icon" variant="ghost" className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-500"
+                        onClick={() => deleteOrder(order.id)}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* VIEW DESKTOP: TABELA */}
+        <Card className="hidden md:block border-border bg-card/30 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-accent/30 hover:bg-accent/30 border-border border-b">
@@ -507,17 +599,10 @@ export default function Orders() {
                 {loading ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground animate-pulse font-black uppercase tracking-widest">Sincronizando Operação...</TableCell></TableRow>
                 ) : filteredOrders.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium">Nenhum pedido encontrado com estes filtros.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium">Nenhum pedido encontrado.</TableCell></TableRow>
                 ) : (
                   filteredOrders.map((order) => (
-                    <motion.tr 
-                      layout
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      key={order.id} 
-                      className="hover:bg-blue-500/5 transition-colors border-border border-b last:border-0"
-                    >
+                    <motion.tr layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={order.id} className="hover:bg-blue-500/5 transition-colors border-border border-b last:border-0">
                       <TableCell className="px-6 py-5">
                         <span className="text-xs font-bold text-foreground opacity-80">{new Date(order.created_at).toLocaleDateString('pt-BR')}</span>
                       </TableCell>
@@ -527,7 +612,7 @@ export default function Orders() {
                       </TableCell>
                       <TableCell className="px-6 py-5">
                         <div className="font-bold text-sm text-foreground">{order.products?.name || 'Personalizado'}</div>
-                        <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{order.description || 'Sem obs.'}</div>
+                        <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">{order.description || 'Sem obs.'}</div>
                         <div className="mt-2 text-xs font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</div>
                       </TableCell>
                       <TableCell className="px-6 py-5">
@@ -540,12 +625,10 @@ export default function Orders() {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-6 py-5 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all"
+                            variant="ghost" size="icon" className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all"
                             onClick={() => {
                               const clean = (order.clients?.phone || '').replace(/\D/g, '');
                               if (clean) openWhatsapp(clean.startsWith('55') ? clean : `55${clean}`, generateWhatsappMessage(order.products?.name, order.status, order.clients?.name));
@@ -554,9 +637,7 @@ export default function Orders() {
                             <MessageCircle className="h-4 w-4" />
                           </Button>
                           <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="h-9 w-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                            variant="ghost" size="icon" className="h-9 w-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
                             onClick={() => deleteOrder(order.id)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -569,9 +650,10 @@ export default function Orders() {
               </AnimatePresence>
             </TableBody>
           </Table>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
+      {/* WHATSAPP MODAL */}
       <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
         <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
           <DialogHeader>
@@ -581,7 +663,7 @@ export default function Orders() {
             </DialogTitle>
           </DialogHeader>
           <div className="py-6 space-y-4">
-            <p className="text-sm text-muted-foreground font-medium leading-relaxed">O status foi alterado. Deseja enviar um aviso automático?</p>
+            <p className="text-sm text-muted-foreground font-medium leading-relaxed">Deseja avisar ao cliente sobre a atualização do pedido?</p>
             <div className="p-4 bg-accent/50 rounded-xl border border-border italic text-xs text-foreground/80 leading-relaxed">
               "{pendingWhatsappMessage}"
             </div>
