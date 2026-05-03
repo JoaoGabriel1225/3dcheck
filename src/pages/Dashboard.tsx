@@ -10,7 +10,7 @@ import {
   DollarSign, 
   TrendingDown,
   LayoutDashboard,
-  Zap,
+  Zap, 
   ArrowUpRight,
   Download,
   Smartphone,
@@ -51,18 +51,18 @@ const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
   const max = Math.max(...displayData) || 1;
 
   return (
-    <div className="flex items-end gap-[2px] h-12 w-24 pt-3">
+    <div className="flex items-end gap-[3px] h-14 w-24 pt-5">
       {displayData.map((val, i) => {
         const heightPercent = Math.max((val / max) * 100, 5); 
-        // Cor do texto com opacidade para ficar suave e legível
-        const textColor = `color-mix(in srgb, ${color} 70%, transparent)`; 
+        // Cor do texto mais visível e fixa para mobile
+        const labelColor = color; 
         
         return (
-          <div key={i} className="relative flex-1 h-full flex items-end justify-center group cursor-pointer">
-            {/* Número sempre visível em telas pequenas e com cor suave */}
+          <div key={i} className="relative flex-1 h-full flex items-end justify-center group">
+            {/* Números sempre visíveis acima das barras */}
             <div 
-              className="absolute bottom-full mb-0.5 text-[8px] font-black opacity-80"
-              style={{ color: textColor }}
+              className="absolute bottom-full mb-1 text-[7px] font-black leading-none"
+              style={{ color: labelColor, opacity: val > 0 ? 0.9 : 0 }}
             >
               {val > 0 ? Math.round(val) : ''}
             </div>
@@ -71,7 +71,7 @@ const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
               initial={{ height: 0 }}
               animate={{ height: `${heightPercent}%` }}
               transition={{ duration: 0.5, delay: i * 0.05 }}
-              className="w-full rounded-t-sm opacity-60 group-hover:opacity-100 transition-opacity"
+              className="w-full rounded-t-[1px] opacity-70"
               style={{ backgroundColor: color }}
             />
           </div>
@@ -166,18 +166,9 @@ export default function Dashboard() {
           dailyData[dateKey].rev += rev;
           dailyData[dateKey].cst += cst;
 
-          // Extração Profunda do Nome do Produto
-          let pName = 'Item Personalizado';
-          if (order.product_name) pName = order.product_name;
-          else if (order.item_name) pName = order.item_name;
-          else if (order.name) pName = order.name;
-          else if (order.title) pName = order.title;
-          else if (order.product) pName = order.product;
-          else if (order.modelo) pName = order.modelo;
-          // Se não achar nas colunas diretas, tenta pegar da descrição
-          else if (order.description && typeof order.description === 'string') {
-              pName = order.description.split('\n')[0].substring(0, 30); 
-          }
+          // Extração Inteligente focada apenas no NOME (prioridade máxima)
+          const rawName = order.product_name || order.item_name || order.name || order.product || order.title || order.modelo;
+          const pName = rawName ? rawName.split('\n')[0].substring(0, 40) : 'Item 3D';
           
           if (!productMap[pName]) productMap[pName] = { count: 0, revenue: 0 };
           productMap[pName].count += 1;
@@ -246,12 +237,12 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* FINANCEIRO COM GRÁFICOS DE BARRAS REAIS */}
+      {/* FINANCEIRO */}
       <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
         {[
-          { id: 'rev', label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', textClass: 'text-blue-500', sub: 'Receita bruta' },
-          { id: 'cst', label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', textClass: 'text-red-500', sub: 'Em insumos' },
-          { id: 'prf', label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', textClass: 'text-emerald-500', sub: 'Performance Máxima', isZap: true }
+          { id: 'rev', label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', textClass: 'text-blue-500' },
+          { id: 'cst', label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', textClass: 'text-red-500' },
+          { id: 'prf', label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', textClass: 'text-emerald-500', isZap: true }
         ].map((m, i) => (
           <motion.div key={i} variants={itemVariants}>
             <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30">
@@ -260,12 +251,11 @@ export default function Dashboard() {
                   <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
                   <MiniBarChart data={m.trend} color={m.color} />
                 </div>
-                {/* Cor do número dinamica de acordo com o card */}
                 <div className={`text-4xl font-black tracking-tighter ${m.textClass}`}>
                   {loading ? '...' : `R$ ${m.val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2 text-muted-foreground text-[10px] font-black uppercase tracking-wider">
-                  {m.isZap && <Zap className="w-3 h-3 text-emerald-500 fill-current" />} {m.sub}
+                  {m.isZap && <Zap className="w-3 h-3 text-emerald-500 fill-current" />} Performance Máxima
                 </div>
               </CardContent>
             </Card>
@@ -273,7 +263,7 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
-      {/* INTELIGÊNCIA DE VENDAS (TOP PRODUTOS) */}
+      {/* TOP PRODUTOS */}
       {stats.topProducts.length > 0 && (
         <motion.div variants={itemVariants} className="space-y-4">
            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
@@ -286,20 +276,15 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="bg-muted p-2 rounded-lg"><Trophy className={`w-4 h-4 ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-slate-400' : 'text-amber-700'}`} /></div>
-                      <span className="font-bold text-sm truncate max-w-[150px] md:max-w-xs">{product.name}</span>
+                      <span className="font-bold text-sm truncate max-w-[200px] md:max-w-xs">{product.name}</span>
                     </div>
                     <div className="text-right">
                       <p className="font-black text-sm">{product.count} un.</p>
-                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">R$ {product.revenue.toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">R$ {product.revenue.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${product.percentage}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      className="h-full bg-blue-500 rounded-full"
-                    />
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${product.percentage}%` }} transition={{ duration: 1 }} className="h-full bg-blue-500 rounded-full" />
                   </div>
                 </div>
               ))}
@@ -308,7 +293,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* AÇÕES RÁPIDAS COM NAVEGAÇÃO ESPECÍFICA */}
+      {/* AÇÕES RÁPIDAS COM FILTRO ESPECÍFICO */}
       {(stats.newOrders > 0 || stats.ready > 0) && (
         <motion.div variants={itemVariants} className="space-y-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
@@ -316,31 +301,24 @@ export default function Dashboard() {
           </h3>
           <div className="grid gap-4 md:grid-cols-2">
             {stats.newOrders > 0 && (
-              <div 
-                // Navega passando parâmetro na URL para a página orders ler e filtrar
-                onClick={() => navigate('/app/orders?filter=novos')} 
-                className="flex items-center justify-between p-5 bg-blue-600/5 border border-blue-600/20 rounded-3xl group hover:bg-blue-600/10 transition-all cursor-pointer"
-              >
+              <div onClick={() => navigate('/app/orders?status=Aguardando contato')} className="flex items-center justify-between p-5 bg-blue-500/5 border border-blue-500/20 rounded-3xl group hover:bg-blue-500/10 transition-all cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-600/20"><Clock className="w-5 h-5" /></div>
                   <div>
                     <p className="text-sm font-black uppercase tracking-tight">{stats.newOrders} novos pedidos</p>
-                    <p className="text-[10px] text-muted-foreground uppercase font-black">Aguardando confirmação</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-black">Abrir para Confirmar</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition-transform" />
               </div>
             )}
             {stats.ready > 0 && (
-              <div 
-                onClick={() => navigate('/app/orders?filter=prontos')} 
-                className="flex items-center justify-between p-5 bg-emerald-600/5 border border-emerald-600/20 rounded-3xl group hover:bg-emerald-600/10 transition-all cursor-pointer"
-              >
+              <div onClick={() => navigate('/app/orders?status=Pronto')} className="flex items-center justify-between p-5 bg-emerald-600/5 border border-emerald-600/20 rounded-3xl group hover:bg-emerald-600/10 transition-all cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-emerald-600 rounded-2xl text-white shadow-lg shadow-emerald-600/20"><CheckCircle2 className="w-5 h-5" /></div>
                   <div>
                     <p className="text-sm font-black uppercase tracking-tight">{stats.ready} peças prontas</p>
-                    <p className="text-[10px] text-muted-foreground uppercase font-black">Organizar entrega</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-black">Abrir para Entregar</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-emerald-600 group-hover:translate-x-1 transition-transform" />
@@ -350,7 +328,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* FLUXO DE PRODUÇÃO COM NAVEGAÇÃO ESPECÍFICA */}
+      {/* FLUXO DE PRODUÇÃO COM REDIRECIONAMENTO ESPECÍFICO */}
       <motion.div variants={itemVariants} className="space-y-6">
         <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
           Fluxo de Produção <div className="h-[1px] flex-1 bg-border" />
@@ -358,16 +336,15 @@ export default function Dashboard() {
         </h3>
         <motion.div variants={containerVariants} className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
           {[
-            { label: 'Total', val: stats.total, icon: Package, color: 'muted', filterPath: 'todos' },
-            { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue', filterPath: 'novos' },
-            { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber', filterPath: 'producao' }, 
-            { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald', filterPath: 'prontos' }
+            { label: 'Total', val: stats.total, icon: Package, color: 'muted', status: '' },
+            { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue', status: 'Aguardando contato' },
+            { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber', status: 'Preparação' }, 
+            { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald', status: 'Pronto' }
           ].map((item, i) => (
             <motion.div key={i} variants={itemVariants} whileHover={{ y: -5 }}>
-              {/* Adicionado o parâmetro de filtro dinâmico na URL */}
               <Card 
-                onClick={() => navigate(`/app/orders?filter=${item.filterPath}`)}
-                className={`cursor-pointer border-border bg-card/30 transition-all duration-200 hover:bg-card/50 ${item.color === 'emerald' ? 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10' : ''}`}
+                onClick={() => navigate(`/app/orders?status=${item.status}`)}
+                className="cursor-pointer border-border bg-card/30 transition-all duration-200 hover:bg-card/50"
               >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
