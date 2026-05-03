@@ -4,11 +4,27 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Users, Plus, Edit2, Trash2, Phone, Mail, UserPlus, Search } from 'lucide-react';
+import { 
+  Users, Plus, Edit2, Trash2, Phone, Mail, 
+  UserPlus, Search, MessageCircle, TrendingUp, 
+  UserCheck, ArrowRight 
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// Variantes de animação
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: { opacity: 1, x: 0 }
+};
 
 export default function Clients() {
   const { profile } = useAuth();
@@ -43,6 +59,14 @@ export default function Clients() {
   useEffect(() => {
     fetchClients();
   }, [profile]);
+
+  // Cálculo de métricas
+  const totalClients = clients.length;
+  const newThisMonth = clients.filter(c => {
+    const created = new Date(c.created_at);
+    const now = new Date();
+    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+  }).length;
 
   const handleSaveClient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +105,11 @@ export default function Clients() {
     }
   };
 
+  const openWhatsapp = (phone: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanPhone}`, '_blank');
+  };
+
   const handleEdit = (client: any) => {
     setEditingClientId(client.id);
     setName(client.name);
@@ -116,16 +145,21 @@ export default function Clients() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 pb-10"
+    >
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
             <Users className="w-4 h-4" />
-            Base de Contatos
+            CRM & Contatos
           </div>
           <h2 className="text-4xl font-black tracking-tight text-foreground">Clientes</h2>
-          <p className="text-muted-foreground font-medium">Gerencie sua lista de contatos e histórico de pedidos.</p>
+          <p className="text-muted-foreground font-medium max-w-lg">Gerencie sua base de clientes e abra conversas no WhatsApp com um clique.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -133,112 +167,172 @@ export default function Clients() {
           if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
-            <Button className="h-12 px-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-lg shadow-blue-500/20 gap-2 transition-all hover:scale-105 active:scale-95">
-              <UserPlus className="w-5 h-5" /> Adicionar Cliente
+            <Button className="h-12 px-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-lg shadow-blue-600/20 gap-2 transition-all hover:scale-[1.02] active:scale-95">
+              <UserPlus className="w-5 h-5" /> Novo Cliente
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md rounded-2xl border-border bg-card shadow-2xl">
+          <DialogContent className="max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black">
-                {editingClientId ? 'Editar Perfil' : 'Novo Cliente'}
+              <DialogTitle className="text-2xl font-black flex items-center gap-2">
+                <UserCheck className="w-6 h-6 text-blue-500" />
+                {editingClientId ? 'Editar Perfil' : 'Cadastrar Cliente'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSaveClient} className="space-y-6 pt-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Nome Completo</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Ex: João da Silva" className="h-11 rounded-xl" />
+                <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">Nome Completo</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Ex: João da Silva" className="h-12 rounded-2xl bg-muted/30" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">WhatsApp (DDD + Número)</Label>
+                <Label htmlFor="phone" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">WhatsApp</Label>
                 <div className="flex gap-2">
-                  <div className="h-11 flex items-center px-3 bg-accent rounded-xl border border-border font-bold text-sm text-muted-foreground">+55</div>
-                  <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="11 99999-9999" className="h-11 rounded-xl flex-1" />
+                  <div className="h-12 flex items-center px-4 bg-accent rounded-2xl border border-border font-black text-sm text-muted-foreground">+55</div>
+                  <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="11 99999-9999" className="h-12 rounded-2xl bg-muted/30 flex-1" />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Email de Contato</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="cliente@exemplo.com" className="h-11 rounded-xl" />
+                <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">E-mail (Opcional)</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="cliente@exemplo.com" className="h-12 rounded-2xl bg-muted/30" />
               </div>
-              
-              <div className="pt-2">
-                <Button type="submit" className="w-full h-12 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-500/20 transition-all">
-                  {editingClientId ? 'Salvar Alterações' : 'Finalizar Cadastro'}
-                </Button>
-              </div>
+              <Button type="submit" className="w-full h-14 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-600/20 text-lg transition-all">
+                {editingClientId ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR CADASTRO'}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* SEARCH BAR */}
-      <Card className="p-4 border-border bg-card/50 backdrop-blur-md rounded-2xl max-w-md group focus-within:border-blue-500/50 transition-all">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-blue-500 transition-colors" />
+      {/* MÉTRICAS DA BASE */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <motion.div variants={itemVariants}>
+          <Card className="bg-card/50 border-border overflow-hidden relative group">
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+            <CardContent className="p-6 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total na Base</p>
+                <h3 className="text-3xl font-black mt-1">{totalClients} <span className="text-blue-500 text-sm">Contatos</span></h3>
+              </div>
+              <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 group-hover:scale-110 transition-transform">
+                <Users className="w-6 h-6" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Card className="bg-card/50 border-border overflow-hidden relative group">
+            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+            <CardContent className="p-6 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Novos do Mês</p>
+                <h3 className="text-3xl font-black mt-1">+{newThisMonth}</h3>
+              </div>
+              <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* BUSCA E TABELA */}
+      <div className="space-y-4">
+        <motion.div variants={itemVariants} className="relative max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Pesquisar por nome ou telefone..."
+            placeholder="Buscar por nome ou telefone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 border-none bg-transparent shadow-none focus-visible:ring-0"
+            className="pl-11 h-12 bg-card/50 border-border rounded-2xl focus:ring-blue-500/20"
           />
-        </div>
-      </Card>
+        </motion.div>
 
-      {/* CLIENTS TABLE */}
-      <Card className="border-border bg-card/30 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-accent/30 hover:bg-accent/30 border-border">
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Nome do Cliente</TableHead>
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground"><div className="flex items-center gap-2"><Phone className="w-3 h-3" /> WhatsApp</div></TableHead>
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground"><div className="flex items-center gap-2"><Mail className="w-3 h-3" /> Email</div></TableHead>
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-20 text-muted-foreground animate-pulse font-bold tracking-widest">Sincronizando dados...</TableCell></TableRow>
-            ) : filteredClients.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-20 text-muted-foreground font-medium">Nenhum cliente encontrado na sua base.</TableCell></TableRow>
-            ) : (
-              filteredClients.map((client) => (
-                <TableRow key={client.id} className="hover:bg-accent/20 transition-colors border-border">
-                  <TableCell className="px-6 py-5">
-                    <div className="font-black text-sm text-foreground tracking-tight">{client.name}</div>
-                  </TableCell>
-                  <TableCell className="px-6 py-5">
-                    <div className="font-bold text-sm text-foreground opacity-80">{client.phone}</div>
-                  </TableCell>
-                  <TableCell className="px-6 py-5 font-medium text-muted-foreground text-sm">
-                    {client.email || <span className="opacity-30 italic text-xs">Não informado</span>}
-                  </TableCell>
-                  <TableCell className="px-6 py-5">
-                    <div className="flex items-center justify-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-9 w-9 rounded-xl bg-accent text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-all" 
-                        onClick={() => handleEdit(client)}
-                        title="Editar Perfil"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-9 w-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm" 
-                        onClick={() => deleteClient(client.id)}
-                        title="Remover Cliente"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <Card className="border-border bg-card/30 backdrop-blur-sm shadow-xl rounded-[2rem] overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-accent/30 hover:bg-accent/30 border-border border-b">
+                  <TableHead className="h-14 px-8 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Nome</TableHead>
+                  <TableHead className="h-14 px-8 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Contato</TableHead>
+                  <TableHead className="h-14 px-8 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Ações</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
-    </div>
+              </TableHeader>
+              <TableBody>
+                <AnimatePresence mode="popLayout">
+                  {loading ? (
+                    <TableRow><TableCell colSpan={3} className="text-center py-20 text-muted-foreground animate-pulse font-black tracking-widest uppercase">Sincronizando Base...</TableCell></TableRow>
+                  ) : filteredClients.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-20">
+                        <div className="flex flex-col items-center gap-4 opacity-40">
+                          <Users className="w-12 h-12" />
+                          <p className="font-bold">Nenhum cliente encontrado.</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredClients.map((client) => (
+                      <motion.tr
+                        layout
+                        key={client.id}
+                        variants={itemVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="group hover:bg-blue-500/5 transition-colors border-border border-b last:border-0"
+                      >
+                        <TableCell className="px-8 py-5">
+                          <div className="font-black text-sm text-foreground uppercase tracking-tight">{client.name}</div>
+                          <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground font-medium">
+                            <Mail className="w-3 h-3" /> {client.email || 'Sem e-mail'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-8 py-5">
+                          <div className="flex items-center gap-2">
+                             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                             <span className="font-bold text-sm text-foreground">{client.phone}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-8 py-5">
+                          <div className="flex items-center justify-center gap-3">
+                            {/* WHATSAPP ACTION */}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => openWhatsapp(client.phone)}
+                              className="h-10 w-10 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
+                            >
+                              <MessageCircle className="h-5 w-5" />
+                            </Button>
+                            
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleEdit(client)}
+                              className="h-10 w-10 rounded-2xl bg-accent text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 transition-all" 
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => deleteClient(client.id)}
+                              className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all" 
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </motion.tr>
+                    ))
+                  )}
+                </AnimatePresence>
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+    </motion.div>
   );
 }
