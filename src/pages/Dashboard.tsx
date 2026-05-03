@@ -54,15 +54,14 @@ const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
     <div className="flex items-end gap-[3px] h-14 w-24 pt-5">
       {displayData.map((val, i) => {
         const heightPercent = Math.max((val / max) * 100, 5); 
-        // Cor do texto suave baseada na cor do gráfico
         const labelColor = color; 
         
         return (
           <div key={i} className="relative flex-1 h-full flex items-end justify-center group">
-            {/* Números AGORA SEMPRE VISÍVEIS para mobile e desktop */}
+            {/* CORREÇÃO: Números SEMPRE VISÍVEIS com opacidade fixa para mobile */}
             <div 
               className="absolute bottom-full mb-1 text-[7px] font-black leading-none"
-              style={{ color: labelColor, opacity: val > 0 ? 0.7 : 0 }}
+              style={{ color: labelColor, opacity: val > 0 ? 0.8 : 0 }}
             >
               {val > 0 ? Math.round(val) : ''}
             </div>
@@ -166,8 +165,8 @@ export default function Dashboard() {
           dailyData[dateKey].rev += rev;
           dailyData[dateKey].cst += cst;
 
-          // CORREÇÃO: Busca focada apenas em colunas de NOME, ignorando descrições longas
-          const pName = order.product_name || order.name || order.item_name || order.product || 'Peça 3D';
+          // CORREÇÃO DA NOMENCLATURA: Priorizando nomes curtos e técnicos do banco
+          const pName = order.product_name || order.name || order.item_name || order.item || order.product || order.subject || order.title || 'Item 3D';
           
           if (!productMap[pName]) productMap[pName] = { count: 0, revenue: 0 };
           productMap[pName].count += 1;
@@ -300,7 +299,10 @@ export default function Dashboard() {
           </h3>
           <div className="grid gap-4 md:grid-cols-2">
             {stats.newOrders > 0 && (
-              <div onClick={() => navigate('/app/orders?status=Aguardando contato')} className="flex items-center justify-between p-5 bg-blue-500/5 border border-blue-500/20 rounded-3xl group hover:bg-blue-500/10 transition-all cursor-pointer">
+              <div 
+                onClick={() => navigate('/app/orders?status=Aguardando contato')} 
+                className="flex items-center justify-between p-5 bg-blue-500/5 border border-blue-500/20 rounded-3xl group hover:bg-blue-500/10 transition-all cursor-pointer"
+              >
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-600/20"><Clock className="w-5 h-5" /></div>
                   <div>
@@ -312,7 +314,10 @@ export default function Dashboard() {
               </div>
             )}
             {stats.ready > 0 && (
-              <div onClick={() => navigate('/app/orders?status=Pronto')} className="flex items-center justify-between p-5 bg-emerald-600/5 border border-emerald-600/20 rounded-3xl group hover:bg-emerald-600/10 transition-all cursor-pointer">
+              <div 
+                onClick={() => navigate('/app/orders?status=Pronto')} 
+                className="flex items-center justify-between p-5 bg-emerald-600/5 border border-emerald-600/20 rounded-3xl group hover:bg-emerald-600/10 transition-all cursor-pointer"
+              >
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-emerald-600 rounded-2xl text-white shadow-lg shadow-emerald-600/20"><CheckCircle2 className="w-5 h-5" /></div>
                   <div>
@@ -335,7 +340,7 @@ export default function Dashboard() {
         </h3>
         <motion.div variants={containerVariants} className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
           {[
-            { label: 'Total', val: stats.total, icon: Package, color: 'muted', status: 'todos' },
+            { label: 'Total', val: stats.total, icon: Package, color: 'muted', status: '' },
             { label: 'Novos', val: stats.newOrders, icon: Clock, color: 'blue', status: 'Aguardando contato' },
             { label: 'Em Produção', val: stats.inProgress, icon: PackageSearch, color: 'amber', status: 'Preparação' }, 
             { label: 'Prontos', val: stats.ready, icon: CheckCircle2, color: 'emerald', status: 'Pronto' }
