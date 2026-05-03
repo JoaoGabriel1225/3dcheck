@@ -37,35 +37,78 @@ type OrderContext = {
 
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
-// Componente de Gráfico Funcional (Sparkline Dinâmica)
-const DynamicSparkline = ({ data, color }: { data: number[], color: string }) => {
-  if (!data || data.length < 2) return <div className="w-16 h-8 border-b border-dashed border-muted-foreground/20" />;
+/**
+ * Componente de Gráfico de Área Profissional
+ * Renderiza uma linha com gradiente e glow baseado nos dados reais.
+ */
+const DynamicSparkline = ({ data, color, id }: { data: number[], color: string, id: string }) => {
+  if (!data || data.length < 2) {
+    return <div className="w-20 h-10 border-b border-dashed border-muted-foreground/20 opacity-30" />;
+  }
   
   const max = Math.max(...data) || 1;
   const min = Math.min(...data);
   const range = max - min || 1;
   
-  // Mapeia os dados para coordenadas SVG (100x40)
+  // Mapeamento dos pontos para o SVG
   const points = data.map((val, i) => {
     const x = (i / (data.length - 1)) * 100;
-    const y = 35 - ((val - min) / range) * 30; 
-    return `${x},${y}`;
-  }).join(' ');
+    const y = 38 - ((val - min) / range) * 34; 
+    return { x, y };
+  });
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = `${linePath} L 100 40 L 0 40 Z`;
 
   return (
-    <svg className="w-16 h-8 overflow-visible" viewBox="0 0 100 40">
-      <motion.polyline
-        fill="none"
-        stroke={color}
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={points}
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 0.6 }}
-        transition={{ duration: 1.5, ease: "easeInOut" }}
-      />
-    </svg>
+    <div className="relative h-12 w-24">
+      <svg className="w-full h-full overflow-visible" viewBox="0 0 100 40" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={`gradient-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+          <filter id={`glow-${id}`}>
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+        
+        {/* Área preenchida com gradiente */}
+        <motion.path
+          d={areaPath}
+          fill={`url(#gradient-${id})`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1 }}
+        />
+        
+        {/* Linha principal com Glow */}
+        <motion.path
+          d={linePath}
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter={`url(#glow-${id})`}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.5, ease: "easeInOut" }}
+        />
+        
+        {/* Ponto indicador no final do gráfico */}
+        <motion.circle
+          cx={points[points.length - 1].x}
+          cy={points[points.length - 1].y}
+          r="3"
+          fill={color}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 1.2 }}
+        />
+      </svg>
+    </div>
   );
 };
 
@@ -91,7 +134,7 @@ export default function Dashboard() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
 
-  const storeDisplayName = user?.user_metadata?.full_name || profile?.name || 'Empreendedor';
+  const storeDisplayName = user?.user_metadata?.full_name || profile?.name || 'Maker';
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -132,7 +175,6 @@ export default function Dashboard() {
 
         if (error) throw error;
 
-        // Agrupamento de dados por dia para gerar os gráficos
         const dailyData: Record<string, { rev: number, cst: number }> = {};
         
         const newStats = orders.reduce((acc, order) => {
@@ -201,30 +243,30 @@ export default function Dashboard() {
            {(['hoje', 'semana', 'mes', 'todos'] as const).map((filter) => (
              <Button key={filter} variant="ghost" onClick={() => setTimeFilter(filter)} className={`h-9 px-4 rounded-xl text-xs font-bold transition-all relative ${timeFilter === filter ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                {timeFilter === filter && <motion.div layoutId="activeFilter" className="absolute inset-0 bg-background shadow-sm rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
-               <span className="relative z-10 capitalize">{filter === 'mes' ? 'Este Mês' : filter === 'semana' ? 'Esta Semana' : filter === 'todos' ? 'Todo Período' : 'Hoje'}</span>
+               <span className="relative z-10 capitalize">{filter === 'mes' ? 'Mês' : filter === 'semana' ? 'Semana' : filter === 'todos' ? 'Total' : 'Hoje'}</span>
              </Button>
            ))}
         </div>
       </motion.div>
 
-      {/* FINANCEIRO COM GRÁFICOS REAIS */}
+      {/* FINANCEIRO COM GRÁFICOS DE ÁREA E GLOW */}
       <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
         {[
-          { label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', icon: DollarSign, sub: 'Receita bruta' },
-          { label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', icon: TrendingDown, sub: 'Em insumos' },
-          { label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', icon: ArrowUpRight, sub: 'Performance Máxima', isZap: true }
+          { id: 'rev', label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', sub: 'Receita bruta' },
+          { id: 'cst', label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', sub: 'Em insumos' },
+          { id: 'prf', label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', sub: 'Performance Máxima', isZap: true }
         ].map((m, i) => (
           <motion.div key={i} variants={itemVariants}>
-            <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300">
+            <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30">
               <CardContent className="p-8">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
-                  <DynamicSparkline data={m.trend} color={m.color} />
+                  <DynamicSparkline data={m.trend} color={m.color} id={m.id} />
                 </div>
                 <div className={`text-4xl font-black tracking-tighter ${m.label === 'Lucro Líquido' ? 'text-emerald-500' : 'text-foreground'}`}>
-                  {loading ? <div className="h-10 w-32 bg-muted animate-pulse rounded" /> : `R$ ${m.val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  {loading ? '...' : `R$ ${m.val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                 </div>
-                <div className="flex items-center gap-1.5 mt-2 text-muted-foreground text-xs font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 mt-2 text-muted-foreground text-[10px] font-black uppercase tracking-wider">
                   {m.isZap && <Zap className="w-3 h-3 text-emerald-500 fill-current" />} {m.sub}
                 </div>
               </CardContent>
@@ -236,49 +278,49 @@ export default function Dashboard() {
       {/* AÇÕES RÁPIDAS COM REDIRECIONAMENTO */}
       {(stats.newOrders > 0 || stats.ready > 0) && (
         <motion.div variants={itemVariants} className="space-y-4">
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
             <ListChecks className="w-4 h-4" /> Próximas Ações
           </h3>
           <div className="grid gap-4 md:grid-cols-2">
             {stats.newOrders > 0 && (
               <div 
                 onClick={() => navigate('/app/orders')} 
-                className="flex items-center justify-between p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl group hover:bg-blue-500/10 transition-all cursor-pointer"
+                className="flex items-center justify-between p-5 bg-blue-600/5 border border-blue-600/20 rounded-3xl group hover:bg-blue-600/10 transition-all cursor-pointer"
               >
-                <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-blue-500" />
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-600/20"><Clock className="w-5 h-5" /></div>
                   <div>
-                    <p className="text-sm font-bold">{stats.newOrders} novos pedidos</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Aguardando confirmação</p>
+                    <p className="text-sm font-black uppercase tracking-tight">{stats.newOrders} novos pedidos</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-black">Aguardando confirmação</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-blue-500 group-hover:translate-x-1 transition-transform" />
+                <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition-transform" />
               </div>
             )}
             {stats.ready > 0 && (
               <div 
                 onClick={() => navigate('/app/orders')} 
-                className="flex items-center justify-between p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl group hover:bg-emerald-500/10 transition-all cursor-pointer"
+                className="flex items-center justify-between p-5 bg-emerald-600/5 border border-emerald-600/20 rounded-3xl group hover:bg-emerald-600/10 transition-all cursor-pointer"
               >
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-600 rounded-2xl text-white shadow-lg shadow-emerald-600/20"><CheckCircle2 className="w-5 h-5" /></div>
                   <div>
-                    <p className="text-sm font-bold">{stats.ready} peças prontas</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Organizar entrega</p>
+                    <p className="text-sm font-black uppercase tracking-tight">{stats.ready} peças prontas</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-black">Organizar entrega</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-1 transition-transform" />
+                <ChevronRight className="w-5 h-5 text-emerald-600 group-hover:translate-x-1 transition-transform" />
               </div>
             )}
           </div>
         </motion.div>
       )}
 
-      {/* FLUXO DE PRODUÇÃO COM NOMENCLATURA ATUALIZADA */}
+      {/* FLUXO DE PRODUÇÃO ATUALIZADO */}
       <motion.div variants={itemVariants} className="space-y-6">
         <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
           Fluxo de Produção <div className="h-[1px] flex-1 bg-border" />
-          <span className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-2 py-1 rounded flex items-center gap-1"><Calendar className="w-3 h-3" /> {timeFilter}</span>
+          <span className="text-[10px] uppercase font-black text-muted-foreground bg-muted px-2 py-1 rounded flex items-center gap-1"><Calendar className="w-3 h-3" /> {timeFilter}</span>
         </h3>
         <motion.div variants={containerVariants} className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
           {[
@@ -289,12 +331,15 @@ export default function Dashboard() {
           ].map((item, i) => (
             <motion.div key={i} variants={itemVariants} whileHover={{ y: -5 }}>
               <Card className={`border-border bg-card/30 transition-all duration-200 ${item.color === 'emerald' ? 'border-emerald-500/20 bg-emerald-500/5' : ''}`}>
-                <CardContent className="p-4 sm:p-6">
+                <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <item.icon className={`w-5 h-5 ${item.color === 'muted' ? 'text-muted-foreground/50' : `text-${item.color}-500/50`}`} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">{item.label}</span>
+                    <item.icon className={`w-5 h-5 ${item.color === 'muted' ? 'text-muted-foreground/30' : `text-${item.color}-500/50`}`} />
+                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">{item.label}</span>
                   </div>
-                  <div className={`text-2xl sm:text-3xl font-black ${item.color !== 'muted' ? `text-${item.color}-600 dark:text-${item.color}-400` : ''}`}>{loading ? '-' : item.val}</div>
+                  <div className={`text-2xl sm:text-3xl font-black ${item.color !== 'muted' ? `text-${item.color}-600 dark:text-${item.color}-400` : ''}`}>
+                    {loading ? '-' : item.val}
+                  </div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1 sm:hidden">{item.label}</p>
                 </CardContent>
               </Card>
             </motion.div>
