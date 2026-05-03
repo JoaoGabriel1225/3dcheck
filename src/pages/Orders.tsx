@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom'; // Adicionado para capturar filtros da URL
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import {
   Select,
@@ -23,22 +24,42 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { MessageCircle, Copy, Plus, Search, Trash2, ShoppingBag, Filter, Calendar, User, Tag, DollarSign, Calculator, ChevronDown, Package } from 'lucide-react';
+import { 
+  MessageCircle, Copy, Plus, Search, Trash2, ShoppingBag, Filter, 
+  Calendar, User, Tag, DollarSign, Calculator, ChevronDown, Package,
+  TrendingUp, Activity, ArrowRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Cancelado'];
+type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
+
+// Variantes de animação
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export default function Orders() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams(); // Hook para ler parâmetros da URL
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('todos'); // Novo filtro de tempo
+  
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [pendingWhatsappMessage, setPendingWhatsappMessage] = useState('');
   const [pendingWhatsappPhone, setPendingWhatsappPhone] = useState('');
   const [isNewOrderDialogOpen, setIsNewOrderDialogOpen] = useState(false);
   
-  // Opções e Busca
   const [clientsOptions, setClientsOptions] = useState<any[]>([]);
   const [productsOptions, setProductsOptions] = useState<any[]>([]);
   const [clientSearchText, setClientSearchText] = useState('');
@@ -46,7 +67,6 @@ export default function Orders() {
   const [productSearchText, setProductSearchText] = useState('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   
-  // Estado do Formulário
   const [selectedClientId, setSelectedClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -54,6 +74,14 @@ export default function Orders() {
   const [orderDescription, setOrderDescription] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
   const [orderCost, setOrderCost] = useState('');
+
+  // Captura o status vindo do Dashboard via URL
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam && STATUS_OPTIONS.includes(statusParam)) {
+      setStatusFilter(statusParam);
+    }
+  }, [searchParams]);
 
   const fetchOrders = async () => {
     if (!profile) return;
@@ -81,6 +109,11 @@ export default function Orders() {
   };
 
   useEffect(() => { fetchOrders(); fetchOptions(); }, [profile]);
+
+  // Cálculos de Métricas Rápidas
+  const openOrders = orders.filter(o => !['Enviado', 'Cancelado'].includes(o.status));
+  const vgvAberto = openOrders.reduce((acc, curr) => acc + (Number(o.final_price) || 0), 0);
+  const emProducaoCount = orders.filter(o => o.status === 'Preparação').length;
 
   const generateWhatsappMessage = (productName: string, status: string, clientName: string) => {
     return `Olá ${clientName || ''}, seu pedido de ${productName || 'impressão 3D'} está agora em: *${status}*.`;
@@ -199,9 +232,21 @@ export default function Orders() {
 
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = statusFilter === 'Todos' || order.status === statusFilter;
-    if (!searchTerm) return matchesStatus;
+    
+    // Filtro de Tempo (Lógica Simplificada)
+    const orderDate = new Date(order.created_at);
+    const now = new Date();
+    let matchesTime = true;
+    if (timeFilter === 'hoje') matchesTime = orderDate.toDateString() === now.toDateString();
+    else if (timeFilter === 'semana') {
+      const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7);
+      matchesTime = orderDate >= weekAgo;
+    } else if (timeFilter === 'mes') matchesTime = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+
+    if (!searchTerm) return matchesStatus && matchesTime;
+    
     const term = searchTerm.toLowerCase();
-    return matchesStatus && (
+    return matchesStatus && matchesTime && (
       (order.clients?.name || '').toLowerCase().includes(term) ||
       (order.products?.name || '').toLowerCase().includes(term) ||
       (order.description || '').toLowerCase().includes(term)
@@ -211,13 +256,18 @@ export default function Orders() {
   const estimatedProfit = (parseFloat(orderPrice.replace(',', '.')) || 0) - (parseFloat(orderCost.replace(',', '.')) || 0);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants} 
+      className="space-y-8 pb-10"
+    >
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-widest">
             <ShoppingBag className="w-4 h-4" />
-            Produção
+            Produção Operacional
           </div>
           <h2 className="text-4xl font-black tracking-tight text-foreground">Pedidos</h2>
           <p className="text-muted-foreground font-medium">Controle o status e a entrega das suas peças.</p>
@@ -225,7 +275,7 @@ export default function Orders() {
 
         <Dialog open={isNewOrderDialogOpen} onOpenChange={(open) => { setIsNewOrderDialogOpen(open); if (!open) resetOrderForm(); }}>
           <DialogTrigger asChild>
-            <Button className="h-12 px-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 gap-2 transition-all hover:scale-105 active:scale-95">
+            <Button className="h-12 px-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 gap-2 transition-all hover:scale-[1.02] active:scale-95">
               <Plus className="w-5 h-5" /> Novo Pedido
             </Button>
           </DialogTrigger>
@@ -369,14 +419,6 @@ export default function Orders() {
                             </p>
                         </div>
                     </div>
-                    <div className="text-right hidden sm:block">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Margem</p>
-                        <p className="text-sm font-bold opacity-60">
-                            {orderPrice && parseFloat(orderPrice) > 0 
-                                ? ((estimatedProfit / parseFloat(orderPrice.replace(',', '.'))) * 100).toFixed(0) 
-                                : 0}%
-                        </p>
-                    </div>
                 </div>
               </div>
 
@@ -390,32 +432,69 @@ export default function Orders() {
         </Dialog>
       </div>
 
-      {/* FILTER BAR - Mantida igual */}
+      {/* METRICS CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div variants={itemVariants}>
+            <Card className="bg-card/50 border-border overflow-hidden relative">
+              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+              <CardContent className="p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">VGV em Aberto</p>
+                  <h3 className="text-2xl font-black mt-1">R$ {vgvAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
+                </div>
+                <TrendingUp className="text-emerald-500 w-8 h-8 opacity-20" />
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <Card className="bg-card/50 border-border overflow-hidden relative">
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+              <CardContent className="p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Em Produção</p>
+                  <h3 className="text-2xl font-black mt-1">{emProducaoCount} <span className="text-xs text-muted-foreground uppercase">Peças</span></h3>
+                </div>
+                <Activity className="text-blue-500 w-8 h-8 opacity-20" />
+              </CardContent>
+            </Card>
+          </motion.div>
+      </div>
+
+      {/* FILTER BAR */}
       <Card className="p-4 border-border bg-card/50 backdrop-blur-md shadow-sm space-y-4 rounded-2xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-blue-500 transition-colors" />
             <Input
-               placeholder="Buscar por cliente ou produto..."
-               value={searchTerm}
-               onChange={(e) => setSearchTerm(e.target.value)}
-               className="pl-10 h-11 bg-background/50 border-border rounded-xl"
+                placeholder="Buscar por cliente ou produto..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-11 bg-background/50 border-border rounded-xl"
             />
           </div>
-          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground bg-accent/50 px-3 py-2 rounded-lg border border-border">
-            <Filter className="w-3.5 h-3.5" />
-            Filtros Ativos
+          
+          {/* Seletor de Tempo Estilo Dashboard */}
+          <div className="flex items-center bg-muted/30 p-1 rounded-xl border border-border self-start">
+            {(['hoje', 'semana', 'mes', 'todos'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTimeFilter(t)}
+                className={`px-3 py-1.5 text-[10px] font-black uppercase transition-all rounded-lg ${timeFilter === t ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {t === 'todos' ? 'Total' : t}
+              </button>
+            ))}
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
           {STATUS_OPTIONS.map(status => (
              <Button
                 key={status}
                 variant={statusFilter === status ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter(status)}
-                className={`h-8 px-4 rounded-full text-[11px] font-black uppercase tracking-wider transition-all ${
+                className={`h-8 px-4 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
                   statusFilter === status 
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
                   : 'hover:bg-accent border-border text-muted-foreground'
@@ -427,84 +506,87 @@ export default function Orders() {
         </div>
       </Card>
 
-      {/* ORDERS TABLE - Mantida igual */}
+      {/* ORDERS TABLE */}
       <Card className="border-border bg-card/30 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-accent/30 hover:bg-accent/30 border-border">
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground"><div className="flex items-center gap-2"><Calendar className="w-3 h-3" /> Data</div></TableHead>
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground"><div className="flex items-center gap-2"><User className="w-3 h-3" /> Cliente</div></TableHead>
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground"><div className="flex items-center gap-2"><Tag className="w-3 h-3" /> Detalhes</div></TableHead>
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Status</TableHead>
-              <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground animate-pulse font-bold">Processando base de dados...</TableCell></TableRow>
-            ) : filteredOrders.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium">Nenhum registro encontrado para esta busca.</TableCell></TableRow>
-            ) : (
-              filteredOrders.map((order) => (
-                <TableRow key={order.id} className="hover:bg-accent/20 transition-colors border-border">
-                  <TableCell className="px-6 py-5">
-                    <span className="text-sm font-bold text-foreground opacity-80">{new Date(order.created_at).toLocaleDateString('pt-BR')}</span>
-                  </TableCell>
-                  <TableCell className="px-6 py-5">
-                    <div className="font-black text-sm text-foreground">{order.clients?.name}</div>
-                    <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{order.clients?.phone}</div>
-                  </TableCell>
-                  <TableCell className="px-6 py-5">
-                    <div className="font-bold text-sm text-foreground">{order.products?.name || 'Item Personalizado'}</div>
-                    <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{order.description || 'Sem observações'}</div>
-                    <div className="mt-2 text-sm font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</div>
-                  </TableCell>
-                  <TableCell className="px-6 py-5">
-                    <Select defaultValue={order.status} onValueChange={(val) => updateStatus(order, val)}>
-                      <SelectTrigger className={`h-8 w-[160px] text-[10px] font-black uppercase tracking-wider border transition-all ${getStatusColor(order.status)}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.filter(s => s !== 'Todos').map(s => <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="px-6 py-5">
-                    <div className="flex items-center justify-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all"
-                        onClick={() => {
-                          const clean = (order.clients?.phone || '').replace(/\D/g, '');
-                          if (clean) openWhatsapp(clean.startsWith('55') ? clean : `55${clean}`, generateWhatsappMessage(order.products?.name, order.status, order.clients?.name));
-                        }}
-                      >
-                        <MessageCircle className="h-4.5 w-4.5" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-9 w-9 rounded-xl bg-accent text-muted-foreground hover:text-foreground transition-all"
-                        onClick={() => copyMessage(generateWhatsappMessage(order.products?.name, order.status, order.clients?.name))}
-                      >
-                        <Copy className="h-4.5 w-4.5" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-9 w-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
-                        onClick={() => deleteOrder(order.id)}
-                      >
-                        <Trash2 className="h-4.5 w-4.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-accent/30 hover:bg-accent/30 border-border border-b">
+                <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Data</TableHead>
+                <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Cliente</TableHead>
+                <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Pedido</TableHead>
+                <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Status</TableHead>
+                <TableHead className="h-14 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <AnimatePresence mode="popLayout">
+                {loading ? (
+                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground animate-pulse font-black uppercase tracking-widest">Sincronizando Operação...</TableCell></TableRow>
+                ) : filteredOrders.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium">Nenhum pedido encontrado com estes filtros.</TableCell></TableRow>
+                ) : (
+                  filteredOrders.map((order) => (
+                    <motion.tr 
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      key={order.id} 
+                      className="hover:bg-blue-500/5 transition-colors border-border border-b last:border-0"
+                    >
+                      <TableCell className="px-6 py-5">
+                        <span className="text-xs font-bold text-foreground opacity-80">{new Date(order.created_at).toLocaleDateString('pt-BR')}</span>
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="font-black text-sm text-foreground uppercase tracking-tight">{order.clients?.name}</div>
+                        <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{order.clients?.phone}</div>
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="font-bold text-sm text-foreground">{order.products?.name || 'Personalizado'}</div>
+                        <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{order.description || 'Sem obs.'}</div>
+                        <div className="mt-2 text-xs font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</div>
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <Select defaultValue={order.status} onValueChange={(val) => updateStatus(order, val)}>
+                          <SelectTrigger className={`h-8 w-[150px] text-[9px] font-black uppercase tracking-wider border transition-all ${getStatusColor(order.status)}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUS_OPTIONS.filter(s => s !== 'Todos').map(s => <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all"
+                            onClick={() => {
+                              const clean = (order.clients?.phone || '').replace(/\D/g, '');
+                              if (clean) openWhatsapp(clean.startsWith('55') ? clean : `55${clean}`, generateWhatsappMessage(order.products?.name, order.status, order.clients?.name));
+                            }}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-9 w-9 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                            onClick={() => deleteOrder(order.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </motion.tr>
+                  ))
+                )}
+              </AnimatePresence>
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       {/* WHATSAPP MODAL - Mantido igual */}
@@ -517,19 +599,19 @@ export default function Orders() {
             </DialogTitle>
           </DialogHeader>
           <div className="py-6 space-y-4">
-            <p className="text-sm text-muted-foreground font-medium">O status mudou para <span className="text-foreground font-black uppercase underline decoration-blue-500 underline-offset-4">Em Produção</span>. Enviar aviso?</p>
-            <div className="p-4 bg-accent/50 rounded-xl border border-border italic text-sm text-foreground/80 leading-relaxed">
+            <p className="text-sm text-muted-foreground font-medium leading-relaxed">O status foi alterado. Deseja enviar um aviso automático?</p>
+            <div className="p-4 bg-accent/50 rounded-xl border border-border italic text-xs text-foreground/80 leading-relaxed">
               "{pendingWhatsappMessage}"
             </div>
           </div>
           <DialogFooter className="flex gap-2 sm:justify-end">
             <Button variant="ghost" className="font-bold text-muted-foreground" onClick={() => setWhatsappModalOpen(false)}>Depois</Button>
             <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 rounded-xl shadow-lg shadow-emerald-500/20" onClick={() => { openWhatsapp(pendingWhatsappPhone, pendingWhatsappMessage); setWhatsappModalOpen(false); }}>
-              Sim, Abrir WhatsApp
+              Enviar WhatsApp
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }
