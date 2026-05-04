@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
-import { communityService } from '@/lib/communityService';
+// CORREÇÃO: Caminho relativo para forçar o Vercel a buscar dentro de src/lib
+import { communityService } from '../../lib/communityService'; 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +43,7 @@ export default function Community() {
     if (!profile) return toast.error("Faça login para interagir.");
     try {
       await communityService.toggleLike(postId, profile.id, isLike);
-      loadData(); // Recarrega para atualizar contagem
+      loadData(); 
     } catch (e) {
       toast.error("Erro na interação.");
     }
@@ -50,7 +51,6 @@ export default function Community() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 pb-32">
-      {/* HEADER DA COMUNIDADE */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -72,7 +72,6 @@ export default function Community() {
         </div>
       </header>
 
-      {/* SELETOR DE ABAS ESTILO ELITE */}
       <div className="flex bg-muted/50 p-1.5 rounded-2xl border border-border w-fit">
         <button 
           onClick={() => setActiveTab('feed')}
@@ -88,7 +87,6 @@ export default function Community() {
         </button>
       </div>
 
-      {/* BARRA DE PESQUISA */}
       <div className="relative max-w-md">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input 
@@ -99,7 +97,6 @@ export default function Community() {
         />
       </div>
 
-      {/* CONTEÚDO DINÂMICO */}
       <AnimatePresence mode="wait">
         {activeTab === 'feed' ? (
           <motion.div 
@@ -131,7 +128,6 @@ export default function Community() {
   );
 }
 
-// --- SUB-COMPONENTE: CARD DE STL ---
 function STLCard({ post, onLike }: { post: any, onLike: any }) {
   const mainImage = post.post_media?.[0]?.media_url || 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&q=80';
   const likeCount = post.post_interactions?.filter((i: any) => i.is_like).length || 0;
@@ -183,7 +179,6 @@ function STLCard({ post, onLike }: { post: any, onLike: any }) {
   );
 }
 
-// --- SUB-COMPONENTE: ITEM DO FÓRUM ---
 function DoubtItem({ doubt }: { doubt: any }) {
   return (
     <Card className="bg-card/40 border-border hover:border-blue-500/20 transition-all rounded-3xl group overflow-hidden">
