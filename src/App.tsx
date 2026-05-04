@@ -22,7 +22,8 @@ import StorefrontSettings from './pages/StorefrontSettings';
 import AdminDashboard from './pages/AdminDashboard';
 import Storefront from './pages/Storefront';
 import Clients from './pages/Clients';
-import Support from './pages/Support'; // IMPORTAÇÃO DA NOVA PÁGINA
+import Support from './pages/Support'; 
+import Community from './pages/Community'; // IMPORTAÇÃO ADICIONADA PARA CORRIGIR O ERRO
 
 export default function App() {
   return (
