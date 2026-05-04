@@ -78,7 +78,7 @@ export default function Marketplace() {
     }
   }
 
-  // NOVA FUNÇÃO: Upload de Imagem para o Supabase Storage
+  // FUNÇÃO DE UPLOAD PARA O BUCKET marketplace.manual
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -89,17 +89,17 @@ export default function Marketplace() {
       const fileName = `${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('marketplace') // Nome do bucket no seu Supabase
+        .from('marketplace.manual') 
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('marketplace')
+        .from('marketplace.manual')
         .getPublicUrl(fileName);
 
       setImportingProduct((prev: any) => ({ ...prev, image: publicUrl }));
-      toast.success('Imagem carregada com sucesso!');
+      toast.success('Imagem enviada com sucesso!');
     } catch (err: any) {
       toast.error('Erro no upload: ' + err.message);
     } finally {
@@ -175,10 +175,8 @@ export default function Marketplace() {
       if (a.is_featured && !b.is_featured) return -1;
       if (!a.is_featured && b.is_featured) return 1;
       if (sortBy === 'discount') return getDiscountValue(b.discount) - getDiscountValue(a.discount);
-      
       const priceA = parseFloat(String(a.price || 0).replace(/[^\d]/g, '')) || 0;
       const priceB = parseFloat(String(b.price || 0).replace(/[^\d]/g, '')) || 0;
-      
       if (sortBy === 'price_asc') return priceA - priceB;
       if (sortBy === 'price_desc') return priceB - priceA;
       if (sortBy === 'popular') return (b.clicks || 0) - (a.clicks || 0);
@@ -196,7 +194,7 @@ export default function Marketplace() {
           <p className="text-muted-foreground font-medium">Curadoria de itens para alta performance 3D.</p>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4">
+        <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
           {categories.map((cat) => {
             const count = savedProducts.filter(p => cat === 'Todos' ? true : p.category === cat).length;
             return (
@@ -228,7 +226,7 @@ export default function Marketplace() {
             <select 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40 transition-all"
+              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40"
             >
               <option value="discount">Maior Desconto %</option>
               <option value="popular">Mais Visitados</option>
@@ -254,7 +252,7 @@ export default function Marketplace() {
           <ProductImporter onImport={(data: any) => {
             const normalizedData = {
               ...data,
-              title: data.title || "Novo Produto",
+              title: data.title || "",
               price: String(data.price || "0").replace(/[^\d.,]/g, ''),
               original_price: String(data.original_price || data.originalPrice || data.price || "0").replace(/[^\d.,]/g, ''),
               is_featured: false,
@@ -290,7 +288,6 @@ export default function Marketplace() {
             <DialogTitle className="text-2xl font-black flex items-center gap-2">
               <Sparkles className="text-blue-500" /> REVISÃO TÉCNICA
             </DialogTitle>
-            <DialogDescription>Ajuste os detalhes finais antes de publicar na vitrine.</DialogDescription>
           </DialogHeader>
 
           {importingProduct && (
@@ -385,10 +382,10 @@ export default function Marketplace() {
                     <Label className="text-[10px] font-black uppercase ml-1 flex justify-between">
                       URL da Imagem
                       <span 
-                        className="text-blue-500 cursor-pointer hover:underline lowercase"
+                        className="text-blue-500 cursor-pointer hover:underline lowercase font-black"
                         onClick={() => document.getElementById('file-upload')?.click()}
                       >
-                        (fazer upload do PC)
+                        (upload do computador)
                       </span>
                     </Label>
                     <Input 
@@ -469,14 +466,6 @@ export default function Marketplace() {
           ))}
         </AnimatePresence>
       </motion.div>
-
-      {!loading && filteredProducts.length === 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-32 text-center">
-          <PackageSearch className="w-24 h-24 text-muted-foreground/20 mb-8" />
-          <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">Nenhum tesouro encontrado</h2>
-          <button onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }} className="mt-10 px-8 py-4 bg-foreground text-background rounded-2xl font-black text-[10px] hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-[0.2em]">Limpar Busca</button>
-        </motion.div>
-      )}
     </motion.div>
   );
 }
