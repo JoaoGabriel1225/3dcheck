@@ -44,7 +44,7 @@ export default function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="support" element={<Support />} /> {/* ROTA DE SUPORTE ADICIONADA AQUI */}
             </Route>
-            
+            <Route path="/app/community" element={<Community />} />
             <Route element={<ProtectedLayout />}>
               <Route path="/billing" element={<Billing />} />
             </Route>
