@@ -2,12 +2,11 @@ import { supabase } from '@/lib/supabase';
 
 export const communityService = {
   async getPosts() {
-    // Busca limpa, apenas colunas que temos certeza que existem
     const { data, error } = await supabase
       .from('community_posts')
       .select(`
         *,
-        profiles:user_id (name, avatar_url),
+        profiles:user_id (name),
         post_media (media_url),
         post_interactions (is_like, user_id)
       `)
@@ -15,7 +14,7 @@ export const communityService = {
     
     if (error) {
       console.error("Erro Supabase (Posts):", error.message);
-      return []; // Retorna vazio para a tela não quebrar
+      return []; 
     }
     return data;
   },
@@ -23,7 +22,7 @@ export const communityService = {
   async getDoubts() {
     const { data, error } = await supabase
       .from('community_doubts')
-      .select('*, profiles:user_id (name, avatar_url)')
+      .select('*, profiles:user_id (name)')
       .order('created_at', { ascending: false });
     
     if (error) {
