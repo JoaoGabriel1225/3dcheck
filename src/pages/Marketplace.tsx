@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { ProductImporter } from '../components/ProductImporter'; 
 import { Card, CardContent } from '../../components/ui/card'; 
 import { Input } from '../../components/ui/input';
-import { Button } from '@/components/ui/button'; // CORREÇÃO: Importação do Button adicionada aqui
+import { Button } from '@/components/ui/button'; 
 import { Label } from '@/components/ui/label'; 
 import { 
   Search, ExternalLink, Trash2, Save, Pencil,
@@ -77,6 +77,35 @@ export default function Marketplace() {
       setLoading(false);
     }
   }
+
+  // NOVA FUNÇÃO: Upload de Imagem para o Supabase Storage
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSaving(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('marketplace') // Nome do bucket no seu Supabase
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('marketplace')
+        .getPublicUrl(fileName);
+
+      setImportingProduct((prev: any) => ({ ...prev, image: publicUrl }));
+      toast.success('Imagem carregada com sucesso!');
+    } catch (err: any) {
+      toast.error('Erro no upload: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   async function handleProductClick(product: any) {
     window.open(product.url, '_blank', 'noopener,noreferrer');
@@ -199,7 +228,7 @@ export default function Marketplace() {
             <select 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40"
+              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40 transition-all"
             >
               <option value="discount">Maior Desconto %</option>
               <option value="popular">Mais Visitados</option>
@@ -234,7 +263,6 @@ export default function Marketplace() {
             setImportingProduct(normalizedData);
           }} />
 
-          {/* BOTÃO MANUAL EXCLUSIVO ADMIN */}
           <div className="flex justify-center">
             <Button 
               variant="ghost" 
@@ -277,7 +305,11 @@ export default function Marketplace() {
                   </div>
                   <div className="flex-1 space-y-3">
                     <Label className="text-[10px] font-black uppercase text-blue-500">Título do Produto</Label>
-                    <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold h-12 rounded-xl" />
+                    <Input 
+                      value={importingProduct.title || ''} 
+                      onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} 
+                      className="font-bold h-12 rounded-xl" 
+                    />
                   </div>
                </div>
 
@@ -350,12 +382,27 @@ export default function Marketplace() {
                   </div>
                   
                   <div className="space-y-2 md:col-span-2">
-                    <Label className="text-[10px] font-black uppercase ml-1">URL da Imagem</Label>
+                    <Label className="text-[10px] font-black uppercase ml-1 flex justify-between">
+                      URL da Imagem
+                      <span 
+                        className="text-blue-500 cursor-pointer hover:underline lowercase"
+                        onClick={() => document.getElementById('file-upload')?.click()}
+                      >
+                        (fazer upload do PC)
+                      </span>
+                    </Label>
                     <Input 
                       value={importingProduct.image} 
                       onChange={(e) => setImportingProduct({...importingProduct, image: e.target.value})}
                       placeholder="https://.../imagem.jpg"
                       className="h-12 rounded-xl"
+                    />
+                    <input 
+                      type="file" 
+                      id="file-upload" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handleImageUpload} 
                     />
                   </div>
                </div>
@@ -395,14 +442,18 @@ export default function Marketplace() {
               </div>
               <div className="p-6 space-y-4 flex-1 flex flex-col">
                 <div className="space-y-2 flex-1">
-                  <span className="text-[9px] font-black uppercase text-muted-foreground/60">{item.category}</span>
-                  <h3 className="text-sm md:text-base font-black text-foreground line-clamp-2 leading-tight uppercase italic">{item.title}</h3>
+                  <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">{item.category}</span>
+                  <h3 className="text-sm md:text-base font-black text-foreground line-clamp-2 leading-tight uppercase italic tracking-tighter">
+                    {item.title}
+                  </h3>
                 </div>
                 <div className="pt-4 border-t border-border/50">
                   <div className="flex flex-col">
-                    {item.original_price && item.original_price !== item.price && <span className="text-[10px] line-through text-muted-foreground/50 font-bold">R$ {item.original_price}</span>}
+                    {item.original_price && item.original_price !== item.price && (
+                      <span className="text-[10px] line-through text-muted-foreground/50 font-bold tracking-tighter">R$ {item.original_price}</span>
+                    )}
                     <div className="flex items-center justify-between">
-                       <div className="text-2xl font-black text-blue-600">R$ {item.price}</div>
+                       <div className="text-2xl font-black text-blue-600 tracking-tighter leading-none">R$ {item.price}</div>
                        <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600 opacity-0 group-hover:opacity-100 transition-all"><ArrowUpRight className="w-4 h-4" /></div>
                     </div>
                   </div>
@@ -423,7 +474,7 @@ export default function Marketplace() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-32 text-center">
           <PackageSearch className="w-24 h-24 text-muted-foreground/20 mb-8" />
           <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">Nenhum tesouro encontrado</h2>
-          <button onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }} className="mt-10 px-8 py-4 bg-foreground text-background rounded-2xl font-black text-[10px] uppercase">Limpar Busca</button>
+          <button onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }} className="mt-10 px-8 py-4 bg-foreground text-background rounded-2xl font-black text-[10px] hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-[0.2em]">Limpar Busca</button>
         </motion.div>
       )}
     </motion.div>
