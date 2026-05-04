@@ -7,7 +7,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  const { formData, userId, planType } = req.body;
+  // Recebemos o email direto do body também, como garantia
+  const { formData, userId, planType, email } = req.body;
 
   try {
     const client = new MercadoPagoConfig({ accessToken: ACCESS_TOKEN });
@@ -15,23 +16,24 @@ export default async function handler(req, res) {
 
     const unitPrice = planType === 'annual' ? 199.90 : 19.90;
 
-    const paymentBody = {
+    // Criamos o objeto de pagamento de forma limpa
+    const result = await payment.create({
       body: {
         transaction_amount: Number(unitPrice),
-        description: `3DCheck Plano Pro - ${planType}`,
+        description: `3DCheck Plano Pro - ${planType === 'annual' ? 'Anual' : 'Mensal'}`,
         payment_method_id: formData.payment_method_id,
-        token: formData.token,
+        // Só envia o token se ele existir (essencial para não quebrar o Pix)
+        ...(formData.token && { token: formData.token }),
         installments: formData.installments ? Number(formData.installments) : 1,
         payer: {
-          email: formData.payer.email,
-          identification: formData.payer.identification,
+          // Fallback de email caso o formData venha incompleto
+          email: formData.payer?.email || email,
+          identification: formData.payer?.identification,
         },
         external_reference: `${userId}:${planType}`,
         notification_url: "https://3dcheck-eight.vercel.app/api/webhooks/mercadopago",
       },
-    };
-
-    const result = await payment.create(paymentBody);
+    });
 
     return res.status(200).json({
       status: result.status,
