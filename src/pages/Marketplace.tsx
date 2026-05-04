@@ -230,10 +230,12 @@ export default function Marketplace() {
              </div>
           </div>
           <ProductImporter onImport={(data: any) => {
+            // FIX: Garantindo que original_price seja capturado independente da fonte
             const normalizedData = {
               ...data,
               original_price: data.original_price || data.originalPrice || data.price,
-              is_featured: false
+              is_featured: false, // Normaliza o destaque como false por padrão
+              user_id: user?.id, // CORREÇÃO: Adiciona o user_id na inicialização do novo produto
             };
             setImportingProduct(normalizedData);
           }} />
