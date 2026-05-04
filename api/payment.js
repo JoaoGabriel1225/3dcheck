@@ -6,17 +6,14 @@ export default async function handler(req, res) {
   const { priceId, userId, email } = req.body;
 
   try {
-    // Verificação de segurança da chave
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("A chave STRIPE_SECRET_KEY não foi encontrada nas variáveis da Vercel.");
-    }
-
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription', 
-      // DICA: Se o erro persistir, tente remover 'pix' da lista abaixo temporariamente para testar
-      payment_method_types: ['card', 'pix'], 
+      mode: 'subscription', // Define como assinatura recorrente[cite: 1]
+      // ESSA É A MUDANÇA: Ativa o que estiver disponível no seu painel[cite: 1]
+      automatic_payment_methods: {
+        enabled: true,
+      },
       line_items: [{ price: priceId, quantity: 1 }],
       customer_email: email,
       metadata: { userId },
@@ -27,11 +24,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ url: session.url });
 
   } catch (error) {
-    // Isso vai mostrar o erro real da Stripe no seu console do F12 agora!
-    console.error('ERRO DETALHADO DA STRIPE:', error.message);
-    return res.status(500).json({ 
-      error: 'Erro na Stripe', 
-      message: error.message 
-    });
+    console.error('Erro na Stripe:', error.message);
+    return res.status(500).json({ error: 'Erro interno', message: error.message });
   }
 }
