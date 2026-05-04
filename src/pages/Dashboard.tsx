@@ -71,6 +71,7 @@ const BOT_PHRASES = [
   "Dica de mestre: Um bico limpo evita 90% das dores de cabeça. Os outros 10% o 3DCheck resolve.",
   "A comunidade 3D é gigante. Você faz parte da Elite agora!",
 
+  // (Continuando a diversificação...)
   "Suporte & Feedback: Teve uma ideia genial pro app? Manda pra gente!",
   "Já configurou seu faturamento hoje? O 3DCheck ama ver seus números crescendo.",
   "A aba Clientes é o seu tesouro. Use o filtro para ver quem são seus melhores compradores.",
@@ -399,7 +400,7 @@ export default function Dashboard() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-10 pb-10">
       
-      {/* #3DCHECK BOT COMPONENT - CORRIGIDO PARA ALTO CONTRASTE */}
+      {/* #3DCHECK BOT COMPONENT - CORRIGIDO PARA ALTO CONTRASTE E ACESSIBILIDADE MOBILE */}
       <AnimatePresence>
         {showBot && (
           <motion.div 
@@ -408,7 +409,7 @@ export default function Dashboard() {
             exit={{ opacity: 0, scale: 0.95 }} 
             className="relative p-6 rounded-[2.5rem] bg-blue-600 shadow-2xl shadow-blue-600/20 overflow-hidden border border-blue-500/50"
           >
-            {/* BOTÃO FECHAR MOBILE FRIENDLY */}
+            {/* BOTÃO FECHAR MOBILE FRIENDLY - VISÍVEL SEM HOVER */}
             <div className="absolute top-2 right-2 z-20">
               <button 
                 onClick={toggleBot}
@@ -431,7 +432,7 @@ export default function Dashboard() {
                   <h3 className="font-black text-blue-100 uppercase text-[10px] tracking-[0.2em] italic opacity-80">#3DCheck Bot</h3>
                   <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300" />
                 </div>
-                {/* TEXTO BRANCO PARA LEITURA PERFEITA */}
+                {/* TEXTO BRANCO PARA LEITURA PERFEITA EM QUALQUER MODO */}
                 <p className="text-sm md:text-base text-white font-bold leading-relaxed italic pr-10">
                   "{botPhrase}"
                 </p>
@@ -468,7 +469,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
               <LayoutDashboard className="w-4 h-4" />Visão Geral
             </div>
-            {/* BOTÃO TOGGLE DO BOT NO DASHBOARD */}
+            {/* BOTÃO TOGGLE DO BOT NO DASHBOARD - LIGA/DESLIGA MANUAL */}
             <Button 
               variant="ghost" 
               size="sm" 
