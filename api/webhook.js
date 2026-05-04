@@ -1,24 +1,42 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// 1. Configuração do Supabase (Usando a Service Role para ter permissão de escrita)
+// 1. DESATIVA O BODY PARSER AUTOMÁTICO (Obrigatório para Stripe na Vercel)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+// 2. Função auxiliar para ler os dados brutos da requisição sem alterações
+async function buffer(readable) {
+  const chunks = [];
+  for await (const chunk of readable) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
-  // O Webhook da Stripe precisa receber o corpo bruto (raw body) para verificar a assinatura
   if (req.method !== 'POST') return res.status(405).end();
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const sig = req.headers['stripe-signature'];
+  
   let event;
 
   try {
-    // 2. Verificação de Segurança: Garante que o aviso veio realmente da Stripe
+    // 3. CAPTURAMOS O CORPO BRUTO AQUI
+    const buf = await buffer(req);
+
+    // 4. VERIFICAÇÃO DE SEGURANÇA (Agora usando o Buffer 'buf' em vez de 'req.body')
     event = stripe.webhooks.constructEvent(
-      req.body, 
+      buf, 
       sig, 
       process.env.STRIPE_WEBHOOK_SECRET
     );
@@ -27,33 +45,29 @@ export default async function handler(req, res) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // 3. Processa apenas quando o checkout é concluído com sucesso
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
     try {
-      // Extraímos o ID do usuário que enviamos no metadado lá no Billing.tsx
       const userId = session.metadata?.userId;
       
       if (!userId) {
         throw new Error("ID do usuário não encontrado nos metadados da sessão.");
       }
 
-      // 4. Lógica de tempo: Verifica se é o plano anual ou mensal pelo valor ou ID do preço
-      // Se o valor for maior que 100 reais, assumimos que é o anual (365 dias)
-      const isAnnual = session.amount_total > 10000; // Stripe conta em centavos (19990 = R$ 199,90)
+      // Lógica de tempo (R$ 199,90 = Anual, R$ 19,90 = Mensal)
+      const isAnnual = session.amount_total > 10000; 
       const daysToAdd = isAnnual ? 365 : 30;
 
-      // 5. Gera a nova data baseada em HOJE
       const newExpiryDate = new Date();
       newExpiryDate.setDate(newExpiryDate.getDate() + daysToAdd);
 
-      // 6. Atualiza o perfil no Supabase (Colunas: plan_status e trialEndsAt)
+      // Atualiza o perfil no Supabase (Coluna trialEndsAt conforme sua tabela)
       const { error } = await supabase
         .from('profiles')
         .update({ 
           plan_status: 'pro',
-          trialEndsAt: newExpiryDate.toISOString() // Atualiza a data conforme o print
+          trialEndsAt: newExpiryDate.toISOString() 
         })
         .eq('id', userId);
 
@@ -67,6 +81,5 @@ export default async function handler(req, res) {
     }
   }
 
-  // Responde 200 para a Stripe não tentar enviar o mesmo aviso várias vezes
   res.status(200).json({ received: true });
 }
