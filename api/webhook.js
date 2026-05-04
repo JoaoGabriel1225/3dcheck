@@ -1,66 +1,72 @@
-import { MercadoPagoConfig, Payment } from 'mercadopago';
+import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// Configuração usando Variáveis de Ambiente
+// 1. Configuração do Supabase (Usando a Service Role para ter permissão de escrita)
 const supabase = createClient(
-  process.env.SUPABASE_URL, 
+  process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const client = new MercadoPagoConfig({ 
-  accessToken: process.env.MP_ACCESS_TOKEN 
-});
-
 export default async function handler(req, res) {
-  // Responder rápido ao Mercado Pago
+  // O Webhook da Stripe precisa receber o corpo bruto (raw body) para verificar a assinatura
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { data, type } = req.body;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const sig = req.headers['stripe-signature'];
+  let event;
 
-  if (type === 'payment') {
+  try {
+    // 2. Verificação de Segurança: Garante que o aviso veio realmente da Stripe
+    event = stripe.webhooks.constructEvent(
+      req.body, 
+      sig, 
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error(`❌ Erro na assinatura do Webhook: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // 3. Processa apenas quando o checkout é concluído com sucesso
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+
     try {
-      const payment = new Payment(client);
+      // Extraímos o ID do usuário que enviamos no metadado lá no Billing.tsx
+      const userId = session.metadata?.userId;
       
-      // Detalhes do pagamento no Mercado Pago
-      const paymentData = await payment.get({ id: data.id });
-
-      if (paymentData.status === 'approved') {
-        // 1. Extraímos o ID do usuário e o tipo de plano do external_reference
-        // Recebemos no formato "id-do-usuario:planType"
-        const reference = paymentData.external_reference || "";
-        const [userId, planType] = reference.split(':');
-
-        if (!userId) throw new Error("ID do usuário não encontrado na referência.");
-
-        // 2. Calculamos quantos dias adicionar
-        const daysToAdd = planType === 'annual' ? 365 : 30;
-        
-        // 3. Geramos a nova data de expiração baseada em hoje
-        const newExpiryDate = new Date();
-        newExpiryDate.setDate(newExpiryDate.getDate() + daysToAdd);
-
-        // 4. Atualizamos o perfil do usuário no Supabase
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            plan_status: 'pro',
-            trial_ends_at: newExpiryDate.toISOString(), // Define a validade (30 ou 365 dias)
-            // plan_type: planType // Opcional: caso queira salvar qual plano ele está
-          })
-          .eq('id', userId);
-
-        if (error) {
-            console.error('Erro ao atualizar Supabase:', error);
-            throw error;
-        }
-        
-        console.log(`✅ SUCESSO: Usuário ${userId} ativado como PRO por ${daysToAdd} dias (${planType}).`);
+      if (!userId) {
+        throw new Error("ID do usuário não encontrado nos metadados da sessão.");
       }
+
+      // 4. Lógica de tempo: Verifica se é o plano anual ou mensal pelo valor ou ID do preço
+      // Se o valor for maior que 100 reais, assumimos que é o anual (365 dias)
+      const isAnnual = session.amount_total > 10000; // Stripe conta em centavos (19990 = R$ 199,90)
+      const daysToAdd = isAnnual ? 365 : 30;
+
+      // 5. Gera a nova data baseada em HOJE
+      const newExpiryDate = new Date();
+      newExpiryDate.setDate(newExpiryDate.getDate() + daysToAdd);
+
+      // 6. Atualiza o perfil no Supabase (Colunas: plan_status e trialEndsAt)
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          plan_status: 'pro',
+          trialEndsAt: newExpiryDate.toISOString() // Atualiza a data conforme o print
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      console.log(`✅ SUCESSO: Usuário ${userId} ativado como PRO até ${newExpiryDate.toLocaleDateString()}.`);
+      
     } catch (error) {
-      console.error('❌ Erro ao processar webhook:', error);
+      console.error('❌ Erro ao atualizar Supabase via Webhook:', error.message);
       return res.status(500).json({ error: error.message });
     }
   }
 
-  res.status(200).send('OK');
+  // Responde 200 para a Stripe não tentar enviar o mesmo aviso várias vezes
+  res.status(200).json({ received: true });
 }
