@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
 export const communityService = {
-  // --- BUSCAR DADOS COM FILTROS ---
   async getPosts(sortBy: 'newest' | 'likes' | 'views' = 'newest') {
     let query = supabase
       .from('community_posts')
@@ -12,16 +11,12 @@ export const communityService = {
         post_interactions (is_like, user_id)
       `);
 
-    // Aplica a ordenação escolhida na interface
     if (sortBy === 'newest') query = query.order('created_at', { ascending: false });
     if (sortBy === 'views') query = query.order('views_count', { ascending: false });
     if (sortBy === 'likes') query = query.order('like_count', { ascending: false });
 
     const { data, error } = await query;
-    if (error) {
-      console.error("Erro Supabase (Posts):", error.message);
-      return []; 
-    }
+    if (error) return []; 
     return data;
   },
 
@@ -35,7 +30,14 @@ export const communityService = {
     return data;
   },
 
-  // --- FUNÇÕES DE UPLOAD ---
+  // --- NOVA FUNÇÃO: CRIAR DÚVIDA NO FÓRUM ---
+  async createDoubt(userId: string, title: string, content: string) {
+    const { error } = await supabase
+      .from('community_doubts')
+      .insert({ user_id: userId, title, content });
+    if (error) throw error;
+  },
+
   async uploadFile(bucket: string, file: File, path: string) {
     const { error } = await supabase.storage.from(bucket).upload(path, file);
     if (error) throw error;
@@ -43,14 +45,11 @@ export const communityService = {
     return data.publicUrl;
   },
 
-  // Agora aceita Múltiplas Imagens (Array de Files)
   async createPost(userId: string, title: string, description: string, stlFile: File, mediaFiles: File[]) {
-    // 1. Upload do STL
     const stlExt = stlFile.name.split('.').pop();
     const stlPath = `${userId}/${Date.now()}_modelo.${stlExt}`;
     const stlUrl = await this.uploadFile('community_stls', stlFile, stlPath);
 
-    // 2. Salva o Post
     const { data: post, error: postError } = await supabase
       .from('community_posts')
       .insert({ user_id: userId, title, description, stl_url: stlUrl })
@@ -58,7 +57,6 @@ export const communityService = {
 
     if (postError) throw postError;
 
-    // 3. Upload de todas as imagens do Array (Até 5)
     const mediaPromises = mediaFiles.map(async (file, index) => {
       const ext = file.name.split('.').pop();
       const path = `${userId}/${Date.now()}_media_${index}.${ext}`;
@@ -67,53 +65,51 @@ export const communityService = {
     });
 
     const mediaData = await Promise.all(mediaPromises);
-
-    // 4. Salva os links das imagens no banco
     if (mediaData.length > 0) {
-      const { error: mediaError } = await supabase.from('post_media').insert(mediaData);
-      if (mediaError) throw mediaError;
+      await supabase.from('post_media').insert(mediaData);
     }
-
     return post;
   },
 
-  // --- INTERAÇÕES E ADMINISTRAÇÃO ---
   async deletePost(postId: string) {
     const { error } = await supabase.from('community_posts').delete().eq('id', postId);
     if (error) throw error;
   },
 
   async incrementViews(postId: string, currentViews: number) {
-    const { error } = await supabase
-      .from('community_posts')
-      .update({ views_count: currentViews + 1 })
-      .eq('id', postId);
-    if (error) console.error("Erro ao computar visita");
+    await supabase.from('community_posts').update({ views_count: currentViews + 1 }).eq('id', postId);
   },
-  
-  async incrementDownload(postId: string, currentDownloads: number) {
-    const { error } = await supabase
-      .from('community_posts')
-      .update({ download_count: currentDownloads + 1 })
-      .eq('id', postId);
-    if (error) console.error("Erro ao computar download");
-  }, // <--- A VÍRGULA QUE FALTAVA ESTÁ AQUI
 
-  // --- SISTEMA DE LIKE / DISLIKE ---
-  async interactWithPost(postId: string, userId: string, isLike: boolean) {
-    // 1. Salva a interação (Garante que é apenas 1 voto por pessoa)
-    const { error } = await supabase
-      .from('post_interactions')
-      .upsert({ post_id: postId, user_id: userId, is_like: isLike }, { onConflict: 'post_id,user_id' });
-    
-    if (error) throw error;
+  // --- INTERAÇÕES INTELIGENTES (Tirar voto / Trocar voto) ---
+  async interactWithPost(postId: string, userId: string, isLike: boolean | null) {
+    if (isLike === null) {
+      // Remover interação se o usuário clicou no mesmo botão
+      await supabase.from('post_interactions').delete().match({ post_id: postId, user_id: userId });
+    } else {
+      // Inserir ou atualizar (Upsert)
+      await supabase.from('post_interactions').upsert({ post_id: postId, user_id: userId, is_like: isLike }, { onConflict: 'post_id,user_id' });
+    }
 
-    // 2. Recalcula os totais reais
     const { data: interactions } = await supabase.from('post_interactions').select('is_like').eq('post_id', postId);
     const likes = interactions?.filter(i => i.is_like === true).length || 0;
     const dislikes = interactions?.filter(i => i.is_like === false).length || 0;
 
-    // 3. Atualiza o card do post
     await supabase.from('community_posts').update({ like_count: likes, dislike_count: dislikes }).eq('id', postId);
+  },
+
+  // --- COMENTÁRIOS ---
+  async getComments(postId: string) {
+    const { data, error } = await supabase
+      .from('post_comments')
+      .select('*, profiles:user_id(name)')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+    if (error) return [];
+    return data;
+  },
+
+  async addComment(postId: string, userId: string, content: string) {
+    const { error } = await supabase.from('post_comments').insert({ post_id: postId, user_id: userId, content });
+    if (error) throw error;
   }
 };
