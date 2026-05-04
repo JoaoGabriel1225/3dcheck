@@ -9,7 +9,7 @@ import {
   QrCode, Upload, Copy, Info
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase'; // Garanta que o caminho está correto
+import { supabase } from '@/lib/supabase';
 
 export default function Billing() {
   const { profile } = useAuth();
@@ -41,9 +41,7 @@ export default function Billing() {
       toast.error("Erro: Perfil de usuário não carregado.");
       return;
     }
-
     setLoading(true);
-    
     const priceId = selectedPlan === 'annual' 
       ? import.meta.env.VITE_STRIPE_PRICE_ANUAL 
       : import.meta.env.VITE_STRIPE_PRICE_MENSAL;
@@ -64,7 +62,6 @@ export default function Billing() {
           email: profile.email
         }),
       });
-
       const data = await response.json();
       if (data.url) {
         window.location.assign(data.url);
@@ -86,27 +83,26 @@ export default function Billing() {
 
     setPixLoading(true);
     try {
-      // 1. Upload do arquivo para o Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${profile?.id}-${Math.random()}.${fileExt}`;
-      const filePath = `comprovantes/${fileName}`;
+      const filePath = `proofs/${fileName}`; // Pasta interna organizada
 
+      // 1. Upload para o bucket correto: pix-proofs
       const { error: uploadError } = await supabase.storage
-        .from('comprovantes') // Nome do bucket alterado para 'comprovantes'
+        .from('pix-proofs') 
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('comprovantes') // Nome do bucket alterado para 'comprovantes'
+        .from('pix-proofs')
         .getPublicUrl(filePath);
 
-      // 2. Salva a solicitação na tabela de pendentes
+      // 2. Salva no Banco (Sem a coluna email que não existe)
       const { error: dbError } = await supabase
         .from('subscriptions_pending')
         .insert({
           user_id: profile?.id,
-          email: profile?.email,
           plan_type: selectedPlan,
           receipt_url: publicUrl,
           status: 'pending'
@@ -127,8 +123,6 @@ export default function Billing() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 pb-20 px-4 md:px-0 animate-in fade-in duration-700">
-      
-      {/* HEADER DE AUTORIDADE */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20 shadow-inner">
@@ -142,7 +136,6 @@ export default function Billing() {
             <p className="text-muted-foreground font-semibold">Infraestrutura de gestão certificada.</p>
           </div>
         </div>
-        {/* Contador de Dias Restantes */}
         <div className="bg-accent/10 border border-border/50 p-4 rounded-2xl text-right">
            <p className="text-[10px] font-black uppercase opacity-50">Status da Licença</p>
            <p className="text-xl font-black italic uppercase">
@@ -151,7 +144,6 @@ export default function Billing() {
         </div>
       </div>
 
-      {/* SELEÇÃO DE PLANOS */}
       <div className="grid md:grid-cols-2 gap-6">
         <button 
           onClick={() => setSelectedPlan('monthly')}
@@ -185,7 +177,6 @@ export default function Billing() {
 
         <CardContent className="p-8 space-y-8">
           <div className="space-y-6">
-            {/* BOTÃO PRINCIPAL COM CORREÇÃO MOBILE */}
             <Button 
               onClick={handleCheckout}
               disabled={loading}
@@ -204,7 +195,6 @@ export default function Billing() {
               <div className="relative flex justify-center text-[10px] uppercase font-black bg-card/40 px-4 text-muted-foreground">Ou Pagamento via Pix Manual</div>
             </div>
 
-            {/* SEÇÃO PIX MANUAL */}
             <div className="bg-accent/5 border border-dashed border-border rounded-[2rem] p-6 space-y-4">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-blue-500/10 rounded-xl"><QrCode className="w-6 h-6 text-blue-500" /></div>
