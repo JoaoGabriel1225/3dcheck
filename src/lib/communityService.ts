@@ -97,7 +97,8 @@ export const communityService = {
       .update({ download_count: currentDownloads + 1 })
       .eq('id', postId);
     if (error) console.error("Erro ao computar download");
-  }
+  }, // <--- A VÍRGULA QUE FALTAVA ESTÁ AQUI
+
   // --- SISTEMA DE LIKE / DISLIKE ---
   async interactWithPost(postId: string, userId: string, isLike: boolean) {
     // 1. Salva a interação (Garante que é apenas 1 voto por pessoa)
