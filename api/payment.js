@@ -1,60 +1,52 @@
 import Stripe from 'stripe';
 
-// Inicializa o Stripe com a sua chave secreta que já está no Vercel
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 export default async function handler(req, res) {
-  // O tutorial original usa o método POST para criar sessões
+  // Garantimos que apenas o método POST seja aceito como no tutorial original[cite: 1]
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
   const { priceId, userId, email } = req.body;
 
-  // Validação básica para evitar erros de execução
+  // Validação para evitar que a API tente processar dados vazios
   if (!priceId || !userId || !email) {
-    return res.status(400).json({ error: 'Informações de checkout incompletas.' });
+    return res.status(400).json({ error: 'Informações de checkout incompletas (priceId, userId ou email ausentes).' });
   }
 
   try {
-    // Tradução da lógica 'Stripe::Checkout::Session.create' para JavaScript
+    // Verificamos se a chave secreta existe antes de inicializar para evitar crash do servidor
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("A variável de ambiente STRIPE_SECRET_KEY não foi encontrada no Vercel.");
+    }
+
+    // Inicializamos o Stripe dentro do handler para maior segurança[cite: 1]
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    // Criação da sessão de checkout conforme o padrão do tutorial[cite: 1]
     const session = await stripe.checkout.sessions.create({
-      // Define o modo como assinatura para planos recorrentes (mensal/anual)
-      mode: 'subscription', 
-      
-      // Ativa as formas de pagamento que o público brasileiro mais usa
-      payment_method_types: ['card', 'pix'],
-      
-      // Define o item que está sendo assinado com base no ID do produto[cite: 1]
+      mode: 'subscription', // Define como pagamento recorrente[cite: 1]
+      payment_method_types: ['card', 'pix'], // Ativa Pix e Cartão para o Brasil
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
-      
-      // Pré-preenche o e-mail do usuário no formulário da Stripe
       customer_email: email,
-      
-      // O campo metadata é crucial: ele guarda o ID do usuário para o Webhook ler depois[cite: 1]
       metadata: {
-        userId: userId,
+        userId: userId, // Vincula a transação ao seu usuário no Supabase[cite: 1]
       },
-
-      // URLs de retorno seguindo o padrão de redirecionamento do tutorial[cite: 1]
       success_url: `https://3dcheck-eight.vercel.app/app/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://3dcheck-eight.vercel.app/app/billing`,
     });
 
-    // Em vez de redirecionar direto pelo servidor (como no Ruby), 
-    // enviamos a URL para o seu React fazer o redirecionamento[cite: 1]
+    // Retorna a URL da Stripe para o seu Billing.tsx fazer o redirecionamento[cite: 1]
     return res.status(200).json({ url: session.url });
 
   } catch (error) {
-    // Tratamento de erro similar ao resgate (rescue) do código original[cite: 1]
-    console.error('Erro na sessão do Stripe:', error);
+    console.error('Erro na API Stripe:', error.message);
     return res.status(500).json({ 
-      error: 'Erro ao criar sessão de pagamento', 
+      error: 'Erro interno no servidor de pagamento', 
       message: error.message 
     });
   }
