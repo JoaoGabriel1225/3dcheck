@@ -5,15 +5,22 @@ export default async function handler(req, res) {
 
   const { priceId, userId, email } = req.body;
 
+  // Validação extra para termos certeza que os dados estão vindo do Billing.tsx
+  if (!priceId || !userId || !email) {
+    return res.status(400).json({ error: `Dados incompletos: priceId=${priceId}, userId=${userId}, email=${email}` });
+  }
+
   try {
+    // Verifica se a chave secreta foi configurada
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("A chave STRIPE_SECRET_KEY não foi encontrada no Vercel.");
+    }
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription', // Define como assinatura recorrente[cite: 1]
-      // ESSA É A MUDANÇA: Ativa o que estiver disponível no seu painel[cite: 1]
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      mode: 'subscription',
+      automatic_payment_methods: { enabled: true },
       line_items: [{ price: priceId, quantity: 1 }],
       customer_email: email,
       metadata: { userId },
@@ -24,7 +31,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ url: session.url });
 
   } catch (error) {
-    console.error('Erro na Stripe:', error.message);
-    return res.status(500).json({ error: 'Erro interno', message: error.message });
+    // IMPORTANTE: Agora enviamos a mensagem REAL do erro para o seu navegador
+    console.error('Erro detalhado:', error.message);
+    return res.status(500).json({ error: error.message });
   }
 }
