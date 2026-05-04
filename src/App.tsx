@@ -23,7 +23,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Storefront from './pages/Storefront';
 import Clients from './pages/Clients';
 import Support from './pages/Support'; 
-import Community from './pages/app/Community'; // CAMINHO CORRIGIDO: pasta 'app' e 'Community' com C maiúsculo
+import Community from '@/pages/app/Community'; // ALTERADO PARA USAR O ALIAS @ PARA EVITAR ERRO DE RESOLUÇÃO
 
 export default function App() {
   return (
