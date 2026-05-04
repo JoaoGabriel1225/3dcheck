@@ -7,12 +7,12 @@ import { Input } from '../../components/ui/input';
 import { 
   Search, ExternalLink, Trash2, Save, Pencil,
   Loader2, Sparkles, PackageSearch, Trophy, Tag,
-  ArrowUpRight, Star, ChevronDown, Plus // CORREÇÃO: Adicionado o Plus aqui
+  ArrowUpRight, Star, ChevronDown, Plus 
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription 
-} from '@/components/ui/dialog'; // Certifique-se de ter este componente
-import { Switch } from '@/components/ui/switch'; // Certifique-se de ter este componente
+} from '@/components/ui/dialog'; 
+import { Switch } from '@/components/ui/switch'; 
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -48,7 +48,6 @@ export default function Marketplace() {
     fetchProducts();
   }, []);
 
-  // PADRONIZAÇÃO: Extrai desconto numérico para ordenação
   const getDiscountValue = (discountStr: string) => {
     if (!discountStr) return 0;
     const match = discountStr.match(/\d+/);
@@ -95,7 +94,7 @@ export default function Marketplace() {
         image: importingProduct.image,
         url: importingProduct.url,
         category: importingProduct.category || 'Todos',
-        is_featured: importingProduct.is_featured || false, // DESTAQUE MANUAL
+        is_featured: importingProduct.is_featured || false,
         user_id: user?.id,
       };
 
@@ -138,12 +137,9 @@ export default function Marketplace() {
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
-      // Prioridade máxima: Destaque Manual (is_featured)
       if (a.is_featured && !b.is_featured) return -1;
       if (!a.is_featured && b.is_featured) return 1;
-
       if (sortBy === 'discount') return getDiscountValue(b.discount) - getDiscountValue(a.discount);
-      
       const priceA = parseFloat(String(a.price).replace(/[^\d]/g, ''));
       const priceB = parseFloat(String(b.price).replace(/[^\d]/g, ''));
       if (sortBy === 'price_asc') return priceA - priceB;
@@ -155,7 +151,6 @@ export default function Marketplace() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-20 px-4 md:px-0">
       
-      {/* HEADER DINÂMICO */}
       <div className="flex flex-col gap-6">
         <motion.div variants={itemVariants} className="space-y-2">
           <h2 className="text-4xl font-black tracking-tight text-foreground uppercase">
@@ -164,20 +159,20 @@ export default function Marketplace() {
           <p className="text-muted-foreground font-medium">Curadoria de itens para alta performance 3D.</p>
         </motion.div>
 
-        {/* CATEGORIAS COM CONTADORES */}
-        <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
+        {/* CATEGORIAS AJUSTADAS (MENORES) */}
+        <motion.div variants={itemVariants} className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
           {categories.map((cat) => {
             const count = savedProducts.filter(p => cat === 'Todos' ? true : p.category === cat).length;
             return (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-5 py-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-2 border-2 ${
-                  activeCategory === cat ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-105' : 'bg-card border-border text-muted-foreground hover:border-blue-500/40'
+                className={`px-3 py-1.5 rounded-full text-[9px] font-black transition-all flex items-center gap-1.5 border-2 whitespace-nowrap ${
+                  activeCategory === cat ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-card border-border text-muted-foreground hover:border-blue-500/40'
                 }`}
               >
                 {cat.toUpperCase()}
-                <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeCategory === cat ? 'bg-white/20' : 'bg-accent text-accent-foreground'}`}>
+                <span className={`px-1 py-0.5 rounded-md text-[7px] ${activeCategory === cat ? 'bg-white/20' : 'bg-accent text-accent-foreground'}`}>
                   {count}
                 </span>
               </button>
@@ -185,7 +180,6 @@ export default function Marketplace() {
           })}
         </motion.div>
 
-        {/* BUSCA E FILTROS PREMIUM */}
         <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-blue-500 transition-colors" />
@@ -213,7 +207,6 @@ export default function Marketplace() {
         </motion.div>
       </div>
 
-      {/* ÁREA ADMIN: IMPORTAÇÃO E MODAL */}
       {isAdmin && (
         <motion.div variants={itemVariants} className="bg-blue-600/5 p-8 rounded-[2.5rem] border-2 border-dashed border-blue-500/20">
           <div className="flex flex-col items-center text-center space-y-4 mb-6">
@@ -234,7 +227,6 @@ export default function Marketplace() {
         </motion.div>
       )}
 
-      {/* MODAL DE EDIÇÃO/REVISÃO */}
       <Dialog open={!!importingProduct} onOpenChange={(open) => !open && setImportingProduct(null)}>
         <DialogContent className="max-w-2xl rounded-[2.5rem] border-border shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
           <DialogHeader>
@@ -324,11 +316,7 @@ export default function Marketplace() {
         </DialogContent>
       </Dialog>
 
-      {/* GRID DE PRODUTOS COM ANIMACAO */}
-      <motion.div 
-        layout
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8"
-      >
+      <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
         <AnimatePresence mode="popLayout">
           {filteredProducts.map((item) => (
             <motion.div 
@@ -343,7 +331,6 @@ export default function Marketplace() {
                 item.is_featured ? 'border-blue-500/40 shadow-blue-500/5 ring-1 ring-blue-500/20' : 'border-border'
               }`}
             >
-              {/* BADGES */}
               <div className="absolute top-5 left-5 flex flex-col gap-2 z-20">
                 {item.is_featured && (
                   <div className="bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-xl flex items-center gap-1.5 animate-pulse">
@@ -357,7 +344,6 @@ export default function Marketplace() {
                 )}
               </div>
 
-              {/* IMAGEM COM HOVER ZOOM */}
               <div className="relative aspect-square overflow-hidden bg-white p-6">
                 <img src={item.image} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all" />
@@ -385,7 +371,6 @@ export default function Marketplace() {
                   </div>
                 </div>
 
-                {/* ADMIN ACTIONS */}
                 {isAdmin && (
                   <div className="flex gap-2 pt-2">
                     <button 
@@ -411,7 +396,6 @@ export default function Marketplace() {
         </AnimatePresence>
       </motion.div>
 
-      {/* EMPTY STATE */}
       {!loading && filteredProducts.length === 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-32 text-center">
           <div className="bg-muted p-12 rounded-full mb-8 relative">
