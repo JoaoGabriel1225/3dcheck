@@ -24,12 +24,12 @@ import {
   Bot,
   Sparkles,
   Info,
-  MessageSquareOff // Novo ícone para o botão de desligar
+  MessageSquareOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- DATABASE DE MENSAGENS DO #3DCHECK BOT (150 FRASES) ---
+// --- DATABASE DE MENSAGENS DO #3DCHECK BOT (150 FRASES MANTIDAS) ---
 const BOT_PHRASES = [
   // MARKETPLACE HUB (O Ouro Garimpado)
   "Garimpei o 'ouro' no Marketplace Hub! Filamento premium com preço de banana. Já viu hoje?",
@@ -71,7 +71,6 @@ const BOT_PHRASES = [
   "Dica de mestre: Um bico limpo evita 90% das dores de cabeça. Os outros 10% o 3DCheck resolve.",
   "A comunidade 3D é gigante. Você faz parte da Elite agora!",
 
-  // (Continuando a diversificação para atingir 150 temas variados...)
   "Suporte & Feedback: Teve uma ideia genial pro app? Manda pra gente!",
   "Já configurou seu faturamento hoje? O 3DCheck ama ver seus números crescendo.",
   "A aba Clientes é o seu tesouro. Use o filtro para ver quem são seus melhores compradores.",
@@ -185,7 +184,7 @@ const BOT_PHRASES = [
   "Marketplace Hub: O caminho mais curto para o melhor hardware 3D.",
   "Fato: A impressão 3D em metal já é usada na Fórmula 1!",
   "A aba Clientes é the sua agenda de ouro. Mantenha-a sempre atualizada.",
-  "O 3DCheck é a ferramenta que faltava na sua caixa de ferramentas maker.",
+  "O 3DCheck é the ferramenta que faltava na sua caixa de ferramentas maker.",
   "Produção: Cada camada conta, cada pedido importa.",
   "Vitrine: Mostre ao mundo o poder da sua fabricação digital.",
   "O 3DCheck Bot deseja a você um dia produtivo e sem entupimentos!",
@@ -291,10 +290,22 @@ export default function Dashboard() {
     if (botPreference === 'true') {
       setShowBot(false);
     } else {
-      // Sorteia frase inicial
       const randomIndex = Math.floor(Math.random() * BOT_PHRASES.length);
       setBotPhrase(BOT_PHRASES[randomIndex]);
     }
+
+    // --- REALTIME PARA NOVOS STLS ---
+    const communitySubscription = supabase
+      .channel('community_alerts')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'community_posts' 
+      }, () => {
+        setBotPhrase("🚨 NOVO STL NA ÁREA! O maker acaba de subir um arquivo incrível. Corre lá na Comunidade!");
+        setShowBot(true);
+      })
+      .subscribe();
 
     const handler = (e: any) => {
       e.preventDefault();
@@ -302,16 +313,16 @@ export default function Dashboard() {
       setShowInstallBtn(true);
     };
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      supabase.removeChannel(communitySubscription);
+    };
   }, []);
 
-  // FUNÇÃO PARA ATIVAR/DESATIVAR BOT NO DASHBOARD
   const toggleBotVisibility = () => {
     const nextState = !showBot;
     setShowBot(nextState);
     localStorage.setItem('hide_3dcheck_bot', (!nextState).toString());
-    
-    // Se estiver ativando, escolhe uma nova frase
     if (nextState) {
       const randomIndex = Math.floor(Math.random() * BOT_PHRASES.length);
       setBotPhrase(BOT_PHRASES[randomIndex]);
@@ -409,7 +420,7 @@ export default function Dashboard() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-10 pb-10">
       
-      {/* #3DCHECK BOT COMPONENT - CORREÇÃO DE LEITURA E MOBILE */}
+      {/* #3DCHECK BOT COMPONENT - LEITURA EM MODO CLARO E MOBILE SEMPRE VISÍVEL */}
       <AnimatePresence>
         {showBot && (
           <motion.div 
@@ -418,11 +429,11 @@ export default function Dashboard() {
             exit={{ opacity: 0, scale: 0.95 }} 
             className="relative p-6 rounded-[2.5rem] bg-gradient-to-br from-blue-600/10 to-blue-600/5 border border-blue-500/20 shadow-xl overflow-hidden group"
           >
-            {/* BOTÃO FECHAR - SEMPRE VISÍVEL NO MOBILE */}
-            <div className="absolute top-2 right-2 p-2">
+            {/* BOTÃO FECHAR - MOBILE FRIENDLY */}
+            <div className="absolute top-2 right-2 p-2 z-20">
               <button 
                 onClick={handleHideBot}
-                className="p-3 rounded-full bg-white/10 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all z-20"
+                className="p-3 rounded-full bg-zinc-200/50 dark:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-red-500 transition-all"
                 title="Desativar dicas do Bot"
               >
                 <X className="w-5 h-5" />
@@ -439,17 +450,16 @@ export default function Dashboard() {
               </motion.div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  {/* COR DO TÍTULO CORRIGIDA PARA MODO CLARO/ESCURO */}
                   <h3 className="font-black text-blue-700 dark:text-blue-500 uppercase text-[10px] tracking-[0.2em] italic">#3DCheck Bot</h3>
                   <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
                 </div>
-                {/* COR DO TEXTO CORRIGIDA PARA MODO CLARO/ESCURO (ZINC-800 PARA CLARO) */}
-                <p className="text-sm md:text-base text-zinc-800 dark:text-zinc-300 font-bold leading-relaxed italic pr-12">
+                {/* TEXTO DE ALTA VISIBILIDADE NO MODO CLARO SEM FUNDO EXTRA */}
+                <p className="text-sm md:text-base text-zinc-950 dark:text-zinc-100 font-bold leading-relaxed italic pr-12">
                   "{botPhrase}"
                 </p>
                 <div className="flex items-center gap-1.5 pt-1">
                    <div className="h-1 w-1 bg-emerald-500 rounded-full animate-pulse" />
-                   <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest italic">Analisando sua gestão...</span>
+                   <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest italic">Sincronização Ativa...</span>
                 </div>
               </div>
             </div>
@@ -484,7 +494,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
               <LayoutDashboard className="w-4 h-4" />Visão Geral
             </div>
-            {/* BOTÃO DE CONTROLE DO BOT - ADICIONADO NO DASHBOARD */}
+            {/* BOTÃO DE CONTROLE LIGA/DESLIGA NO DASHBOARD */}
             <Button 
               variant="ghost" 
               size="sm" 
