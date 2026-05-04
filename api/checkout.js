@@ -7,7 +7,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  // Agora recebemos também o planType (monthly ou annual)
   const { userId, email, planType } = req.body;
 
   try {
@@ -37,8 +36,16 @@ export default async function handler(req, res) {
           }
         ],
         payer: { email: email },
-        // IMPORTANTE: Concatenamos o ID e o Plano para o seu Webhook saber o que liberar
         external_reference: `${userId}:${planType}`, 
+        
+        // --- INÍCIO DO AJUSTE SANC PARA FORÇAR PIX ---
+        payment_methods: {
+          excluded_payment_types: [], // Garante que nenhum método (Pix, Boleto, etc.) seja bloqueado
+          installments: 12, // Permite parcelamento no cartão em até 12x
+          default_payment_method_id: null
+        },
+        // --- FIM DO AJUSTE ---
+
         back_urls: {
           success: 'https://3dcheck-eight.vercel.app/app/dashboard', 
           failure: 'https://3dcheck-eight.vercel.app/app/billing'
