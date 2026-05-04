@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Payment } from 'mercadopago';
 
 const ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
 
@@ -7,57 +7,49 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
 
-  const { userId, email, planType } = req.body;
+  // O Checkout Bricks envia os dados dentro de 'formData'
+  const { formData, userId, planType } = req.body;
 
   try {
     const client = new MercadoPagoConfig({ accessToken: ACCESS_TOKEN });
-    const preference = new Preference(client);
+    const payment = new Payment(client);
 
-    // Lógica de definição de preço e título
-    let unitPrice = 19.90;
-    let title = '3DCheck Plano Pro - Mensal';
-    let planId = 'pro-monthly';
+    // Definimos o valor com base no plano selecionado no front-end
+    const unitPrice = planType === 'annual' ? 199.90 : 19.90;
 
-    if (planType === 'annual') {
-      unitPrice = 199.90;
-      title = '3DCheck Plano Pro - Anual (Acesso 1 Ano)';
-      planId = 'pro-annual';
-    }
-
-    const result = await preference.create({
+    const paymentBody = {
       body: {
-        items: [
-          {
-            id: planId,
-            title: title,
-            quantity: 1,
-            unit_price: unitPrice, 
-            currency_id: 'BRL'
-          }
-        ],
-        payer: { email: email },
-        external_reference: `${userId}:${planType}`, 
-        
-        // --- INÍCIO DO AJUSTE SANC PARA FORÇAR PIX ---
-        payment_methods: {
-          excluded_payment_types: [], // Garante que nenhum método (Pix, Boleto, etc.) seja bloqueado
-          installments: 12, // Permite parcelamento no cartão em até 12x
-          default_payment_method_id: null
+        transaction_amount: unitPrice,
+        description: `3DCheck Plano Pro - ${planType === 'annual' ? 'Anual' : 'Mensal'}`,
+        payment_method_id: formData.payment_method_id,
+        token: formData.token, // Necessário para Cartão de Crédito
+        installments: formData.installments,
+        payer: {
+          email: formData.payer.email,
+          identification: formData.payer.identification,
         },
-        // --- FIM DO AJUSTE ---
+        // Mantemos a referência para o seu Webhook liberar o acesso
+        external_reference: `${userId}:${planType}`,
+        notification_url: "https://3dcheck-eight.vercel.app/api/webhooks/mercadopago",
+      },
+    };
 
-        back_urls: {
-          success: 'https://3dcheck-eight.vercel.app/app/dashboard', 
-          failure: 'https://3dcheck-eight.vercel.app/app/billing'
-        },
-        auto_return: 'approved',
-      }
+    const result = await payment.create(paymentBody);
+
+    // Retornamos o resultado completo para o Brick processar (Pix ou Cartão)
+    return res.status(200).json({
+      status: result.status,
+      status_detail: result.status_detail,
+      id: result.id,
+      // Se for Pix, o Brick usará esses dados para exibir o QR Code automaticamente
+      point_of_interaction: result.point_of_interaction
     });
 
-    return res.status(200).json({ init_point: result.init_point });
-
   } catch (error) {
-    console.error('Erro ao gerar checkout:', error);
-    return res.status(500).json({ error: 'Falha ao criar o pagamento.' });
+    console.error('Erro ao processar pagamento Bricks:', error);
+    return res.status(500).json({ 
+      error: 'Falha ao processar pagamento',
+      message: error.message 
+    });
   }
 }
