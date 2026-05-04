@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { ProductImporter } from '../components/ProductImporter'; 
 import { Card, CardContent } from '../../components/ui/card'; 
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label'; // CORREÇÃO: Importação do Label adicionada aqui
+import { Button } from '@/components/ui/button'; // CORREÇÃO: Importação do Button adicionada aqui
+import { Label } from '@/components/ui/label'; 
 import { 
   Search, ExternalLink, Trash2, Save, Pencil,
   Loader2, Sparkles, PackageSearch, Trophy, Tag,
@@ -165,7 +166,7 @@ export default function Marketplace() {
           <p className="text-muted-foreground font-medium">Curadoria de itens para alta performance 3D.</p>
         </motion.div>
 
-        {/* CATEGORIAS COM CONTADORES - ADICIONADO SCROLLBAR VISÍVEL */}
+        {/* CATEGORIAS COM CONTADORES */}
         <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4">
           {categories.map((cat) => {
             const count = savedProducts.filter(p => cat === 'Todos' ? true : p.category === cat).length;
@@ -225,7 +226,6 @@ export default function Marketplace() {
              </div>
           </div>
           <ProductImporter onImport={(data: any) => {
-            // FIX: Garantindo que original_price seja capturado independente da fonte
             const normalizedData = {
               ...data,
               original_price: data.original_price || data.originalPrice || data.price,
@@ -345,7 +345,6 @@ export default function Marketplace() {
                 item.is_featured ? 'border-blue-500/40 shadow-blue-500/5 ring-1 ring-blue-500/20' : 'border-border'
               }`}
             >
-              {/* BADGES */}
               <div className="absolute top-5 left-5 flex flex-col gap-2 z-20">
                 {item.is_featured && (
                   <div className="bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-xl flex items-center gap-1.5 animate-pulse">
@@ -359,7 +358,6 @@ export default function Marketplace() {
                 )}
               </div>
 
-              {/* IMAGEM COM HOVER ZOOM */}
               <div className="relative aspect-square overflow-hidden bg-white p-6">
                 <img src={item.image} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all" />
@@ -387,7 +385,6 @@ export default function Marketplace() {
                   </div>
                 </div>
 
-                {/* ADMIN ACTIONS */}
                 {isAdmin && (
                   <div className="flex gap-2 pt-2">
                     <button 
@@ -413,7 +410,6 @@ export default function Marketplace() {
         </AnimatePresence>
       </motion.div>
 
-      {/* EMPTY STATE */}
       {!loading && filteredProducts.length === 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-32 text-center">
           <div className="bg-muted p-12 rounded-full mb-8 relative">
@@ -421,7 +417,7 @@ export default function Marketplace() {
             <div className="absolute inset-0 animate-ping rounded-full border-2 border-blue-500/10" />
           </div>
           <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">Nenhum tesouro encontrado</h2>
-          <p className="text-muted-foreground mt-2 max-w-xs mx-auto text-sm">Não encontramos itens com estes filtros. Tente buscar por outros termos.</p>
+          <p className="text-muted-foreground mt-2 max-w-xs mx-auto text-sm">Não encontramos itens com estes filtros.</p>
           <button 
             onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }}
             className="mt-10 px-8 py-4 bg-foreground text-background rounded-2xl font-black text-[10px] hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-[0.2em]"
