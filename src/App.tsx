@@ -23,7 +23,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Storefront from './pages/Storefront';
 import Clients from './pages/Clients';
 import Support from './pages/Support'; 
-import Community from './pages/Community'; // IMPORTAÇÃO ADICIONADA PARA CORRIGIR O ERRO
+import Community from './pages/app/community'; // CAMINHO CORRIGIDO PARA O BUILD DA VERCEL
 
 export default function App() {
   return (
@@ -43,7 +43,7 @@ export default function App() {
               <Route path="marketplace" element={<Marketplace />} />
               <Route path="storefront-settings" element={<StorefrontSettings />} />
               <Route path="settings" element={<Settings />} />
-              <Route path="support" element={<Support />} /> {/* ROTA DE SUPORTE ADICIONADA AQUI */}
+              <Route path="support" element={<Support />} />
             </Route>
             <Route path="/app/community" element={<Community />} />
             <Route element={<ProtectedLayout />}>
