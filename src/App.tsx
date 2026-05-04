@@ -36,6 +36,7 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             
+            {/* TODAS AS PÁGINAS COM SIDEBAR FICAM AQUI DENTRO */}
             <Route path="/app" element={<ProtectedLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="clients" element={<Clients />} />
@@ -45,8 +46,11 @@ export default function App() {
               <Route path="storefront-settings" element={<StorefrontSettings />} />
               <Route path="settings" element={<Settings />} />
               <Route path="support" element={<Support />} />
+              
+              {/* ROTA DA COMUNIDADE CORRIGIDA (AGORA TEM SIDEBAR) */}
+              <Route path="community" element={<Community />} />
             </Route>
-            <Route path="/app/community" element={<Community />} />
+            
             <Route element={<ProtectedLayout />}>
               <Route path="/billing" element={<Billing />} />
             </Route>
