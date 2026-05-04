@@ -4,9 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { 
   CheckCircle2, ShieldCheck, Zap, 
-  Star, Rocket, CreditCard, Lock, 
-  Fingerprint, ShieldEllipsis, X,
-  ExternalLink, Verified, Award
+  Star, CreditCard, Lock, 
+  Fingerprint, ShieldEllipsis, Verified, Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,23 +25,37 @@ export default function Billing() {
 
   const { diffDays, isExpired } = trialInfo;
 
-  // FUNÇÃO DE CHECKOUT - REDIRECIONAMENTO SEGURO STRIPE
+  // FUNÇÃO DE CHECKOUT CORRIGIDA PARA VITE
   const handleCheckout = async () => {
+    // 1. Verificação de segurança: garante que o perfil e os dados básicos existem
+    if (!profile?.id || !profile?.email) {
+      toast.error("Erro: Perfil de usuário não carregado. Tente recarregar a página.");
+      return;
+    }
+
     setLoading(true);
     
-    // Pega o ID do preço das variáveis que você configurou no Vercel
+    // 2. CORREÇÃO: No Vite, usamos import.meta.env e o prefixo VITE_
     const priceId = selectedPlan === 'annual' 
-      ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ANUAL 
-      : process.env.NEXT_PUBLIC_STRIPE_PRICE_MENSAL;
+      ? import.meta.env.VITE_STRIPE_PRICE_ANUAL 
+      : import.meta.env.VITE_STRIPE_PRICE_MENSAL;
+
+    // 3. Verificação do ID do plano antes de chamar a API
+    if (!priceId) {
+      setLoading(false);
+      console.error("Price ID não encontrado. Verifique se as variáveis VITE_STRIPE_PRICE_... estão no Vercel.");
+      toast.error("Erro de configuração: ID do plano não encontrado.");
+      return;
+    }
 
     try {
       const response = await fetch('/api/payment', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          priceId,
-          userId: profile?.id,
-          email: profile?.email
+          priceId: priceId,
+          userId: profile.id,
+          email: profile.email
         }),
       });
 
@@ -55,8 +68,8 @@ export default function Billing() {
         throw new Error(data.error || 'Erro ao gerar sessão de pagamento.');
       }
     } catch (error: any) {
-      console.error(error);
-      toast.error("Erro ao iniciar checkout: " + error.message);
+      console.error("Erro no checkout:", error);
+      toast.error("Erro ao iniciar checkout: " + (error.message || "Tente novamente."));
     } finally {
       setLoading(false);
     }
@@ -83,7 +96,7 @@ export default function Billing() {
         </div>
       </div>
 
-      {/* SELEÇÃO DE PLANOS - NOMES ATUALIZADOS PARA PRO */}
+      {/* SELEÇÃO DE PLANOS */}
       <div className="grid md:grid-cols-2 gap-6">
         <button 
           onClick={() => setSelectedPlan('monthly')}
@@ -156,7 +169,7 @@ export default function Billing() {
                   <h5 className="text-[11px] font-black uppercase italic tracking-wider">Dados Blindados</h5>
                 </div>
                 <p className="text-[10px] text-muted-foreground font-semibold leading-relaxed">
-                  Não armazenamos suas informações sensíveis. Todo o processamento é feito via Stripe, líder mundial em segurança financeira[cite: 1].
+                  Processamento líder mundial via Stripe. Não armazenamos seus cartões[cite: 1].
                 </p>
               </div>
 
@@ -166,7 +179,7 @@ export default function Billing() {
                   <h5 className="text-[11px] font-black uppercase italic tracking-wider">Radar Antifraude</h5>
                 </div>
                 <p className="text-[10px] text-muted-foreground font-semibold leading-relaxed">
-                  Utilizamos o Stripe Radar para monitorar transações em tempo real, garantindo a legitimidade total da sua compra.
+                  Monitoramento em tempo real para garantir a legitimidade total da sua compra.
                 </p>
               </div>
 
@@ -176,37 +189,13 @@ export default function Billing() {
                   <h5 className="text-[11px] font-black uppercase italic tracking-wider">Selo de Integridade</h5>
                 </div>
                 <p className="text-[10px] text-muted-foreground font-semibold leading-relaxed">
-                  Ambiente de checkout certificado e otimizado para oferecer a melhor experiência de pagamento do mercado.
+                  Ambiente de checkout certificado e otimizado para o mercado global.
                 </p>
               </div>
-            </div>
-
-            <div className="mt-12 pt-8 border-t border-border/10 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div className="flex items-center gap-2 grayscale opacity-60 hover:opacity-100 transition-opacity">
-                  <span className="text-xs font-black italic">Powered by</span>
-                  <span className="text-xl font-bold tracking-tighter">Stripe</span>
-                </div>
-               
-               <div className="flex items-center gap-6 opacity-40">
-                  <div className="flex items-center gap-2 border border-border px-3 py-1.5 rounded-lg">
-                    <Lock className="w-3 h-3" />
-                    <span className="text-[9px] font-black uppercase tracking-tighter">AES-256 Verified</span>
-                  </div>
-                  <div className="flex items-center gap-2 border border-border px-3 py-1.5 rounded-lg">
-                    <Verified className="w-3 h-3" />
-                    <span className="text-[9px] font-black uppercase tracking-tighter">PCI-DSS Compliant</span>
-                  </div>
-               </div>
             </div>
           </div>
         </CardContent>
       </Card>
-      
-      <div className="flex flex-col items-center gap-2 opacity-30 group cursor-default">
-         <p className="text-center text-[9px] text-muted-foreground font-black uppercase tracking-[0.4em] italic">
-           3DCheck Global Financial Security Integration • v3.0 Elite
-         </p>
-      </div>
     </div>
   );
 }
