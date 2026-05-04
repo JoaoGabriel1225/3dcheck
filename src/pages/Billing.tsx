@@ -92,13 +92,13 @@ export default function Billing() {
       const filePath = `comprovantes/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('subscriptions') // Nome do seu bucket
+        .from('comprovantes') // Nome do bucket alterado para 'comprovantes'
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('subscriptions')
+        .from('comprovantes') // Nome do bucket alterado para 'comprovantes'
         .getPublicUrl(filePath);
 
       // 2. Salva a solicitação na tabela de pendentes
