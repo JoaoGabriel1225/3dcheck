@@ -12,16 +12,73 @@ import {
   Eye, Trash2, Clock, Flame, TrendingUp, Bot
 } from 'lucide-react';
 
+// AS 50 MENSAGENS ALEATÓRIAS DO 3DBOT
+const botMessages = [
+  "Nivelou a mesa hoje, mestre?",
+  "Aderência perfeita na primeira camada é arte!",
+  "Mostra pra gente o que está na sua mesa de impressão!",
+  "STL novo? Compartilha aí!",
+  "O filamento acabou no meio da impressão? Força guerreiro!",
+  "Bambu Lab, Creality ou Anycubic? O que importa é imprimir!",
+  "Apoio nunca é demais. Ou é?",
+  "Z-hop salvando vidas (e peças) desde sempre.",
+  "Qual a temperatura perfeita pro seu PLA?",
+  "PETG é vida, mas que stringing chato, hein?",
+  "Já calibrou o fluxo hoje?",
+  "Imprimiu algo útil hoje ou só bonecos? (Julgamos não!)",
+  "Que a sua primeira camada seja sempre lisa como vidro.",
+  "Bora compartilhar conhecimento e arquivos 3D!",
+  "Nada como o cheirinho de filamento derretido de manhã.",
+  "Warping é o terror, mas a gente sempre vence.",
+  "Posta aquele modelo que você modelou e tem orgulho!",
+  "Mais um dia, mais um Benchy impresso.",
+  "Qual o seu fatiador favorito? Conta pra gente!",
+  "Infill de 20% ou de 100%? Depende da raiva.",
+  "Ajude a comunidade dando like nos projetos incríveis!",
+  "Ficou em dúvida? Pergunta ali no Fórum!",
+  "Uma comunidade forte se faz com compartilhamento.",
+  "Suportes em árvore são maravilhosos, concorda?",
+  "Bico entupido de novo? A gente te entende.",
+  "Resina ou FDM? A batalha continua.",
+  "Secou o filamento antes de usar? Fica a dica!",
+  "Mostre sua mais nova invenção em 3D!",
+  "Erro no G-Code? Reinicia que vai (mentira, não vai).",
+  "Nada de desistir daquela impressão de 48 horas!",
+  "Quem nunca esqueceu de gerar suporte que atire a primeira pedra.",
+  "Sua impressora está pedindo manutenção, não finja que não viu.",
+  "Imprimindo upgrades para a própria impressora? Clássico.",
+  "Dê feedback nos projetos da galera, isso motiva muito!",
+  "Aquele momento de tensão quando a peça não desgruda da mesa...",
+  "Qual a cor de filamento que mais sai por aí?",
+  "Um bom design resolve metade dos problemas de impressão.",
+  "Bora subir o nível dessa comunidade com seus STLs!",
+  "Velocidade ou Qualidade? Eis a questão.",
+  "Já lubrificou os eixos Z hoje?",
+  "Peça soltou da mesa nas últimas 10 camadas? Trágico.",
+  "Compartilhe seus perfis de fatiamento com quem precisa!",
+  "A magia do 3D: Do software para o mundo real.",
+  "Nenhum modelo é simples demais para ser compartilhado.",
+  "Iniciante ou Veterano, todo maker tem seu espaço aqui.",
+  "Brim, Skirt ou Raft? Escolha sua arma.",
+  "Quebrou a peça tirando o suporte? Super bonder resolve.",
+  "Aquele barulhinho da impressora trabalhando acalma a alma.",
+  "Seu projeto pode ajudar outro maker, poste aí!",
+  "Bora dominar o mundo (uma camada de cada vez)."
+];
+
 export default function Community() {
   const { profile } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'feed' | 'doubts'>('feed');
-  const [sortBy, setSortBy] = useState<'newest' | 'likes' | 'views'>('newest');
+  // 1. MUDANÇA NA ORDEM PADRÃO (Agora começa por 'views' - Populares)
+  const [sortBy, setSortBy] = useState<'views' | 'likes' | 'newest'>('views');
   const [posts, setPosts] = useState<any[]>([]);
   const [doubts, setDoubts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
+  const [botPhrase, setBotPhrase] = useState('');
+
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -32,6 +89,11 @@ export default function Community() {
   const [stlFile, setStlFile] = useState<File | null>(null);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+
+  // Carrega uma frase aleatória quando a página abre
+  useEffect(() => {
+    setBotPhrase(botMessages[Math.floor(Math.random() * botMessages.length)]);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -51,24 +113,21 @@ export default function Community() {
 
   useEffect(() => { loadData(); }, [sortBy]);
 
-  // FUNÇÃO DE LIKE/DISLIKE
   const handleInteraction = async (postId: string, isLike: boolean) => {
     if (!profile) return toast.error("Faça login para interagir.");
     try {
       await communityService.interactWithPost(postId, profile.id, isLike);
-      loadData(); // Recarrega os números do feed
+      loadData(); 
       
-      // Atualiza os números no modal imediatamente se ele estiver aberto
       if (selectedPost && selectedPost.id === postId) {
         const updatedPost = { ...selectedPost };
         updatedPost.like_count = isLike ? (updatedPost.like_count || 0) + 1 : updatedPost.like_count;
         updatedPost.dislike_count = !isLike ? (updatedPost.dislike_count || 0) + 1 : updatedPost.dislike_count;
         setSelectedPost(updatedPost);
       }
-      
-      toast.success(isLike ? "Você curtiu este modelo!" : "Você deu dislike neste modelo.");
     } catch (e) {
-      toast.error("Erro ao registrar interação.");
+      console.error(e);
+      toast.error("Erro ao registrar interação. Verifique as políticas do banco.");
     }
   };
 
@@ -114,34 +173,33 @@ export default function Community() {
       setSelectedPost(null);
       loadData();
     } catch (error) {
-      toast.error("Erro ao apagar modelo.");
+      toast.error("Erro ao apagar modelo. Verifique permissões.");
     }
   };
 
   return (
     <div className="w-full h-full p-4 md:p-8 space-y-6 pb-32">
       
-      {/* BANNER DO 3DBOT (O MASCOTE) */}
-      <Card className="bg-blue-600 text-white border-none shadow-xl shadow-blue-600/20 overflow-hidden relative rounded-[2rem]">
-        <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4 pointer-events-none">
+      {/* 2. BANNER DO 3DBOT CLEAN (Fundo Azul Removido) */}
+      <Card className="bg-card border border-border shadow-sm overflow-hidden relative rounded-3xl">
+        <div className="absolute right-0 top-0 opacity-[0.03] transform translate-x-4 -translate-y-4 pointer-events-none">
           <Bot className="w-48 h-48" />
         </div>
-        <CardContent className="p-6 md:p-8 flex items-center gap-6 relative z-10">
-          <div className="bg-white/20 p-4 rounded-3xl flex-shrink-0 hidden md:block">
-            <Bot className="w-10 h-10 text-white" />
+        <CardContent className="p-5 md:p-6 flex items-center gap-5 relative z-10">
+          <div className="bg-blue-500/10 p-3 rounded-2xl flex-shrink-0 hidden sm:block border border-blue-500/20">
+            <Bot className="w-8 h-8 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter">Opa, Maker! Aqui é o 3DBot 🤖</h3>
-            <p className="font-medium text-blue-100 text-sm mt-1 max-w-3xl leading-relaxed">
-              O ecossistema ganha vida com a sua criatividade! Que tal compartilhar aquele modelo incrível que você acabou de imprimir? 
-              Dê uma olhada nos projetos mais recentes abaixo, avalie com seu Like ou Dislike e ajude a comunidade a crescer.
+            <h3 className="text-lg md:text-xl font-black uppercase italic tracking-tighter text-foreground">Opa, Maker! Aqui é o 3DBot 🤖</h3>
+            <p className="font-semibold text-muted-foreground text-xs md:text-sm mt-1 max-w-3xl">
+              "{botPhrase}"
             </p>
           </div>
           <Button 
             onClick={() => setIsUploadModalOpen(true)}
-            className="hidden lg:flex bg-white text-blue-600 hover:bg-blue-50 font-black rounded-xl px-6 h-12 shadow-lg uppercase italic ml-auto flex-shrink-0 items-center gap-2"
+            className="hidden lg:flex bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl px-6 h-11 shadow-lg uppercase italic ml-auto flex-shrink-0 items-center gap-2"
           >
-            <Plus className="w-5 h-5" /> Postar Agora
+            <Plus className="w-4 h-4" /> Postar Agora
           </Button>
         </CardContent>
       </Card>
@@ -173,16 +231,17 @@ export default function Community() {
           </button>
         </div>
 
+        {/* 3. FILTROS REORDENADOS (Populares > Likes > Recentes) */}
         {activeTab === 'feed' && (
           <div className="flex gap-2 w-full xl:w-auto">
-            <button onClick={() => setSortBy('newest')} className={`flex items-center justify-center flex-1 xl:flex-none gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'newest' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
-              <Clock className="w-3 h-3" /> Recentes
+            <button onClick={() => setSortBy('views')} className={`flex items-center justify-center flex-1 xl:flex-none gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'views' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
+              <TrendingUp className="w-3 h-3" /> Populares
             </button>
             <button onClick={() => setSortBy('likes')} className={`flex items-center justify-center flex-1 xl:flex-none gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'likes' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
-              <Flame className="w-3 h-3" /> Populares
+              <Flame className="w-3 h-3" /> Mais Curtidos
             </button>
-            <button onClick={() => setSortBy('views')} className={`flex items-center justify-center flex-1 xl:flex-none gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'views' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
-              <TrendingUp className="w-3 h-3" /> Mais Vistos
+            <button onClick={() => setSortBy('newest')} className={`flex items-center justify-center flex-1 xl:flex-none gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'newest' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
+              <Clock className="w-3 h-3" /> Novos
             </button>
           </div>
         )}
@@ -214,7 +273,6 @@ export default function Community() {
       <AnimatePresence>
         {selectedPost && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-8 pl-0 md:pl-64">
-            {/* O pl-64 no desktop compensa o espaço do Sidebar lateral para centralizar o modal perfeito */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedPost(null)} className="absolute inset-0 bg-background/90 backdrop-blur-sm" />
             
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-5xl bg-card border border-border rounded-3xl shadow-2xl z-10 flex flex-col md:flex-row overflow-hidden max-h-[95vh]">
@@ -284,9 +342,10 @@ export default function Community() {
                     <Download className="w-5 h-5 mr-2" /> Baixar STL
                   </Button>
                   
-                  {profile?.id === selectedPost.user_id && (
+                  {/* 4. SUPERPODER DE ADM (Dono do post OU Admin logado veem o botão excluir) */}
+                  {(profile?.id === selectedPost.user_id || profile?.role === 'admin') && (
                     <Button variant="destructive" className="w-full h-12 font-black uppercase italic rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20" onClick={() => handleDeletePost(selectedPost.id)}>
-                      <Trash2 className="w-4 h-4 mr-2" /> Excluir Meu Post
+                      <Trash2 className="w-4 h-4 mr-2" /> Excluir Postagem
                     </Button>
                   )}
                 </div>
@@ -296,10 +355,9 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE UPLOAD (Apenas mantido estruturalmente) */}
+      {/* MODAL DE UPLOAD DE NOVO POST */}
       <AnimatePresence>
         {isUploadModalOpen && (
-          // ... (O código do seu modal de upload que já estava funcionando perfeitamente) ...
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pl-0 md:pl-64">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !isUploading && setIsUploadModalOpen(false)} className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
             
@@ -351,7 +409,7 @@ export default function Community() {
   );
 }
 
-// ... Manter os subcomponentes STLCard e DoubtItem iguaizinhos ...
+// Subcomponentes (Cards)
 function STLCard({ post, onClick }: { post: any, onClick: () => void }) {
   const mainImage = post.post_media?.[0]?.media_url || 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=2070';
   return (
