@@ -6,9 +6,25 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { 
   Search, ExternalLink, Trash2, Save, Pencil,
-  Loader2, Sparkles, PackageSearch, Trophy, Tag
+  Loader2, Sparkles, PackageSearch, Trophy, Tag,
+  ArrowUpRight, Star, ChevronDown
 } from 'lucide-react';
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription 
+} from '@/components/ui/dialog'; // Certifique-se de ter este componente
+import { Switch } from '@/components/ui/switch'; // Certifique-se de ter este componente
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+};
 
 export default function Marketplace() {
   const { profile, user } = useAuth(); 
@@ -18,18 +34,12 @@ export default function Marketplace() {
   const [isSaving, setIsSaving] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('recent'); 
+  const [sortBy, setSortBy] = useState('discount'); 
   const [activeCategory, setActiveCategory] = useState('Todos');
 
   const categories = [
-    'Todos', 
-    'Impressoras 3D', 
-    'Filamentos', 
-    'Peças e Reposição', 
-    'Ferramentas', 
-    'Adesão e Acabamento', 
-    'Armazenamento de Filamento', 
-    'Upgrades'
+    'Todos', 'Impressoras 3D', 'Filamentos', 'Peças e Reposição', 
+    'Ferramentas', 'Adesão e Acabamento', 'Armazenamento de Filamento', 'Upgrades'
   ];
 
   const isAdmin = profile?.role === 'admin';
@@ -38,11 +48,16 @@ export default function Marketplace() {
     fetchProducts();
   }, []);
 
-  // Função para calcular o desconto automaticamente
-  const autoCalculateDiscount = (currentPrice: string, oldPrice: string) => {
-    const p = parseFloat(currentPrice.replace(/[^\d.,]/g, '').replace(',', '.'));
-    const op = parseFloat(oldPrice.replace(/[^\d.,]/g, '').replace(',', '.'));
+  // PADRONIZAÇÃO: Extrai desconto numérico para ordenação
+  const getDiscountValue = (discountStr: string) => {
+    if (!discountStr) return 0;
+    const match = discountStr.match(/\d+/);
+    return match ? parseInt(match[0]) : 0;
+  };
 
+  const autoCalculateDiscount = (currentPrice: string, oldPrice: string) => {
+    const p = parseFloat(String(currentPrice).replace(/[^\d.,]/g, '').replace(',', '.'));
+    const op = parseFloat(String(oldPrice).replace(/[^\d.,]/g, '').replace(',', '.'));
     if (p && op && op > p) {
       const discountPercent = Math.round(((op - p) / op) * 100);
       return `${discountPercent}% OFF`;
@@ -69,22 +84,18 @@ export default function Marketplace() {
 
   async function handlePost() {
     if (!importingProduct) return;
-    if (!importingProduct.category || importingProduct.category === 'Todos') {
-        toast.error("Selecione uma categoria válida");
-        return;
-    }
-
     setIsSaving(true);
     try {
       const productData = {
         title: importingProduct.title,
         description: importingProduct.description,
         price: importingProduct.price,
-        original_price: importingProduct.originalPrice || importingProduct.original_price,
+        original_price: importingProduct.original_price || importingProduct.originalPrice,
         discount: importingProduct.discount,
         image: importingProduct.image,
         url: importingProduct.url,
-        category: importingProduct.category,
+        category: importingProduct.category || 'Todos',
+        is_featured: importingProduct.is_featured || false, // DESTAQUE MANUAL
         user_id: user?.id,
       };
 
@@ -98,17 +109,18 @@ export default function Marketplace() {
       }
 
       if (error) throw error;
-      toast.success(importingProduct.id ? 'Atualizado!' : 'Postado!');
+      toast.success(importingProduct.id ? 'Dados atualizados!' : 'Publicado com sucesso!');
       setImportingProduct(null);
       fetchProducts();
     } catch (err) {
-      toast.error('Erro no banco de dados');
+      toast.error('Erro ao salvar no banco');
     } finally {
       setIsSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
+    if (!confirm("Remover este item da vitrine?")) return;
     try {
       const { error } = await supabase.from('marketplace_products').delete().eq('id', id);
       if (error) throw error;
@@ -126,236 +138,297 @@ export default function Marketplace() {
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
-      const priceA = parseFloat(a.price.replace(/[^\d]/g, ''));
-      const priceB = parseFloat(b.price.replace(/[^\d]/g, ''));
+      // Prioridade máxima: Destaque Manual (is_featured)
+      if (a.is_featured && !b.is_featured) return -1;
+      if (!a.is_featured && b.is_featured) return 1;
+
+      if (sortBy === 'discount') return getDiscountValue(b.discount) - getDiscountValue(a.discount);
+      
+      const priceA = parseFloat(String(a.price).replace(/[^\d]/g, ''));
+      const priceB = parseFloat(String(b.price).replace(/[^\d]/g, ''));
       if (sortBy === 'price_asc') return priceA - priceB;
       if (sortBy === 'price_desc') return priceB - priceA;
       if (sortBy === 'popular') return (b.clicks || 0) - (a.clicks || 0);
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-  const topProductId = filteredProducts.length > 0 ? [...filteredProducts].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0].id : null;
-
   return (
-    <div className="space-y-8 pb-20 px-4 md:px-0">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-20 px-4 md:px-0">
+      
+      {/* HEADER DINÂMICO */}
       <div className="flex flex-col gap-6">
-        <div className="space-y-2">
+        <motion.div variants={itemVariants} className="space-y-2">
           <h2 className="text-4xl font-black tracking-tight text-foreground uppercase">
             Marketplace <span className="text-blue-500">Hub</span>
           </h2>
-          <p className="text-muted-foreground font-medium">Equipamentos e insumos profissionais.</p>
-        </div>
+          <p className="text-muted-foreground font-medium">Curadoria de itens para alta performance 3D.</p>
+        </motion.div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-6 py-2 rounded-full text-[10px] font-black transition-all whitespace-nowrap border-2 ${
-                activeCategory === cat ? 'bg-blue-500 border-blue-500 text-white shadow-lg' : 'bg-transparent border-accent/20 text-muted-foreground hover:border-blue-500/30'
-              }`}
-            >
-              {cat.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        {/* CATEGORIAS COM CONTADORES */}
+        <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
+          {categories.map((cat) => {
+            const count = savedProducts.filter(p => cat === 'Todos' ? true : p.category === cat).length;
+            return (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-5 py-2.5 rounded-full text-[10px] font-black transition-all flex items-center gap-2 border-2 ${
+                  activeCategory === cat ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-105' : 'bg-card border-border text-muted-foreground hover:border-blue-500/40'
+                }`}
+              >
+                {cat.toUpperCase()}
+                <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeCategory === cat ? 'bg-white/20' : 'bg-accent text-accent-foreground'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </motion.div>
 
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
+        {/* BUSCA E FILTROS PREMIUM */}
+        <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-blue-500 transition-colors" />
             <Input 
-              placeholder="Buscar no catálogo..." 
+              placeholder="Pesquisar por título ou marca..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 h-14 rounded-2xl bg-accent/20 border-none text-base focus:ring-2 focus:ring-blue-500/20"
+              className="pl-12 h-14 rounded-2xl bg-card border-border border-2 text-base focus:ring-4 focus:ring-blue-500/10 transition-all"
             />
           </div>
-          <select 
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="h-14 px-6 rounded-2xl bg-accent/20 text-sm font-bold outline-none border-none cursor-pointer"
-          >
-            <option value="recent">Lançamentos</option>
-            <option value="popular">Relevância</option>
-            <option value="price_asc">Menor Preço</option>
-            <option value="price_desc">Maior Preço</option>
-          </select>
-        </div>
+          <div className="relative">
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40 transition-all"
+            >
+              <option value="discount">Maior Desconto %</option>
+              <option value="popular">Mais Visitados</option>
+              <option value="price_asc">Menor Preço R$</option>
+              <option value="price_desc">Maior Preço R$</option>
+              <option value="recent">Lançamentos</option>
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none opacity-50" />
+          </div>
+        </motion.div>
       </div>
 
+      {/* ÁREA ADMIN: IMPORTAÇÃO E MODAL */}
       {isAdmin && (
-        <div className="animate-in fade-in slide-in-from-top-4 duration-500 bg-blue-500/5 p-6 rounded-[2.5rem] border border-dashed border-blue-500/20 text-foreground">
-          <ProductImporter onImport={(data: any) => setImportingProduct(data)} />
+        <motion.div variants={itemVariants} className="bg-blue-600/5 p-8 rounded-[2.5rem] border-2 border-dashed border-blue-500/20">
+          <div className="flex flex-col items-center text-center space-y-4 mb-6">
+             <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-600/20"><Plus /></div>
+             <div>
+                <h3 className="font-black uppercase text-sm tracking-widest">Painel de Curadoria</h3>
+                <p className="text-xs text-muted-foreground">Insira o link do Mercado Livre, AliExpress ou Shopee.</p>
+             </div>
+          </div>
+          <ProductImporter onImport={(data: any) => {
+            // FIX: Garantindo que original_price seja capturado independente da fonte
+            const normalizedData = {
+              ...data,
+              original_price: data.original_price || data.originalPrice || data.price,
+              is_featured: false
+            };
+            setImportingProduct(normalizedData);
+          }} />
+        </motion.div>
+      )}
+
+      {/* MODAL DE EDIÇÃO/REVISÃO */}
+      <Dialog open={!!importingProduct} onOpenChange={(open) => !open && setImportingProduct(null)}>
+        <DialogContent className="max-w-2xl rounded-[2.5rem] border-border shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-2">
+              <Sparkles className="text-blue-500" /> REVISÃO TÉCNICA
+            </DialogTitle>
+            <DialogDescription>Ajuste os detalhes finais antes de publicar na vitrine.</DialogDescription>
+          </DialogHeader>
+
           {importingProduct && (
-            <div className="mt-6 p-6 bg-background rounded-3xl border border-blue-500/20 space-y-6">
-               <div className="flex gap-6 items-center">
-                  <img src={importingProduct.image} className="w-24 h-24 rounded-2xl object-cover shadow-lg" />
-                  <div className="flex-1 space-y-2">
-                    <span className="text-[10px] font-black uppercase text-blue-500">
-                      {importingProduct.id ? 'Modo Edição' : 'Revisão Técnica'}
-                    </span>
-                    <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold" />
+            <div className="space-y-6 pt-4">
+               <div className="flex gap-6 p-4 bg-accent/20 rounded-3xl items-center border border-border">
+                  <img src={importingProduct.image} className="w-24 h-24 rounded-2xl object-cover shadow-lg border-2 border-white" />
+                  <div className="flex-1 space-y-3">
+                    <Label className="text-[10px] font-black uppercase text-blue-500">Título do Produto</Label>
+                    <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold h-12 rounded-xl" />
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Categoria</span>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase ml-1">Categoria</Label>
                     <select 
                         value={importingProduct.category || ''} 
                         onChange={(e) => setImportingProduct({...importingProduct, category: e.target.value})}
-                        className="w-full h-10 px-3 rounded-md bg-accent/20 text-sm font-medium border-none outline-none cursor-pointer"
+                        className="w-full h-12 px-4 rounded-xl bg-muted border-none font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                         <option value="">Selecione...</option>
-                        {categories.filter(c => c !== 'Todos').map(c => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
+                        {categories.filter(c => c !== 'Todos').map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
 
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-blue-500 ml-1">Preço Atual</span>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase ml-1">Destaque Manual</Label>
+                    <div className="flex items-center justify-between h-12 px-4 bg-muted rounded-xl border border-blue-500/10">
+                       <span className="text-xs font-bold text-blue-600 uppercase flex items-center gap-2">
+                         <Star className={`w-4 h-4 ${importingProduct.is_featured ? 'fill-blue-600' : ''}`} /> TOP ESCOLHA
+                       </span>
+                       <Switch 
+                         checked={importingProduct.is_featured} 
+                         onCheckedChange={(val) => setImportingProduct({...importingProduct, is_featured: val})} 
+                       />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-blue-600 ml-1">Preço com Desconto (R$)</Label>
                     <Input 
                       value={importingProduct.price} 
                       onChange={(e) => {
-                        const newPrice = e.target.value;
-                        const oldPrice = importingProduct.originalPrice || importingProduct.original_price || "0";
+                        const newP = e.target.value;
                         setImportingProduct({
                           ...importingProduct, 
-                          price: newPrice,
-                          discount: autoCalculateDiscount(newPrice, oldPrice)
+                          price: newP,
+                          discount: autoCalculateDiscount(newP, importingProduct.original_price || importingProduct.price)
                         });
                       }} 
-                      className="font-black" 
+                      className="font-black h-12 rounded-xl border-blue-500/20" 
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-muted-foreground ml-1">Preço Original</span>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase ml-1">Preço Original (R$)</Label>
                     <Input 
-                      value={importingProduct.originalPrice || importingProduct.original_price} 
+                      value={importingProduct.original_price} 
                       onChange={(e) => {
-                        const newOriginal = e.target.value;
-                        const currentPrice = importingProduct.price || "0";
+                        const newOp = e.target.value;
                         setImportingProduct({
                           ...importingProduct, 
-                          originalPrice: newOriginal,
-                          original_price: newOriginal,
-                          discount: autoCalculateDiscount(currentPrice, newOriginal)
+                          original_price: newOp,
+                          discount: autoCalculateDiscount(importingProduct.price, newOp)
                         });
-                      }} 
+                      }}
+                      className="h-12 rounded-xl"
                     />
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase text-green-500 ml-1">Tag Desconto</span>
-                    <Input value={importingProduct.discount} onChange={(e) => setImportingProduct({...importingProduct, discount: e.target.value})} className="font-bold text-green-500" />
                   </div>
                </div>
 
-               <div className="flex gap-3">
-                 <button onClick={handlePost} disabled={isSaving} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black flex justify-center items-center gap-2 hover:bg-blue-500 transition-all">
-                   {isSaving ? <Loader2 className="animate-spin" /> : <><Save className="w-5 h-5" /> {importingProduct.id ? 'SALVAR ALTERAÇÕES' : 'POSTAR NA VITRINE'}</>}
-                 </button>
-                 <button onClick={() => setImportingProduct(null)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 transition-all">
-                   <Trash2 className="w-6 h-6" />
-                 </button>
+               <div className="flex gap-4 pt-4 border-t border-border">
+                  <Button onClick={() => setImportingProduct(null)} variant="outline" className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest">Cancelar</Button>
+                  <Button onClick={handlePost} disabled={isSaving} className="flex-[2] h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black shadow-xl shadow-blue-500/20 gap-2">
+                    {isSaving ? <Loader2 className="animate-spin" /> : <><Save className="w-5 h-5" /> {importingProduct.id ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR E POSTAR'}</>}
+                  </Button>
                </div>
             </div>
           )}
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Grid de Itens */}
-      {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 text-foreground">
+      {/* GRID DE PRODUTOS COM ANIMACAO */}
+      <motion.div 
+        layout
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8"
+      >
+        <AnimatePresence mode="popLayout">
           {filteredProducts.map((item) => (
-            <div 
+            <motion.div 
+              layout
               key={item.id} 
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0, scale: 0.8 }}
               onClick={() => handleProductClick(item)}
-              className={`group bg-card border rounded-[2rem] overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col cursor-pointer relative ${
-                item.id === topProductId ? 'border-blue-500/40 shadow-blue-500/5' : 'border-border'
+              className={`group bg-card border-2 rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col cursor-pointer relative ${
+                item.is_featured ? 'border-blue-500/40 shadow-blue-500/5 ring-1 ring-blue-500/20' : 'border-border'
               }`}
             >
-              <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-                {item.id === topProductId && (
-                  <div className="bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
-                    <Trophy className="w-3 h-3" /> TOP ESCOLHA
+              {/* BADGES */}
+              <div className="absolute top-5 left-5 flex flex-col gap-2 z-20">
+                {item.is_featured && (
+                  <div className="bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-xl flex items-center gap-1.5 animate-pulse">
+                    <Trophy className="w-3.5 h-3.5" /> TOP ESCOLHA
                   </div>
                 )}
                 {item.discount && (
-                  <div className="bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg">
+                  <div className="bg-emerald-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg">
                     {item.discount}
                   </div>
                 )}
               </div>
 
-              <div className="relative aspect-square overflow-hidden bg-white p-4">
+              {/* IMAGEM COM HOVER ZOOM */}
+              <div className="relative aspect-square overflow-hidden bg-white p-6">
                 <img src={item.image} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all" />
               </div>
               
-              <div className="p-5 space-y-3 flex-1 flex flex-col">
-                <h3 className="text-sm md:text-base font-black text-foreground line-clamp-2 leading-tight flex-1">
-                  {item.title}
-                </h3>
+              <div className="p-6 space-y-4 flex-1 flex flex-col">
+                <div className="space-y-2 flex-1">
+                  <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">{item.category}</span>
+                  <h3 className="text-sm md:text-base font-black text-foreground line-clamp-2 leading-tight uppercase italic tracking-tighter">
+                    {item.title}
+                  </h3>
+                </div>
                 
-                <div className="space-y-1">
-                  {(item.original_price || item.originalPrice) && (
-                    <span className="text-[10px] md:text-xs line-through text-muted-foreground/60 font-bold">R$ {item.original_price || item.originalPrice}</span>
-                  )}
-                  <div className="text-xl md:text-2xl font-black text-blue-500 tracking-tighter leading-none">R$ {item.price}</div>
+                <div className="pt-4 border-t border-border/50">
+                  <div className="flex flex-col">
+                    {item.original_price && item.original_price !== item.price && (
+                      <span className="text-[10px] line-through text-muted-foreground/50 font-bold tracking-tighter">R$ {item.original_price}</span>
+                    )}
+                    <div className="flex items-center justify-between">
+                       <div className="text-2xl font-black text-blue-600 tracking-tighter leading-none">R$ {item.price}</div>
+                       <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
+                          <ArrowUpRight className="w-4 h-4" />
+                       </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                  <div className="h-4">
-                    {(item.clicks || 0) > 100 && (
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-black">
-                        <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
-                        {item.clicks} VISITAS
-                      </div>
-                    )}
+                {/* ADMIN ACTIONS */}
+                {isAdmin && (
+                  <div className="flex gap-2 pt-2">
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setImportingProduct(item); 
+                      }} 
+                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-accent/50 text-foreground rounded-xl text-[10px] font-black hover:bg-blue-500 hover:text-white transition-all"
+                    >
+                      <Pencil className="w-3 h-3" /> EDITAR
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} 
+                      className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  
-                  {isAdmin && (
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setImportingProduct(item); 
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }} 
-                        className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-xl transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} 
-                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                  {!isAdmin && <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-blue-500 transition-colors" />}
-                </div>
+                )}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
-      ) : !loading && (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="bg-blue-500/10 p-10 rounded-full mb-8">
-            <PackageSearch className="w-20 h-20 text-blue-500 opacity-40" />
+        </AnimatePresence>
+      </motion.div>
+
+      {/* EMPTY STATE */}
+      {!loading && filteredProducts.length === 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-32 text-center">
+          <div className="bg-muted p-12 rounded-full mb-8 relative">
+            <PackageSearch className="w-24 h-24 text-muted-foreground/20" />
+            <div className="absolute inset-0 animate-ping rounded-full border-2 border-blue-500/10" />
           </div>
-          <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Nenhum item encontrado</h2>
+          <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">Nenhum tesouro encontrado</h2>
+          <p className="text-muted-foreground mt-2 max-w-xs mx-auto text-sm">Não encontramos itens com estes filtros. Tente buscar por outros termos.</p>
           <button 
             onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }}
-            className="mt-10 px-10 py-4 bg-foreground text-background rounded-2xl font-black text-xs hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-widest"
+            className="mt-10 px-8 py-4 bg-foreground text-background rounded-2xl font-black text-[10px] hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-[0.2em]"
           >
-            Ver catálogo completo
+            Limpar Busca
           </button>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
