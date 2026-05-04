@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '@/lib/supabase'; // Alterado para usar o alias global @
 
 export const communityService = {
   // Buscar todos os posts com dados do autor e mídias
