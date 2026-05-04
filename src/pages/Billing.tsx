@@ -7,7 +7,7 @@ import {
   CheckCircle2, ShieldCheck, Zap, 
   Star, Rocket, CreditCard, Lock, 
   Fingerprint, ShieldEllipsis, X,
-  ExternalLink, Verified
+  ExternalLink, Verified, Award // ADICIONADO: Importação do ícone Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -177,7 +177,7 @@ export default function Billing() {
             </div>
           )}
 
-          {/* MENSAGENS DE SEGURANÇA REESCRITAS (QUALIDADE SUPERIOR) */}
+          {/* MENSAGENS DE SEGURANÇA ELITE */}
           <div className="pt-8 border-t border-border/50">
             <div className="grid md:grid-cols-3 gap-8">
               <div className="space-y-3">
