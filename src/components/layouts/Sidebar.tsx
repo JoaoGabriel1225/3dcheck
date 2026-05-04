@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router';
 import { useAuth } from '@/lib/AuthContext';
-import { supabase } from '@/lib/supabase'; // IMPORTADO PARA CHECAR NOTIFICAÇÕES
+import { supabase } from '@/lib/supabase';
 import { 
   LayoutDashboard, 
   PackageSearch,
@@ -12,23 +12,26 @@ import {
   Store,
   X,
   Users,
+  Users2, // NOVO ÍCONE
   Circle,
   Download,
   Smartphone,
   Settings2,
   ShoppingBag,
-  MessageSquare // ÍCONE DE SUPORTE
+  MessageSquare,
+  Share2,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { profile, signOut, user } = useAuth(); // ADICIONADO 'user' AQUI
+  const { profile, signOut, user } = useAuth();
   
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAppMode, setIsAppMode] = useState(false);
-  const [hasUnreadSupport, setHasUnreadSupport] = useState(false); // ESTADO PARA NOTIFICAÇÃO
+  const [hasUnreadSupport, setHasUnreadSupport] = useState(false);
 
-  // Função para checar se o Admin respondeu seu chamado
+  // Busca inicial de notificações
   const checkSupportNotifications = async () => {
     try {
       if (!user?.id) return;
@@ -48,51 +51,53 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   useEffect(() => {
     checkSupportNotifications();
 
-    // 1. Detecta se o usuário já está navegando de dentro do App instalado
+    // MELHORIA: Substituído Interval por Realtime para economia de dados e rapidez
+    const supportChannel = supabase
+      .channel('sidebar_notifications')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'support_tickets',
+        filter: `user_id=eq.${user?.id}`
+      }, (payload) => {
+        if (payload.new.has_unread_reply) setHasUnreadSupport(true);
+        else setHasUnreadSupport(false);
+      })
+      .subscribe();
+
     const checkAppMode = window.matchMedia('(display-mode: standalone)').matches 
       || (window.navigator as any).standalone 
       || document.referrer.includes('android-app://');
     
     setIsAppMode(checkAppMode);
 
-    // 2. Tenta "pescar" o sinal global que o main.tsx capturou
     if ((window as any).deferredPrompt) {
       setDeferredPrompt((window as any).deferredPrompt);
-      console.log("⚓ Sidebar: Sinal de instalação recuperado da memória global!");
     }
 
-    // 3. Captura o evento caso ele ocorra após a montagem da Sidebar
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      (window as any).deferredPrompt = e; // Sincroniza com a memória global
+      (window as any).deferredPrompt = e;
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    // Checa notificações a cada 2 minutos
-    const interval = setInterval(checkSupportNotifications, 120000);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
-      clearInterval(interval);
+      supabase.removeChannel(supportChannel); // Limpa o canal realtime
     };
   }, [user]);
 
   const handleInstallClick = async () => {
-    // Prioriza o prompt capturado na memória global ou no estado local
     const promptToUse = deferredPrompt || (window as any).deferredPrompt;
-
     if (promptToUse) {
       promptToUse.prompt();
       const { outcome } = await promptToUse.userChoice;
-      
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
-        (window as any).deferredPrompt = null; // Limpa o global após sucesso
+        (window as any).deferredPrompt = null;
       }
-    } else {
-      console.log("Aguardando sinal do navegador para instalação automática.");
     }
   };
 
@@ -113,7 +118,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-300" 
@@ -127,7 +131,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         
-        {/* Header Mobile */}
         <div className="flex items-center justify-between px-2 mb-6 md:hidden">
           <span className="font-black text-foreground text-xl tracking-tighter text-blue-500 italic">3DCheck</span>
           <button onClick={onClose} className="p-2 text-muted-foreground rounded-xl hover:bg-accent transition-colors">
@@ -171,6 +174,32 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               </NavLink>
             </li>
 
+            {/* NOVA SEÇÃO: ECOSSISTEMA MAKER */}
+            <NavGroupLabel>Ecossistema Maker</NavGroupLabel>
+            <li>
+              <NavLink to="/app/community" onClick={onClose} className={navLinkClass}>
+                <div className="flex items-center gap-3">
+                  <Users2 className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  STL's da Comunidade
+                  <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 animate-pulse" />
+                </div>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/app/support" onClick={onClose} className={navLinkClass}>
+                <div className="flex items-center gap-3 relative">
+                  <MessageSquare className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  Suporte & Feedback
+                  {hasUnreadSupport && (
+                    <span className="absolute -right-2 top-0 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                  )}
+                </div>
+              </NavLink>
+            </li>
+
             <NavGroupLabel>Configurações</NavGroupLabel>
             <li>
               <NavLink to="/app/storefront-settings" onClick={onClose} className={navLinkClass}>
@@ -190,22 +219,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 Financeiro
               </NavLink>
             </li>
-
-            {/* BOTÃO DE SUPORTE ADICIONADO AQUI */}
-            <li>
-              <NavLink to="/app/support" onClick={onClose} className={navLinkClass}>
-                <div className="flex items-center gap-3 relative">
-                  <MessageSquare className="h-5 w-5 transition-transform group-hover:scale-110" />
-                  Suporte & Feedback
-                  {hasUnreadSupport && (
-                    <span className="absolute -right-2 top-0 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                    </span>
-                  )}
-                </div>
-              </NavLink>
-            </li>
             
             {profile.role === 'admin' && (
               <>
@@ -221,10 +234,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </ul>
         </nav>
 
-        {/* Rodapé da Sidebar */}
         <div className="mt-auto pt-6 border-t border-border/50 space-y-4">
-          
-          {/* BANNER DE INSTALAÇÃO - Sincronizado com a memória global */}
           {!isAppMode && (
             <div className="px-2 animate-in slide-in-from-bottom-2 duration-500">
               <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-3">
@@ -233,7 +243,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     <Smartphone className="text-white w-4 h-4" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-foreground uppercase tracking-widest leading-none">App 3DCheck</span>
+                    <span className="text-[10px] font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-widest leading-none">App 3DCheck</span>
                     <span className="text-[9px] text-muted-foreground mt-1">Disponível para PC e Celular</span>
                   </div>
                 </div>
