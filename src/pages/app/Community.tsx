@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { 
   Share2, Download, ThumbsUp, MessageSquare, 
-  Plus, Search, Box, HelpCircle, Sparkles, ChevronRight
+  Plus, Search, Box, HelpCircle, Sparkles, ChevronRight, X
 } from 'lucide-react';
 
 export default function Community() {
@@ -18,6 +18,9 @@ export default function Community() {
   const [doubts, setDoubts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // ESTADO PARA CONTROLAR O MODAL DO NOVO POST
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -38,10 +41,6 @@ export default function Community() {
 
   useEffect(() => { loadData(); }, []);
 
-  const handleNewPost = () => {
-    toast.info("Abrindo interface de upload...");
-  };
-
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 pb-32">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -58,9 +57,10 @@ export default function Community() {
           <p className="text-muted-foreground font-medium italic">Compartilhe arquivos e evolua com outros makers.</p>
         </div>
 
+        {/* BOTÃO AGORA ABRE O MODAL */}
         <Button 
-          onClick={handleNewPost}
-          className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl px-6 h-12 shadow-lg shadow-blue-600/20 uppercase italic flex items-center gap-2"
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl px-6 h-12 shadow-lg shadow-blue-600/20 uppercase italic flex items-center gap-2 transition-all active:scale-95"
         >
           <Plus className="w-5 h-5" /> Novo Post
         </Button>
@@ -108,6 +108,49 @@ export default function Community() {
             {doubts.map((doubt) => (
               <DoubtItem key={doubt.id} doubt={doubt} />
             ))}
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL DE NOVO POST */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            {/* Fundo escuro */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+            
+            {/* Caixa do Modal */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-card border border-border rounded-[2rem] shadow-2xl overflow-hidden z-10"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-border/50">
+                <h3 className="text-2xl font-black uppercase italic tracking-tighter">
+                  Compartilhar <span className="text-blue-500">Modelo</span>
+                </h3>
+                <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="rounded-full">
+                  <X className="w-5 h-5 text-muted-foreground" />
+                </Button>
+              </div>
+              
+              <div className="p-8 text-center space-y-4">
+                <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <Box className="w-8 h-8 text-blue-500" />
+                </div>
+                <p className="text-muted-foreground font-medium">A interface de upload de arquivos STL será injetada aqui no próximo passo.</p>
+                <Button onClick={() => setIsModalOpen(false)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl mt-4">
+                  Fechar Janela
+                </Button>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
