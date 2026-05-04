@@ -1,7 +1,7 @@
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 
-// Configuração usando Variáveis de Ambiente para segurança máxima
+// Configuração usando Variáveis de Ambiente
 const supabase = createClient(
   process.env.SUPABASE_URL, 
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -12,29 +12,40 @@ const client = new MercadoPagoConfig({
 });
 
 export default async function handler(req, res) {
-  // Importante: Responder rápido ao Mercado Pago para evitar reenvios desnecessários
+  // Responder rápido ao Mercado Pago
   if (req.method !== 'POST') return res.status(405).end();
 
   const { data, type } = req.body;
 
-  // Só processamos se a notificação for de um pagamento
   if (type === 'payment') {
     try {
       const payment = new Payment(client);
       
-      // Buscamos os detalhes do pagamento no Mercado Pago usando o ID recebido
+      // Detalhes do pagamento no Mercado Pago
       const paymentData = await payment.get({ id: data.id });
 
-      // Se o status for aprovado (PIX pago ou Cartão autorizado)
       if (paymentData.status === 'approved') {
-        const userId = paymentData.external_reference; // O ID do usuário que enviamos no checkout
+        // 1. Extraímos o ID do usuário e o tipo de plano do external_reference
+        // Recebemos no formato "id-do-usuario:planType"
+        const reference = paymentData.external_reference || "";
+        const [userId, planType] = reference.split(':');
 
-        // Atualizamos o perfil do usuário no Supabase para PRO
+        if (!userId) throw new Error("ID do usuário não encontrado na referência.");
+
+        // 2. Calculamos quantos dias adicionar
+        const daysToAdd = planType === 'annual' ? 365 : 30;
+        
+        // 3. Geramos a nova data de expiração baseada em hoje
+        const newExpiryDate = new Date();
+        newExpiryDate.setDate(newExpiryDate.getDate() + daysToAdd);
+
+        // 4. Atualizamos o perfil do usuário no Supabase
         const { error } = await supabase
           .from('profiles')
           .update({ 
             plan_status: 'pro',
-            trial_ends_at: null // Remove a expiração do trial
+            trial_ends_at: newExpiryDate.toISOString(), // Define a validade (30 ou 365 dias)
+            // plan_type: planType // Opcional: caso queira salvar qual plano ele está
           })
           .eq('id', userId);
 
@@ -43,15 +54,13 @@ export default async function handler(req, res) {
             throw error;
         }
         
-        console.log(`Sucesso: Usuário ${userId} agora é PRO.`);
+        console.log(`✅ SUCESSO: Usuário ${userId} ativado como PRO por ${daysToAdd} dias (${planType}).`);
       }
     } catch (error) {
-      console.error('Erro ao processar webhook:', error);
-      // Retornamos 500 para o Mercado Pago tentar novamente mais tarde se for um erro temporário
+      console.error('❌ Erro ao processar webhook:', error);
       return res.status(500).json({ error: error.message });
     }
   }
 
-  // Retornamos 200 (OK) para confirmar o recebimento da notificação
   res.status(200).send('OK');
 }
