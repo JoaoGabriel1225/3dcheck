@@ -1,15 +1,15 @@
 import { supabase } from './supabase';
 
 export const communityService = {
-  // Buscar posts com contagem de likes e dados do autor
+  // Buscar todos os posts com dados do autor e mídias
   async getPosts() {
     const { data, error } = await supabase
       .from('community_posts')
       .select(`
         *,
-        profiles (name, avatar_url),
-        post_media (media_url, media_type),
-        post_interactions (is_like)
+        profiles:user_id (name, avatar_url, plan_status),
+        post_media (*),
+        post_interactions (is_like, user_id)
       `)
       .order('created_at', { ascending: false });
     
@@ -17,38 +17,31 @@ export const communityService = {
     return data;
   },
 
-  // Sistema de Like (Upsert)
+  // Buscar dúvidas do fórum
+  async getDoubts() {
+    const { data, error } = await supabase
+      .from('community_doubts')
+      .select(`*, profiles:user_id (name, avatar_url)`)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Alternar Like/Dislike
   async toggleLike(postId: string, userId: string, isLike: boolean) {
     const { error } = await supabase
       .from('post_interactions')
-      .upsert({ post_id: postId, user_id: userId, is_like: isLike });
+      .upsert({ post_id: postId, user_id: userId, is_like: isLike }, { onConflict: 'post_id,user_id' });
     
     if (error) throw error;
   },
 
-  // Upload de STL e Postagem
-  async createPost(userId: string, title: string, description: string, stlFile: File, imageFiles: File[]) {
-    // 1. Upload STL
-    const stlName = `${userId}/${Date.now()}-${stlFile.name}`;
-    const { data: stlData } = await supabase.storage.from('community-files').upload(stlName, stlFile);
-    const stlUrl = supabase.storage.from('community-files').getPublicUrl(stlData!.path).data.publicUrl;
-
-    // 2. Criar Post
-    const { data: post, error: postError } = await supabase
+  // Incrementar contador de downloads
+  async incrementDownload(postId: string, currentCount: number) {
+    await supabase
       .from('community_posts')
-      .insert({ user_id: userId, title, description, stl_url: stlUrl })
-      .select()
-      .single();
-
-    if (postError) throw postError;
-
-    // 3. Upload Imagens e Vincular
-    for (const file of imageFiles) {
-      const imgName = `${post.id}/${Date.now()}-${file.name}`;
-      const { data: imgData } = await supabase.storage.from('community-media').upload(imgName, file);
-      const imgUrl = supabase.storage.from('community-media').getPublicUrl(imgData!.path).data.publicUrl;
-      
-      await supabase.from('post_media').insert({ post_id: post.id, media_url: imgUrl });
-    }
+      .update({ download_count: currentCount + 1 })
+      .eq('id', postId);
   }
 };
