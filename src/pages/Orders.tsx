@@ -236,6 +236,16 @@ export default function Orders() {
     );
   });
 
+  // --- INÍCIO DA CORREÇÃO ---
+  const filteredClients = clientsOptions.filter(client =>
+    client.name.toLowerCase().includes(clientSearchText.toLowerCase())
+  );
+
+  const filteredProducts = productsOptions.filter(product =>
+    product.name.toLowerCase().includes(productSearchText.toLowerCase())
+  );
+  // --- FIM DA CORREÇÃO ---
+
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-10 max-w-full overflow-hidden">
       
