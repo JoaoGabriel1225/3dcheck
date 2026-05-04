@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { 
   Share2, Download, ThumbsUp, MessageSquare, 
-  Plus, Search, Box, HelpCircle, Sparkles, ChevronRight, X
+  Plus, Search, Box, HelpCircle, Sparkles, ChevronRight, X, UploadCloud, FileBox, ImageIcon, Loader2
 } from 'lucide-react';
 
 export default function Community() {
@@ -19,8 +19,13 @@ export default function Community() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // ESTADO PARA CONTROLAR O MODAL DO NOVO POST
+  // ESTADOS DO MODAL E FORMULÁRIO
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [stlFile, setStlFile] = useState<File | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const loadData = async () => {
     try {
@@ -41,6 +46,36 @@ export default function Community() {
 
   useEffect(() => { loadData(); }, []);
 
+  // FUNÇÃO QUE RODA QUANDO CLICA EM ENVIAR
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile) return toast.error("Você precisa estar logado.");
+    if (!title || !stlFile || !imageFile) return toast.error("Preencha o título e anexe os dois arquivos!");
+
+    try {
+      setIsUploading(true);
+      toast.info("Fazendo upload dos arquivos... Aguarde.");
+      
+      await communityService.createPost(profile.id, title, description, stlFile, imageFile);
+      
+      toast.success("Modelo publicado com sucesso!");
+      setIsModalOpen(false); // Fecha o modal
+      
+      // Limpa os campos
+      setTitle('');
+      setDescription('');
+      setStlFile(null);
+      setImageFile(null);
+      
+      loadData(); // Recarrega o feed para mostrar o post novo
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao publicar modelo. Tente novamente.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 pb-32">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -57,7 +92,6 @@ export default function Community() {
           <p className="text-muted-foreground font-medium italic">Compartilhe arquivos e evolua com outros makers.</p>
         </div>
 
-        {/* BOTÃO AGORA ABRE O MODAL */}
         <Button 
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl px-6 h-12 shadow-lg shadow-blue-600/20 uppercase italic flex items-center gap-2 transition-all active:scale-95"
@@ -112,44 +146,111 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE NOVO POST */}
+      {/* MODAL DE NOVO POST REFORMULADO */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-            {/* Fundo escuro */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => !isUploading && setIsModalOpen(false)}
               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             />
             
-            {/* Caixa do Modal */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative w-full max-w-2xl bg-card border border-border rounded-[2rem] shadow-2xl overflow-hidden z-10"
             >
-              <div className="flex items-center justify-between p-6 border-b border-border/50">
+              <div className="flex items-center justify-between p-6 border-b border-border/50 bg-muted/20">
                 <h3 className="text-2xl font-black uppercase italic tracking-tighter">
                   Compartilhar <span className="text-blue-500">Modelo</span>
                 </h3>
-                <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="rounded-full">
+                <Button disabled={isUploading} variant="ghost" size="icon" onClick={() => setIsModalOpen(false)} className="rounded-full">
                   <X className="w-5 h-5 text-muted-foreground" />
                 </Button>
               </div>
               
-              <div className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Box className="w-8 h-8 text-blue-500" />
+              <form onSubmit={handleUploadSubmit} className="p-6 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase text-muted-foreground ml-1">Título do Modelo *</label>
+                    <Input 
+                      disabled={isUploading}
+                      required
+                      placeholder="Ex: Suporte de Fone Articulado"
+                      className="h-12 rounded-xl font-bold italic bg-background"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase text-muted-foreground ml-1">Descrição (Opcional)</label>
+                    <Input 
+                      disabled={isUploading}
+                      placeholder="Dicas de impressão, material recomendado..."
+                      className="h-12 rounded-xl font-medium bg-background"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <p className="text-muted-foreground font-medium">A interface de upload de arquivos STL será injetada aqui no próximo passo.</p>
-                <Button onClick={() => setIsModalOpen(false)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl mt-4">
-                  Fechar Janela
-                </Button>
-              </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* UPLOAD DA IMAGEM */}
+                  <div className="relative border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl p-6 text-center transition-colors bg-muted/10 group">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      required
+                      disabled={isUploading}
+                      onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+                    />
+                    <ImageIcon className={`w-8 h-8 mx-auto mb-3 transition-colors ${imageFile ? 'text-blue-500' : 'text-muted-foreground group-hover:text-blue-400'}`} />
+                    <p className="text-sm font-bold truncate px-2">{imageFile ? imageFile.name : '1. Foto de Capa'}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">JPG, PNG ou WEBP</p>
+                  </div>
+
+                  {/* UPLOAD DO STL */}
+                  <div className="relative border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl p-6 text-center transition-colors bg-muted/10 group">
+                    <input 
+                      type="file" 
+                      accept=".stl,.obj" 
+                      required
+                      disabled={isUploading}
+                      onChange={(e) => setStlFile(e.target.files?.[0] || null)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+                    />
+                    <FileBox className={`w-8 h-8 mx-auto mb-3 transition-colors ${stlFile ? 'text-blue-500' : 'text-muted-foreground group-hover:text-blue-400'}`} />
+                    <p className="text-sm font-bold truncate px-2">{stlFile ? stlFile.name : '2. Arquivo 3D'}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Apenas .STL ou .OBJ</p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-border/50">
+                  <Button 
+                    type="submit" 
+                    disabled={isUploading}
+                    className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-xl text-sm"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Injetando no Servidor...
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="w-5 h-5 mr-2" />
+                        Publicar Modelo
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
