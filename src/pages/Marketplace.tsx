@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { ProductImporter } from '../components/ProductImporter'; 
 import { Card, CardContent } from '../../components/ui/card'; 
 import { Input } from '../../components/ui/input';
-import { Button } from '@/components/ui/button'; 
+import { Button } from '@/components/ui/button'; // CORREÇÃO: Importação do Button adicionada aqui
 import { Label } from '@/components/ui/label'; 
 import { 
   Search, ExternalLink, Trash2, Save, Pencil,
@@ -117,7 +117,6 @@ export default function Marketplace() {
       setImportingProduct(null);
       fetchProducts();
     } catch (err) {
-      console.error(err);
       toast.error('Erro ao salvar no banco');
     } finally {
       setIsSaving(false);
@@ -138,7 +137,6 @@ export default function Marketplace() {
 
   const filteredProducts = savedProducts
     .filter(p => {
-      // CORREÇÃO: Adicionada segurança (p.title || "") para evitar que a lista suma se houver dados nulos
       const title = p.title || "";
       const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = activeCategory === 'Todos' || p.category === activeCategory;
@@ -149,7 +147,6 @@ export default function Marketplace() {
       if (!a.is_featured && b.is_featured) return 1;
       if (sortBy === 'discount') return getDiscountValue(b.discount) - getDiscountValue(a.discount);
       
-      // CORREÇÃO: Segurança no sort para campos de preço antigos
       const priceA = parseFloat(String(a.price || 0).replace(/[^\d]/g, '')) || 0;
       const priceB = parseFloat(String(b.price || 0).replace(/[^\d]/g, '')) || 0;
       
@@ -161,6 +158,7 @@ export default function Marketplace() {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-20 px-4 md:px-0">
+      
       <div className="flex flex-col gap-6">
         <motion.div variants={itemVariants} className="space-y-2">
           <h2 className="text-4xl font-black tracking-tight text-foreground uppercase">
@@ -169,7 +167,7 @@ export default function Marketplace() {
           <p className="text-muted-foreground font-medium">Curadoria de itens para alta performance 3D.</p>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
+        <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4">
           {categories.map((cat) => {
             const count = savedProducts.filter(p => cat === 'Todos' ? true : p.category === cat).length;
             return (
@@ -194,14 +192,14 @@ export default function Marketplace() {
               placeholder="Pesquisar por título ou marca..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 h-14 rounded-2xl bg-card border-border border-2 text-base focus:ring-4 focus:ring-blue-500/10 transition-all"
+              className="pl-12 h-14 rounded-2xl bg-card border-border border-2 text-base"
             />
           </div>
           <div className="relative">
             <select 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40 transition-all"
+              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40"
             >
               <option value="discount">Maior Desconto %</option>
               <option value="popular">Mais Visitados</option>
@@ -215,16 +213,16 @@ export default function Marketplace() {
       </div>
 
       {isAdmin && (
-        <motion.div variants={itemVariants} className="bg-blue-600/5 p-8 rounded-[2.5rem] border-2 border-dashed border-blue-500/20">
-          <div className="flex flex-col items-center text-center space-y-4 mb-6">
+        <motion.div variants={itemVariants} className="bg-blue-600/5 p-8 rounded-[2.5rem] border-2 border-dashed border-blue-500/20 space-y-4">
+          <div className="flex flex-col items-center text-center space-y-4 mb-2">
              <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-600/20"><Plus /></div>
              <div>
                 <h3 className="font-black uppercase text-sm tracking-widest">Painel de Curadoria</h3>
-                <p className="text-xs text-muted-foreground">Insira o link do Mercado Livre, AliExpress ou Shopee.</p>
+                <p className="text-xs text-muted-foreground">Insira o link ou cadastre manualmente abaixo.</p>
              </div>
           </div>
+          
           <ProductImporter onImport={(data: any) => {
-            // NORMALIZAÇÃO PARA ALIEXPRESS/SHOPEE: Garante que os dados sejam interpretados corretamente
             const normalizedData = {
               ...data,
               title: data.title || "Novo Produto",
@@ -235,6 +233,26 @@ export default function Marketplace() {
             };
             setImportingProduct(normalizedData);
           }} />
+
+          {/* BOTÃO MANUAL EXCLUSIVO ADMIN */}
+          <div className="flex justify-center">
+            <Button 
+              variant="ghost" 
+              className="text-[10px] font-black opacity-40 hover:opacity-100 uppercase tracking-widest"
+              onClick={() => setImportingProduct({
+                title: '',
+                price: '',
+                original_price: '',
+                category: 'Todos',
+                url: '',
+                is_featured: false,
+                image: '',
+                user_id: user?.id
+              })}
+            >
+              <Plus className="w-3 h-3 mr-2" /> Ou Cadastrar Manualmente
+            </Button>
+          </div>
         </motion.div>
       )}
 
@@ -250,7 +268,13 @@ export default function Marketplace() {
           {importingProduct && (
             <div className="space-y-6 pt-4">
                <div className="flex gap-6 p-4 bg-accent/20 rounded-3xl items-center border border-border">
-                  <img src={importingProduct.image} className="w-24 h-24 rounded-2xl object-cover shadow-lg border-2 border-white" />
+                  <div className="w-24 h-24 rounded-2xl bg-muted overflow-hidden shadow-lg border-2 border-white flex items-center justify-center">
+                    {importingProduct.image ? (
+                      <img src={importingProduct.image} className="w-full h-full object-cover" />
+                    ) : (
+                      <PackageSearch className="w-8 h-8 opacity-20" />
+                    )}
+                  </div>
                   <div className="flex-1 space-y-3">
                     <Label className="text-[10px] font-black uppercase text-blue-500">Título do Produto</Label>
                     <Input value={importingProduct.title} onChange={(e) => setImportingProduct({...importingProduct, title: e.target.value})} className="font-bold h-12 rounded-xl" />
@@ -263,7 +287,7 @@ export default function Marketplace() {
                     <select 
                         value={importingProduct.category || ''} 
                         onChange={(e) => setImportingProduct({...importingProduct, category: e.target.value})}
-                        className="w-full h-12 px-4 rounded-xl bg-muted border-none font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full h-12 px-4 rounded-xl bg-muted border-none font-bold text-sm outline-none"
                     >
                         <option value="">Selecione...</option>
                         {categories.filter(c => c !== 'Todos').map(c => <option key={c} value={c}>{c}</option>)}
@@ -284,7 +308,7 @@ export default function Marketplace() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-blue-600 ml-1">Preço com Desconto (R$)</Label>
+                    <Label className="text-[10px] font-black uppercase text-blue-600 ml-1">Preço Atual (R$)</Label>
                     <Input 
                       value={importingProduct.price} 
                       onChange={(e) => {
@@ -311,6 +335,26 @@ export default function Marketplace() {
                           discount: autoCalculateDiscount(importingProduct.price, newOp)
                         });
                       }}
+                      className="h-12 rounded-xl"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-[10px] font-black uppercase ml-1">URL do Produto / Afiliado</Label>
+                    <Input 
+                      value={importingProduct.url} 
+                      onChange={(e) => setImportingProduct({...importingProduct, url: e.target.value})}
+                      placeholder="https://..."
+                      className="h-12 rounded-xl"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-[10px] font-black uppercase ml-1">URL da Imagem</Label>
+                    <Input 
+                      value={importingProduct.image} 
+                      onChange={(e) => setImportingProduct({...importingProduct, image: e.target.value})}
+                      placeholder="https://.../imagem.jpg"
                       className="h-12 rounded-xl"
                     />
                   </div>
