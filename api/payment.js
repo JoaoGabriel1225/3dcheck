@@ -1,51 +1,60 @@
-import { MercadoPagoConfig, Payment } from 'mercadopago';
+import Stripe from 'stripe';
 
-const ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
+// Inicializa o Stripe com a sua chave secreta que já está no Vercel
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
+  // O tutorial original usa o método POST para criar sessões
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método não permitido.' });
+    return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  // Recebemos o email direto do body também, como garantia
-  const { formData, userId, planType, email } = req.body;
+  const { priceId, userId, email } = req.body;
+
+  // Validação básica para evitar erros de execução
+  if (!priceId || !userId || !email) {
+    return res.status(400).json({ error: 'Informações de checkout incompletas.' });
+  }
 
   try {
-    const client = new MercadoPagoConfig({ accessToken: ACCESS_TOKEN });
-    const payment = new Payment(client);
-
-    const unitPrice = planType === 'annual' ? 199.90 : 19.90;
-
-    // Criamos o objeto de pagamento de forma limpa
-    const result = await payment.create({
-      body: {
-        transaction_amount: Number(unitPrice),
-        description: `3DCheck Plano Pro - ${planType === 'annual' ? 'Anual' : 'Mensal'}`,
-        payment_method_id: formData.payment_method_id,
-        // Só envia o token se ele existir (essencial para não quebrar o Pix)
-        ...(formData.token && { token: formData.token }),
-        installments: formData.installments ? Number(formData.installments) : 1,
-        payer: {
-          // Fallback de email caso o formData venha incompleto
-          email: formData.payer?.email || email,
-          identification: formData.payer?.identification,
+    // Tradução da lógica 'Stripe::Checkout::Session.create' para JavaScript
+    const session = await stripe.checkout.sessions.create({
+      // Define o modo como assinatura para planos recorrentes (mensal/anual)
+      mode: 'subscription', 
+      
+      // Ativa as formas de pagamento que o público brasileiro mais usa
+      payment_method_types: ['card', 'pix'],
+      
+      // Define o item que está sendo assinado com base no ID do produto[cite: 1]
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
         },
-        external_reference: `${userId}:${planType}`,
-        notification_url: "https://3dcheck-eight.vercel.app/api/webhooks/mercadopago",
+      ],
+      
+      // Pré-preenche o e-mail do usuário no formulário da Stripe
+      customer_email: email,
+      
+      // O campo metadata é crucial: ele guarda o ID do usuário para o Webhook ler depois[cite: 1]
+      metadata: {
+        userId: userId,
       },
+
+      // URLs de retorno seguindo o padrão de redirecionamento do tutorial[cite: 1]
+      success_url: `https://3dcheck-eight.vercel.app/app/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://3dcheck-eight.vercel.app/app/billing`,
     });
 
-    return res.status(200).json({
-      status: result.status,
-      status_detail: result.status_detail,
-      id: result.id,
-      point_of_interaction: result.point_of_interaction
-    });
+    // Em vez de redirecionar direto pelo servidor (como no Ruby), 
+    // enviamos a URL para o seu React fazer o redirecionamento[cite: 1]
+    return res.status(200).json({ url: session.url });
 
   } catch (error) {
-    console.error('Erro no processamento:', error);
+    // Tratamento de erro similar ao resgate (rescue) do código original[cite: 1]
+    console.error('Erro na sessão do Stripe:', error);
     return res.status(500).json({ 
-      error: 'Falha ao processar pagamento',
+      error: 'Erro ao criar sessão de pagamento', 
       message: error.message 
     });
   }
