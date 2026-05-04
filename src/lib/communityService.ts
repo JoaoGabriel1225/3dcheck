@@ -98,4 +98,21 @@ export const communityService = {
       .eq('id', postId);
     if (error) console.error("Erro ao computar download");
   }
+  // --- SISTEMA DE LIKE / DISLIKE ---
+  async interactWithPost(postId: string, userId: string, isLike: boolean) {
+    // 1. Salva a interação (Garante que é apenas 1 voto por pessoa)
+    const { error } = await supabase
+      .from('post_interactions')
+      .upsert({ post_id: postId, user_id: userId, is_like: isLike }, { onConflict: 'post_id,user_id' });
+    
+    if (error) throw error;
+
+    // 2. Recalcula os totais reais
+    const { data: interactions } = await supabase.from('post_interactions').select('is_like').eq('post_id', postId);
+    const likes = interactions?.filter(i => i.is_like === true).length || 0;
+    const dislikes = interactions?.filter(i => i.is_like === false).length || 0;
+
+    // 3. Atualiza o card do post
+    await supabase.from('community_posts').update({ like_count: likes, dislike_count: dislikes }).eq('id', postId);
+  }
 };
