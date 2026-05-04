@@ -85,7 +85,7 @@ export default function Billing() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${profile?.id}-${Math.random()}.${fileExt}`;
-      const filePath = `proofs/${fileName}`; // Pasta interna organizada
+      const filePath = `proofs/${fileName}`;
 
       // 1. Upload para o bucket correto: pix-proofs
       const { error: uploadError } = await supabase.storage
@@ -98,14 +98,14 @@ export default function Billing() {
         .from('pix-proofs')
         .getPublicUrl(filePath);
 
-      // 2. Salva no Banco (Sem a coluna email que não existe)
+      // 2. Salva no Banco (Removida a coluna plan_type que causou o erro)
       const { error: dbError } = await supabase
         .from('subscriptions_pending')
         .insert({
           user_id: profile?.id,
-          plan_type: selectedPlan,
           receipt_url: publicUrl,
           status: 'pending'
+          // plan_type: selectedPlan // Reative esta linha APÓS criar a coluna no Supabase
         });
 
       if (dbError) throw dbError;
