@@ -23,8 +23,20 @@ import {
   User,
   Phone,
   FileText,
-  X
+  X,
+  PackageOpen // Ícone para estado vazio
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion'; // Garantindo uso das animações
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export default function Storefront() {
   const { id, storeSlug } = useParams();
@@ -70,13 +82,16 @@ export default function Storefront() {
         const [storeRes, prodRes] = await Promise.all([
           supabase.from('store_settings').select('*').eq('user_id', targetUserId).single(),
           supabase.from('products')
-            .select(`*, product_images(url)`)
+            .select(`*`) // Otimizado: Removido product_images já que usa main_image_url
             .eq('user_id', targetUserId)
             .eq('is_public', true)
             .order('created_at', { ascending: false })
         ]);
 
-        if (storeRes.data) setStore(storeRes.data);
+        if (storeRes.data) {
+          setStore(storeRes.data);
+          document.title = `${storeRes.data.store_name} | Vitrine`; // Melhoria 1: Título dinâmico
+        }
         if (prodRes.data) setProducts(prodRes.data);
 
       } catch (err) { 
@@ -101,7 +116,6 @@ export default function Storefront() {
     }
 
     try {
-      // 1. Tenta inserir o Cliente
       const { data: clientData, error: clientErr } = await supabase.from('clients').insert({ 
         user_id: store.user_id, 
         name, 
@@ -112,7 +126,6 @@ export default function Storefront() {
       
       const finalOrderPrice = selectedProduct.final_price - (selectedProduct.discount || 0);
       
-      // 2. Tenta inserir o Pedido
       const { error: orderErr } = await supabase.from('orders').insert({
         user_id: store.user_id, 
         client_id: clientData.id, 
@@ -129,9 +142,8 @@ export default function Storefront() {
       setSelectedProduct(null);
       setName(''); setPhone(''); setDescription('');
     } catch (err: any) { 
-      // LOG DETALHADO PARA DEBUG
       console.error('ERRO SUPABASE:', err);
-      toast.error(`Erro ao enviar pedido: ${err.message || 'Verifique as permissões de banco de dados.'}`); 
+      toast.error(`Erro ao enviar pedido.`); 
     } finally { 
       setIsSubmitting(false); 
     }
@@ -179,9 +191,9 @@ export default function Storefront() {
       )}
 
       {isColored ? (
-        <div className="fixed inset-0 z-[-1] transition-colors duration-500" style={{ backgroundColor: brandColor }} />
+        <div className="fixed inset-0 z-[-1]" style={{ backgroundColor: brandColor }} />
       ) : (
-        <div className={`fixed inset-0 z-[-1] transition-colors duration-500 ${isLight ? 'bg-slate-50' : 'bg-[#0f0f12]'}`} />
+        <div className={`fixed inset-0 z-[-1] ${isLight ? 'bg-slate-50' : 'bg-[#0f0f12]'}`} />
       )}
       
       {/* HEADER */}
@@ -225,60 +237,74 @@ export default function Storefront() {
         </div>
       </div>
 
-      {/* CATÁLOGO */}
+      {/* CATÁLOGO COM ANIMAÇÃO */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 mt-12 space-y-8">
         <div className="flex items-center gap-4">
           <h2 className={`text-2xl md:text-4xl font-black tracking-tight uppercase ${textTitle}`}>Catálogo</h2>
           <div className="h-1 flex-1 bg-current opacity-10 rounded-full" />
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-          {products.map(prod => {
-            const hasDiscount = prod.discount > 0;
-            const finalPrice = prod.final_price - (prod.discount || 0);
-            
-            return (
-              <Card 
-                key={prod.id} 
-                className={`group cursor-pointer border-none rounded-[2rem] overflow-hidden transition-all active:scale-95 ${cardClass}`}
-                onClick={() => setSelectedProduct(prod)}
-              >
-                <div className={`aspect-square relative overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-zinc-900/50'}`}>
-                  <img src={prod.main_image_url || "/placeholder.jpg"} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                  {hasDiscount && (
-                    <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[9px] md:text-xs font-black px-3 py-1 rounded-full shadow-lg flex items-center gap-1 animate-pulse">
-                      <Zap className="w-3 h-3 fill-current hidden sm:block" /> OFERTA
-                    </div>
-                  )}
-                </div>
-                
-                <CardContent className="p-4 md:p-8 space-y-3 flex flex-col justify-between">
-                  <div className="space-y-1">
-                    <h3 className={`text-sm md:text-xl font-black line-clamp-1 ${textTitle}`}>{prod.name}</h3>
-                    <p className={`text-[10px] md:text-xs font-medium line-clamp-2 leading-relaxed ${textSub}`}>{prod.description}</p>
-                  </div>
-                  
-                  <div className={`pt-3 border-t ${isLight ? 'border-slate-100' : 'border-white/10'}`}>
-                    <div className="flex flex-col mb-1">
-                       {hasDiscount && (
-                         <span className={`text-[10px] md:text-xs font-bold line-through ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
-                           R$ {prod.final_price?.toFixed(2)}
-                         </span>
-                       )}
-                       <span className={`text-lg md:text-3xl font-black tracking-tighter ${hasDiscount ? 'text-emerald-500' : textTitle}`}>
-                         R$ {finalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                       </span>
+        {/* Melhoria 3: Empty State */}
+        {!loading && products.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 opacity-40">
+             <PackageOpen className="w-16 h-16 mb-4" />
+             <p className="font-black uppercase tracking-widest text-sm">Novos produtos em breve</p>
+          </div>
+        ) : (
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8"
+          >
+            {products.map(prod => {
+              const hasDiscount = prod.discount > 0;
+              const finalPrice = prod.final_price - (prod.discount || 0);
+              
+              return (
+                <motion.div key={prod.id} variants={itemVariants}>
+                  <Card 
+                    className={`group cursor-pointer border-none rounded-[2rem] overflow-hidden transition-all active:scale-95 h-full ${cardClass}`}
+                    onClick={() => setSelectedProduct(prod)}
+                  >
+                    <div className={`aspect-square relative overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-zinc-900/50'}`}>
+                      <img src={prod.main_image_url || "/placeholder.jpg"} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" alt={prod.name} />
+                      {hasDiscount && (
+                        <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[9px] md:text-xs font-black px-3 py-1 rounded-full shadow-lg flex items-center gap-1 animate-pulse">
+                          <Zap className="w-3 h-3 fill-current hidden sm:block" /> OFERTA
+                        </div>
+                      )}
                     </div>
                     
-                    <div className={`w-full h-10 mt-2 rounded-xl flex items-center justify-center font-black text-xs uppercase tracking-widest transition-colors ${isLight ? 'bg-slate-100 text-slate-800 group-hover:bg-blue-600 group-hover:text-white' : 'bg-white/10 text-white group-hover:bg-blue-500'}`}>
-                      Comprar <ArrowRight className="w-4 h-4 ml-2" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    <CardContent className="p-4 md:p-8 space-y-3 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <h3 className={`text-sm md:text-xl font-black line-clamp-1 ${textTitle}`}>{prod.name}</h3>
+                        <p className={`text-[10px] md:text-xs font-medium line-clamp-2 leading-relaxed ${textSub}`}>{prod.description}</p>
+                      </div>
+                      
+                      <div className={`pt-3 border-t ${isLight ? 'border-slate-100' : 'border-white/10'}`}>
+                        <div className="flex flex-col mb-1">
+                           {hasDiscount && (
+                             <span className={`text-[10px] md:text-xs font-bold line-through ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
+                               R$ {prod.final_price?.toFixed(2)}
+                             </span>
+                           )}
+                           <span className={`text-lg md:text-3xl font-black tracking-tighter ${hasDiscount ? 'text-emerald-500' : textTitle}`}>
+                             R$ {finalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                           </span>
+                        </div>
+                        
+                        <div className={`w-full h-10 mt-2 rounded-xl flex items-center justify-center font-black text-xs uppercase tracking-widest transition-colors ${isLight ? 'bg-slate-100 text-slate-800 group-hover:bg-blue-600 group-hover:text-white' : 'bg-white/10 text-white group-hover:bg-blue-500'}`}>
+                          Comprar <ArrowRight className="w-4 h-4 ml-2" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
       </div>
 
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
@@ -286,7 +312,7 @@ export default function Storefront() {
           
           <div className="overflow-y-auto flex-1 custom-scrollbar">
             <div className="relative aspect-video w-full bg-zinc-900 md:hidden">
-              <img src={selectedProduct?.main_image_url} className="w-full h-full object-cover" />
+              <img src={selectedProduct?.main_image_url} className="w-full h-full object-cover" alt="Product" />
               <Button onClick={() => setSelectedProduct(null)} className="absolute top-4 right-4 h-10 w-10 rounded-full bg-black/60 backdrop-blur-md border-none p-0 hover:bg-black/80 z-50">
                   <X className="w-5 h-5 text-white" />
               </Button>
@@ -329,7 +355,7 @@ export default function Storefront() {
                       required 
                       placeholder="11999998888" 
                       className="h-12 pl-12 rounded-xl bg-zinc-900/80 border-white/10 text-zinc-100" 
-                      maxLength={11}
+                      maxLength={15} // Melhoria 4: Permite colar formatos maiores e limpa via regex
                     />
                   </div>
                 </div>
