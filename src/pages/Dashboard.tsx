@@ -30,176 +30,349 @@ import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- DATABASE DE MENSAGENS DO #3DCHECK BOT (150 FRASES) ---
+
 const BOT_PHRASES = [
+
   // MARKETPLACE HUB (O Ouro Garimpado)
+
   "Garimpei o 'ouro' no Marketplace Hub! Filamento premium com preço de banana. Já viu hoje?",
+
   "O Marketplace Hub atualizou com peças que são raridade. Curadoria de quem entende!",
+
   "Link de afiliado? Sim, mas só do que eu usaria na minha própria bancada. Confira o Marketplace Hub!",
+
   "Parei tudo para te avisar: tem extrusora em promoção no Marketplace Hub. Ouro puro!",
+
   "No Marketplace Hub eu encontro o que presta, você só clica e economiza.",
+
   "Sabe aquele componente que nunca baixa de preço? Garimpei ele no Marketplace Hub hoje!",
 
+
+
   // SQLs DA COMUNIDADE
+
   "Os SQLs da Comunidade estão pegando fogo! Já viu o arquivo que subiram hoje?",
+
   "Não reinvente a roda. Dá um pulo nos SQLs da Comunidade e veja o que os outros makers estão compartilhando.",
+
   "Alguém postou um suporte de fone incrível nos SQLs da Comunidade. Vai lá baixar!",
+
   "Compartilhar é crescer. Já subiu seu melhor arquivo nos SQLs da Comunidade?",
 
+
+
   // GESTÃO OPERACIONAL (CLIENTES, PEDIDOS, PRODUTOS, VITRINE)
+
   "Um cliente bem cadastrado é uma venda recorrente garantida. Já revisou seus contatos?",
+
   "Pedidos parados são máquinas paradas. Mantenha seu fluxo de produção atualizado!",
+
   "Sua Vitrine é sua cara. Vá em Configurações da Loja e deixe ela com o brilho da Elite.",
+
   "Dica: Fotos reais dos seus produtos na Vitrine aumentam a conversão em 40%!",
+
   "Gestão de Produtos: Se o custo do filamento subiu, o 3DCheck te avisa para ajustar o preço.",
+
   "O status 'Imprimindo' dá um alívio, né? Não esqueça de atualizar o pedido quando acabar!",
 
+
+
   // FINANCEIRO E CONFIGURAÇÕES
+
   "O Financeiro não mente: Gerenciar custos é o que separa o amador do profissional.",
+
   "Nas Configurações Globais você ajusta o 3DCheck para bater com o ritmo da sua oficina.",
+
   "Dinheiro no bolso é melhor que filamento no ar. Confira seu Lucro Líquido hoje!",
 
+
+
   // HUMOR, FATOS E CURIOSIDADES
+
   "Nivelar a mesa é 1% técnica e 99% oração. Mas no 3DCheck a gestão é 100% garantida!",
+
   "Sabia que a primeira impressora 3D é de 1984? Mais velha que muito mestre maker por aí.",
+
   "Spaghetti de plástico só é bom se for erro dos outros. No seu 3DCheck, a gente evita o prejuízo!",
+
   "O cheiro de filamento novo pela manhã é o perfume do sucesso.",
+
   "Se a primeira camada grudou, o dia já começou com vitória!",
+
   "O recorde de maior impressão 3D do mundo é um barco. Imagina o tempo de fatiamento!",
+
   "Impressora parada não paga o faturamento. O que vamos imprimir hoje?",
+
   "Makers não erram, eles criam 'protótipos de aprendizado não planejados'.",
+
   "A primeira camada é a base de tudo: na impressão e no seu negócio. Use o Dashboard!",
+
   "Dica de mestre: Um bico limpo evita 90% das dores de cabeça. Os outros 10% o 3DCheck resolve.",
+
   "A comunidade 3D é gigante. Você faz parte da Elite agora!",
 
+
+
+  // (Continuando a diversificação para atingir 150 temas variados...)
+
   "Suporte & Feedback: Teve uma ideia genial pro app? Manda pra gente!",
+
   "Já configurou seu faturamento hoje? O 3DCheck ama ver seus números crescendo.",
+
   "A aba Clientes é o seu tesouro. Use o filtro para ver quem são seus melhores compradores.",
+
   "Configurações da Loja: Já colocou sua logo hoje?",
+
   "A vida é curta demais para nivelar a mesa manualmente toda hora.",
+
   "No 3DCheck, o Dashboard é o seu painel de controle para a dominação mundial maker.",
+
   "Fato: O PLA é feito de amido de milho, mas não tente fazer pipoca com ele!",
+
   "O Marketplace Hub é onde o garimpo encontra a oportunidade.",
+
   "Pedidos: 'Aguardando Contato' é o primeiro passo para o 'Concluído'. Agilidade neles!",
+
   "Sua oficina, suas regras. O 3DCheck é apenas o seu braço direito tecnológico.",
+
   "Fatiar, imprimir, faturar. O ciclo da felicidade mestre.",
+
   "Vitrine: Seus produtos merecem ser vistos. Já compartilhou o link da sua loja?",
+
   "O lucro está nos detalhes. O custo total leva em conta até a luz, o 3DCheck sabe disso.",
+
   "Nada como o som de uma impressora 3D trabalhando enquanto você dorme.",
+
   "Seu 3DCheck é atualizado constantemente. Estamos sempre um passo à frente!",
+
   "O 3DCheck Bot está aqui para te lembrar que você é um empreendedor, não só um maker.",
+
   "Gerencie seus pedidos com a precisão de uma camada de 0.1mm.",
+
   "Os SQLs da Comunidade são o Google Drive dos Deuses da Impressão.",
+
   "Marketplace Hub: Eu garimpo o ouro, você colhe os lucros.",
+
   "O faturamento de hoje é o investimento em filamento de amanhã.",
+
   "Configurações Globais: Onde a mágica da personalização acontece.",
+
   "Dúvidas? O Suporte & Feedback é o seu canal direto com o criador.",
+
   "O lucro líquido é o combustível da sua evolução.",
+
   "Status: 'Pronto'. A palavra mais bonita que um cliente pode ler no 3DCheck.",
+
   "Produção 3D é arte, gestão 3D é 3DCheck.",
+
   "Clientes satisfeitos voltam. Como está o status dos seus pedidos hoje?",
+
   "A vitrine digital é o seu vendedor que nunca dorme.",
+
   "Use o Marketplace para encontrar as ferramentas que vão acelerar sua produção.",
+
   "Fato: Existem impressoras 3D que imprimem comida. Já imaginou gerenciar isso no 3DCheck?",
+
   "A curiosidade matou o gato, mas fez o maker descobrir novas técnicas de fatiamento.",
+
   "O marketplace não é só compra, é estratégia de custo-benefício.",
+
   "Gerenciamento de produtos: Conheça seu estoque para não ser pego de surpresa.",
+
   "Dashboard: A visão de águia que seu negócio 3D precisava.",
+
   "A Elite 3DCheck não para de crescer. Você está no topo!",
+
   "Dica: Limpar a mesa com álcool isopropílico é o segredo da adesão perfeita.",
+
   "O seu sucesso é o meu código fonte. Vamos decolar!",
+
   "Marketplace Hub: Onde o garimpo do mestre vira economia no seu bolso.",
+
   "A união faz a força, e nos SQLs da Comunidade a união faz os melhores arquivos.",
+
   "Sincronização global ativada. Suas vendas em um só lugar.",
+
   "Economia circular maker: Imprima, venda, reinvista.",
+
   "O 3DCheck é o cérebro, você é o coração da operação.",
+
   "Já viu a aba Financeiro? O lucro está chamando seu nome.",
+
   "Produtos: Já cadastrou aquela novidade que você imprimiu ontem?",
+
   "Gestão operacional é o segredo das grandes fazendas de impressão.",
+
   "Um mestre maker nunca para de aprender. O 3DCheck nunca para de atualizar.",
+
   "Configurações da Loja: Sua marca é forte, mostre ela na Vitrine!",
+
   "Marketplace Hub: Ouro encontrado. Oportunidade batendo na porta.",
+
   "Não é só imprimir, é transformar plástico em valor. 3DCheck te ajuda nisso.",
+
   "Fato: Já imprimiram casas em 3D. O 3DCheck está pronto para grandes projetos!",
+
   "A aba Pedidos é o termômetro do seu sucesso. Mantenha ela aquecida!",
+
   "O 3DCheck Bot deseja a você uma produção sem warping e com muito lucro!",
+
   "A Vitrine Digital é o seu palco. Brilhe!",
+
   "Financeiro: Cada centavo conta na hora de escalar seu negócio 3D.",
+
   "SQLs da Comunidade: Onde a criatividade não tem limites.",
+
   "Sua oficina merece a tecnologia do 3DCheck. Gestão de Elite!",
+
   "O Marketplace Hub é a trilha do ouro para o maker inteligente.",
+
   "Clientes: O atendimento humanizado começa com uma boa organização interna.",
+
   "O 3DCheck é o seu assistente pessoal que não bebe café, mas adora dados.",
+
   "Produção: 'Em Andamento' significa que o lucro está sendo processado.",
+
   "Configurações Globais: Ajuste o app para o seu estilo de vida maker.",
+
   "Marketplace Hub: Só o filamento que não quebra e o bico que não entope.",
+
   "A aba Produtos é a sua prateleira infinita. Explore-a!",
+
   "Dica: Verifique seus custos periodicamente para manter a margem de lucro real.",
+
   "O Dashboard é a bússola do seu empreendimento 3D.",
+
   "Seja bem-vindo a mais um dia de produtividade máxima!",
+
   "O 3DCheck Bot está de olho: Já atualizou seus status de entrega hoje?",
+
   "A Vitrine é o seu cartão de visitas no mundo digital. Use e abuse!",
+
   "Nos SQLs da Comunidade, cada download é um reconhecimento ao talento maker.",
+
   "Marketplace Hub: Garimpo diário para você focar no que importa: imprimir.",
+
   "Financeiro: Lucro bruto é vaidade, lucro líquido é sanidade. 3DCheck faz a conta.",
+
   "Sua oficina 3D agora tem um sistema de gestão de nível mundial.",
+
   "A aba Pedidos é onde a mágica das vendas acontece. Cuide bem dela!",
+
   "Configurações da Loja: Sua loja, sua identidade, seu 3DCheck.",
+
   "O Suporte & Feedback é a nossa linha direta para construir o melhor app do mundo.",
+
   "Fato: O filamento Wood contém serragem real. O cheiro de madeira na oficina é top!",
+
   "Marketplace Hub: Onde a qualidade encontra o preço baixo. Garimpado pelo mestre.",
+
   "O 3DCheck Bot acredita no seu potencial. Vamos bater as metas de hoje!",
+
   "A aba Clientes é o seu mapa de networking. Cultive seus contatos.",
+
   "Produção: O segredo está na repetição com perfeição.",
+
   "Configurações Globais: Onde você define o idioma do seu sucesso.",
+
   "SQLs da Comunidade: A biblioteca infinita de soluções 3D.",
+
   "Marketplace Hub: A curadoria que te economiza horas de pesquisa.",
+
   "Financeiro: Ver o gráfico de lucro subindo é a melhor sensação para um maker.",
+
   "O Dashboard é o resumo da sua dedicação. Orgulhe-se dos seus números!",
+
   "A aba Produtos permite que você venda o mesmo design mil vezes. Escala é tudo!",
+
   "Vitrine: Onde o seu cliente vira seu fã.",
+
   "A cada atualização, o 3DCheck fica mais potente. Aproveite as novas funções!",
+
   "O 3DCheck Bot está aqui para facilitar sua vida. Pergunte ao Suporte se precisar!",
+
   "Pedidos: A velocidade na entrega é o que te diferencia da concorrência.",
+
   "Marketplace Hub: O ouro está nos detalhes da curadoria.",
+
   "Fato: A impressão 3D já é usada na medicina para criar próteses perfeitas.",
+
   "A aba Clientes te ajuda a lembrar quem é o mestre por trás de cada pedido.",
+
   "Configurações da Loja: Onde o marketing do seu negócio começa.",
+
   "SQLs da Comunidade: Porque o conhecimento deve ser compartilhado.",
+
   "O Dashboard é o seu painel de bordo para o sucesso. Ajuste a rota!",
+
   "Marketplace Hub: Links de confiança para uma produção de confiança.",
+
   "Financeiro: Tenha o controle total do seu fluxo de caixa maker.",
+
   "Produção: 'Pronto para Retirada' é o gatilho para a satisfação do cliente.",
+
   "O 3DCheck é o app que entende as dores e delícias de ser um maker.",
+
   "Dica: Mantenha seus filamentos em local seco para evitar a umidade.",
+
   "O Marketplace Hub é o seu braço direito na hora das compras.",
+
   "A aba Produtos organiza o caos da criação em um catálogo profissional.",
+
   "Vitrine: Sua loja online está pronta para receber o mundo.",
+
   "O 3DCheck Bot está sempre pronto para te dar uma dica valiosa.",
+
   "Pedidos: Acompanhe o ciclo de vida de cada peça, do fatiamento à entrega.",
+
   "Marketplace Hub: Garimpado, testado e aprovado pelo mestre 3DCheck.",
+
   "Nos SQLs da Comunidade, você encontra a inspiração que faltava.",
+
   "Financeiro: Lucro real é o que faz sua oficina crescer. Confira os dados!",
+
   "O Dashboard é o espelho da sua gestão. Reflita sucesso!",
+
   "Configurações Globais: Onde a sua experiência com o app se torna única.",
+
   "Marketplace Hub: O caminho mais curto para o melhor hardware 3D.",
+
   "Fato: A impressão 3D em metal já é usada na Fórmula 1!",
+
   "A aba Clientes é a sua agenda de ouro. Mantenha-a sempre atualizada.",
+
   "O 3DCheck é a ferramenta que faltava na sua caixa de ferramentas maker.",
+
   "Produção: Cada camada conta, cada pedido importa.",
+
   "Vitrine: Mostre ao mundo o poder da sua fabricação digital.",
+
   "O 3DCheck Bot deseja a você um dia produtivo e sem entupimentos!",
+
   "A aba Pedidos é o motor que move o seu negócio 3D.",
+
   "Marketplace Hub: O segredo dos mestres para comprar barato e vender caro.",
+
   "SQLs da Comunidade: Transformando bits em átomos, colaborativamente.",
+
   "Financeiro: O 3DCheck organiza, você lucra. Simples assim.",
+
   "A aba Produtos é o seu inventário de criatividade.",
+
   "Configurações da Loja: Dê um toque de profissionalismo ao seu negócio.",
+
   "Marketplace Hub: A vitrine das melhores ofertas do mundo 3D.",
+
   "O Dashboard é o ponto de partida para as suas melhores decisões.",
+
   "O 3DCheck Bot está orgulhoso da sua produção. Continue assim!",
+
   "Nos SQLs da Comunidade, o próximo grande projeto pode ser seu.",
+
   "Aba Clientes: Porque por trás de cada pedido existe uma grande parceria.",
+
   "3DCheck: Criado de maker para maker, visando a Elite da impressão."
+
 ];
 
 type TopProduct = { name: string; count: number; revenue: number; percentage: number };
