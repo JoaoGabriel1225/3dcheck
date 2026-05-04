@@ -71,7 +71,6 @@ const BOT_PHRASES = [
   "Dica de mestre: Um bico limpo evita 90% das dores de cabeça. Os outros 10% o 3DCheck resolve.",
   "A comunidade 3D é gigante. Você faz parte da Elite agora!",
 
-  // (Continuando a diversificação...)
   "Suporte & Feedback: Teve uma ideia genial pro app? Manda pra gente!",
   "Já configurou seu faturamento hoje? O 3DCheck ama ver seus números crescendo.",
   "A aba Clientes é o seu tesouro. Use o filtro para ver quem são seus melhores compradores.",
@@ -291,6 +290,7 @@ export default function Dashboard() {
     if (botPreference === 'true') {
       setShowBot(false);
     } else {
+      // Sorteia frase inicial
       const randomIndex = Math.floor(Math.random() * BOT_PHRASES.length);
       setBotPhrase(BOT_PHRASES[randomIndex]);
     }
@@ -304,11 +304,11 @@ export default function Dashboard() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const toggleBot = () => {
-    const nextValue = !showBot;
-    setShowBot(nextValue);
-    localStorage.setItem('hide_3dcheck_bot', (!nextValue).toString());
-    if (nextValue && !botPhrase) {
+  const handleToggleBot = () => {
+    const newValue = !showBot;
+    setShowBot(newValue);
+    localStorage.setItem('hide_3dcheck_bot', (!newValue).toString());
+    if (newValue && !botPhrase) {
       const randomIndex = Math.floor(Math.random() * BOT_PHRASES.length);
       setBotPhrase(BOT_PHRASES[randomIndex]);
     }
@@ -400,20 +400,21 @@ export default function Dashboard() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-10 pb-10">
       
-      {/* #3DCHECK BOT COMPONENT - CORRIGIDO PARA ALTO CONTRASTE E ACESSIBILIDADE MOBILE */}
-      <AnimatePresence>
+      {/* #3DCHECK BOT COMPONENT */}
+      <AnimatePresence mode="wait">
         {showBot && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }} 
             animate={{ opacity: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95 }} 
-            className="relative p-6 rounded-[2.5rem] bg-blue-600 shadow-2xl shadow-blue-600/20 overflow-hidden border border-blue-500/50"
+            className="relative p-6 rounded-[2.5rem] bg-gradient-to-br from-blue-600/10 to-blue-600/5 border border-blue-500/20 shadow-xl overflow-hidden"
           >
-            {/* BOTÃO FECHAR MOBILE FRIENDLY - VISÍVEL SEM HOVER */}
-            <div className="absolute top-2 right-2 z-20">
+            {/* BOTÃO FECHAR SEMPRE VISÍVEL PARA MOBILE/PC */}
+            <div className="absolute top-2 right-2 p-2 z-20">
               <button 
-                onClick={toggleBot}
-                className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all active:scale-90"
+                onClick={handleToggleBot}
+                className="p-3 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all active:scale-90"
+                title="Desativar dicas do Bot"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -423,23 +424,28 @@ export default function Dashboard() {
               <motion.div 
                 animate={{ y: [0, -5, 0] }}
                 transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                className="h-14 w-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shrink-0"
+                className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0"
               >
                 <Bot className="text-white w-8 h-8" />
               </motion.div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-black text-blue-100 uppercase text-[10px] tracking-[0.2em] italic opacity-80">#3DCheck Bot</h3>
-                  <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300" />
+                  <h3 className="font-black text-blue-500 uppercase text-[10px] tracking-[0.2em] italic">#3DCheck Bot</h3>
+                  <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
                 </div>
-                {/* TEXTO BRANCO PARA LEITURA PERFEITA EM QUALQUER MODO */}
-                <p className="text-sm md:text-base text-white font-bold leading-relaxed italic pr-10">
+                {/* TEXTO COM COR CORRIGIDA PARA MODO CLARO/ESCURO */}
+                <p className="text-sm md:text-base text-zinc-800 dark:text-zinc-200 font-bold leading-relaxed italic pr-10">
                   "{botPhrase}"
                 </p>
+                <div className="flex items-center gap-1.5 pt-1">
+                   <div className="h-1 w-1 bg-emerald-500 rounded-full animate-pulse" />
+                   <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest italic">Analisando sua gestão...</span>
+                </div>
               </div>
             </div>
             
-            <div className="absolute -bottom-6 -right-6 h-24 w-24 bg-white/5 rounded-full blur-3xl" />
+            {/* Elemento Decorativo */}
+            <div className="absolute -bottom-6 -right-6 h-24 w-24 bg-blue-600/5 rounded-full blur-3xl" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -469,16 +475,14 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
               <LayoutDashboard className="w-4 h-4" />Visão Geral
             </div>
-            {/* BOTÃO TOGGLE DO BOT NO DASHBOARD - LIGA/DESLIGA MANUAL */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={toggleBot} 
-              className={`h-7 px-2 rounded-lg border border-border flex items-center gap-2 transition-all ${showBot ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' : 'text-muted-foreground'}`}
+            {/* BOTÃO TOGGLE DO BOT NO DASHBOARD */}
+            <button 
+              onClick={handleToggleBot}
+              className={`flex items-center gap-2 px-2.5 py-1 rounded-lg border transition-all active:scale-95 ${showBot ? 'bg-blue-500/10 border-blue-500/30 text-blue-600' : 'bg-muted border-border text-muted-foreground'}`}
             >
-              {showBot ? <Bot className="w-3.5 h-3.5" /> : <MessageSquareOff className="w-3.5 h-3.5" />}
-              <span className="text-[9px] font-black uppercase">{showBot ? 'ON' : 'OFF'}</span>
-            </Button>
+              {showBot ? <Bot className="w-3 h-3" /> : <MessageSquareOff className="w-3 h-3" />}
+              <span className="text-[9px] font-black uppercase tracking-tighter">{showBot ? 'BOT ON' : 'BOT OFF'}</span>
+            </button>
           </div>
           <h2 className="text-4xl font-black tracking-tight text-foreground">Olá, {storeDisplayName} <span className="text-blue-500">.</span></h2>
           <p className="text-muted-foreground font-medium max-w-xl">Acompanhe sua produção 3D e o resumo financeiro.</p>
