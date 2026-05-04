@@ -26,10 +26,11 @@ export default function Support() {
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // AÇÕES RÁPIDAS FOCADAS EM FUNCIONALIDADES 3DCHECK
   const quickActions = [
-    "Como configurar minha impressora?",
-    "Problemas no fatiamento",
-    "Dúvida sobre o plano Pro"
+    "Como gerenciar meus pedidos?",
+    "Como calcular o custo de impressão?",
+    "Quais as vantagens do Plano Pro?"
   ];
 
   useEffect(() => { 
