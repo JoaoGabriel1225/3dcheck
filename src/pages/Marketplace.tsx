@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { 
   Search, ExternalLink, Trash2, Save, Pencil,
   Loader2, Sparkles, PackageSearch, Trophy, Tag,
-  ArrowUpRight, Star, ChevronDown
+  ArrowUpRight, Star, ChevronDown, Plus // CORREÇÃO: Adicionado o Plus aqui
 } from 'lucide-react';
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription 
@@ -224,7 +224,6 @@ export default function Marketplace() {
              </div>
           </div>
           <ProductImporter onImport={(data: any) => {
-            // FIX: Garantindo que original_price seja capturado independente da fonte
             const normalizedData = {
               ...data,
               original_price: data.original_price || data.originalPrice || data.price,
