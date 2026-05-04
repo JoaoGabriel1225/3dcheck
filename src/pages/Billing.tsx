@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { 
   AlertTriangle, CheckCircle2, ShieldCheck, Zap, 
   Star, Rocket, Loader2, Copy, CreditCard, Sparkles,
-  Image as ImageIcon, SendHorizontal, FileUp
+  ImageIcon, SendHorizontal, FileUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,7 +16,6 @@ export default function Billing() {
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
-  // SUA CHAVE PIX ATUALIZADA
   const pixKey = "24971502-ab9f-4837-88ff-73eea13fa78a";
 
   const trialInfo = useMemo(() => {
@@ -44,7 +43,6 @@ export default function Billing() {
     }
   };
 
-  // FUNÇÃO PARA ATIVAÇÃO MANUAL (PIX COM COMPROVANTE)
   const submitManualPayment = async () => {
     if (!file) {
       toast.error("Por favor, anexe o comprovante do Pix para validação.");
@@ -53,7 +51,6 @@ export default function Billing() {
 
     setLoading(true);
     try {
-      // 1. Upload para o Storage (Bucket: comprovantes)
       const fileExt = file.name.split('.').pop();
       const fileName = `pix_${profile?.id}_${Date.now()}.${fileExt}`;
       
@@ -63,13 +60,14 @@ export default function Billing() {
 
       if (uploadError) throw uploadError;
 
-      // 2. Registro na tabela subscriptions_pending
+      // REGISTRO ATUALIZADO: Enviando o plan_type selecionado
       const { error: dbError } = await supabase
         .from('subscriptions_pending')
         .insert([{ 
           user_id: profile?.id, 
           user_email: profile?.email,
           receipt_url: fileName,
+          plan_type: selectedPlan,
           status: 'pending'
         }]);
 
@@ -85,12 +83,8 @@ export default function Billing() {
     }
   };
 
-  // CHECKOUT AUTOMÁTICO (CARTÃO/MERCADO PAGO)
   const handleCheckout = async () => {
-    if (selectedPlan !== 'monthly') {
-      toast.info("O plano anual estará disponível em breve! Use o Mensal por enquanto.");
-      return;
-    }
+    // TRAVA REMOVIDA: Agora permite 'annual' prosseguir para a API
     if (!profile?.email) {
       toast.error("E-mail não encontrado. Tente relogar.");
       return;
@@ -101,7 +95,12 @@ export default function Billing() {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: profile.id, email: profile.email }),
+        // ENVIANDO O PLANO SELECIONADO PARA A API
+        body: JSON.stringify({ 
+          userId: profile.id, 
+          email: profile.email,
+          planType: selectedPlan 
+        }),
       });
       const data = await response.json();
       if (data.init_point) {
@@ -121,7 +120,6 @@ export default function Billing() {
   return (
     <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-700 pb-20 px-4 md:px-0">
       
-      {/* HEADER PREMIUM */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20 shadow-inner">
@@ -138,7 +136,6 @@ export default function Billing() {
         </div>
       </div>
 
-      {/* STATUS DO TRIAL */}
       {isExpired ? (
         <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-[2rem] flex items-center gap-4 animate-pulse">
           <AlertTriangle className="h-8 w-8 text-red-500" />
@@ -159,7 +156,6 @@ export default function Billing() {
         </div>
       )}
 
-      {/* SELEÇÃO DE PLANOS */}
       <div className="grid md:grid-cols-2 gap-6">
         <button 
           onClick={() => setSelectedPlan('monthly')}
@@ -195,7 +191,6 @@ export default function Billing() {
         </button>
       </div>
 
-      {/* CHECKOUT SECTION */}
       <Card className="border-border bg-card/40 backdrop-blur-md shadow-3xl rounded-[3.5rem] overflow-hidden border-t-blue-500/20">
         <CardHeader className="p-12 border-b border-border/50 bg-accent/5">
           <CardTitle className="font-black text-3xl tracking-tighter flex items-center gap-3 uppercase italic">
@@ -228,7 +223,6 @@ export default function Billing() {
           </ul>
 
           <div className="space-y-8">
-            {/* BOTÃO PARA CARTÃO (MERCADO PAGO) */}
             <Button 
               onClick={handleCheckout}
               disabled={loading}
@@ -237,7 +231,6 @@ export default function Billing() {
               {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : <><CreditCard className="w-6 h-6" /> PAGAR COM CARTÃO</>}
             </Button>
             
-            {/* ÁREA DE PIX MANUAL (JOÃO GABRIEL) */}
             <div className="pt-8 border-t border-border/50 space-y-6">
               <div className="text-center space-y-2">
                 <div className="flex items-center justify-center gap-2 text-blue-500">
@@ -254,7 +247,6 @@ export default function Billing() {
                  </Button>
               </div>
 
-              {/* UPLOAD DO COMPROVANTE */}
               <div className="grid gap-4">
                 <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-border rounded-[2.5rem] cursor-pointer hover:bg-blue-500/5 hover:border-blue-500/30 transition-all group">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
