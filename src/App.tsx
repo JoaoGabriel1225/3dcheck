@@ -23,7 +23,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import Storefront from './pages/Storefront';
 import Clients from './pages/Clients';
 import Support from './pages/Support'; 
-import Community from '@/pages/app/Community'; // ALTERADO PARA USAR O ALIAS @ PARA EVITAR ERRO DE RESOLUÇÃO
+// CORREÇÃO: Usando caminho relativo direto para garantir que o Vercel encontre dentro de src
+import Community from './pages/app/Community'; 
 
 export default function App() {
   return (
