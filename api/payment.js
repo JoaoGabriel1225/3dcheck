@@ -5,34 +5,31 @@ export default async function handler(req, res) {
 
   const { priceId, userId, email } = req.body;
 
-  // Validação extra para termos certeza que os dados estão vindo do Billing.tsx
-  if (!priceId || !userId || !email) {
-    return res.status(400).json({ error: `Dados incompletos: priceId=${priceId}, userId=${userId}, email=${email}` });
-  }
-
   try {
-    // Verifica se a chave secreta foi configurada
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("A chave STRIPE_SECRET_KEY não foi encontrada no Vercel.");
-    }
-
+    // Inicialização da Stripe com a sua Secret Key (sk_test_...)
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      automatic_payment_methods: { enabled: true },
-      line_items: [{ price: priceId, quantity: 1 }],
+      // CORREÇÃO: Substituímos o parâmetro problemático por payment_method_types.
+      // Isso resolve o erro de "parâmetro desconhecido" e foca no que já está ativo na sua conta.
+      payment_method_types: ['card'], 
+      line_items: [{ 
+        price: priceId, // Agora usando o seu price_... correto que você encontrou
+        quantity: 1 
+      }],
       customer_email: email,
       metadata: { userId },
       success_url: `https://3dcheck-eight.vercel.app/app/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://3dcheck-eight.vercel.app/app/billing`,
     });
 
+    // Retorna a URL para o redirecionamento no front-end
     return res.status(200).json({ url: session.url });
 
   } catch (error) {
-    // IMPORTANTE: Agora enviamos a mensagem REAL do erro para o seu navegador
-    console.error('Erro detalhado:', error.message);
+    // Envia o erro exato para o console do seu navegador para debug
+    console.error('Erro na Stripe:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }
