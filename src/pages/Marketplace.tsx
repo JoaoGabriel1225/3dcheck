@@ -117,6 +117,7 @@ export default function Marketplace() {
       setImportingProduct(null);
       fetchProducts();
     } catch (err) {
+      console.error(err);
       toast.error('Erro ao salvar no banco');
     } finally {
       setIsSaving(false);
@@ -137,7 +138,7 @@ export default function Marketplace() {
 
   const filteredProducts = savedProducts
     .filter(p => {
-      // FIX: Segurança para produtos antigos com campos nulos
+      // CORREÇÃO: Adicionada segurança (p.title || "") para evitar que a lista suma se houver dados nulos
       const title = p.title || "";
       const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = activeCategory === 'Todos' || p.category === activeCategory;
@@ -146,11 +147,12 @@ export default function Marketplace() {
     .sort((a, b) => {
       if (a.is_featured && !b.is_featured) return -1;
       if (!a.is_featured && b.is_featured) return 1;
-
       if (sortBy === 'discount') return getDiscountValue(b.discount) - getDiscountValue(a.discount);
       
+      // CORREÇÃO: Segurança no sort para campos de preço antigos
       const priceA = parseFloat(String(a.price || 0).replace(/[^\d]/g, '')) || 0;
       const priceB = parseFloat(String(b.price || 0).replace(/[^\d]/g, '')) || 0;
+      
       if (sortBy === 'price_asc') return priceA - priceB;
       if (sortBy === 'price_desc') return priceB - priceA;
       if (sortBy === 'popular') return (b.clicks || 0) - (a.clicks || 0);
@@ -159,7 +161,6 @@ export default function Marketplace() {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-20 px-4 md:px-0">
-      
       <div className="flex flex-col gap-6">
         <motion.div variants={itemVariants} className="space-y-2">
           <h2 className="text-4xl font-black tracking-tight text-foreground uppercase">
@@ -168,7 +169,7 @@ export default function Marketplace() {
           <p className="text-muted-foreground font-medium">Curadoria de itens para alta performance 3D.</p>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4">
+        <motion.div variants={itemVariants} className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
           {categories.map((cat) => {
             const count = savedProducts.filter(p => cat === 'Todos' ? true : p.category === cat).length;
             return (
@@ -180,9 +181,7 @@ export default function Marketplace() {
                 }`}
               >
                 {cat.toUpperCase()}
-                <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeCategory === cat ? 'bg-white/20' : 'bg-accent text-accent-foreground'}`}>
-                  {count}
-                </span>
+                <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeCategory === cat ? 'bg-white/20' : 'bg-accent text-accent-foreground'}`}>{count}</span>
               </button>
             );
           })}
@@ -195,14 +194,14 @@ export default function Marketplace() {
               placeholder="Pesquisar por título ou marca..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 h-14 rounded-2xl bg-card border-border border-2 text-base"
+              className="pl-12 h-14 rounded-2xl bg-card border-border border-2 text-base focus:ring-4 focus:ring-blue-500/10 transition-all"
             />
           </div>
           <div className="relative">
             <select 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40"
+              className="h-14 pl-6 pr-10 rounded-2xl bg-card border-2 border-border text-sm font-black outline-none cursor-pointer appearance-none hover:border-blue-500/40 transition-all"
             >
               <option value="discount">Maior Desconto %</option>
               <option value="popular">Mais Visitados</option>
@@ -225,7 +224,7 @@ export default function Marketplace() {
              </div>
           </div>
           <ProductImporter onImport={(data: any) => {
-            // FIX: Captura robusta para AliExpress e Shopee
+            // NORMALIZAÇÃO PARA ALIEXPRESS/SHOPEE: Garante que os dados sejam interpretados corretamente
             const normalizedData = {
               ...data,
               title: data.title || "Novo Produto",
@@ -245,6 +244,7 @@ export default function Marketplace() {
             <DialogTitle className="text-2xl font-black flex items-center gap-2">
               <Sparkles className="text-blue-500" /> REVISÃO TÉCNICA
             </DialogTitle>
+            <DialogDescription>Ajuste os detalhes finais antes de publicar na vitrine.</DialogDescription>
           </DialogHeader>
 
           {importingProduct && (
@@ -263,7 +263,7 @@ export default function Marketplace() {
                     <select 
                         value={importingProduct.category || ''} 
                         onChange={(e) => setImportingProduct({...importingProduct, category: e.target.value})}
-                        className="w-full h-12 px-4 rounded-xl bg-muted border-none font-bold text-sm outline-none"
+                        className="w-full h-12 px-4 rounded-xl bg-muted border-none font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                         <option value="">Selecione...</option>
                         {categories.filter(c => c !== 'Todos').map(c => <option key={c} value={c}>{c}</option>)}
@@ -346,36 +346,26 @@ export default function Marketplace() {
                 {item.is_featured && <div className="bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-xl flex items-center gap-1.5 animate-pulse"><Trophy className="w-3.5 h-3.5" /> TOP ESCOLHA</div>}
                 {item.discount && <div className="bg-emerald-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg">{item.discount}</div>}
               </div>
-
               <div className="relative aspect-square overflow-hidden bg-white p-6">
                 <img src={item.image} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
               </div>
-              
               <div className="p-6 space-y-4 flex-1 flex flex-col">
                 <div className="space-y-2 flex-1">
-                  <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">{item.category}</span>
-                  <h3 className="text-sm md:text-base font-black text-foreground line-clamp-2 leading-tight uppercase italic tracking-tighter">
-                    {item.title}
-                  </h3>
+                  <span className="text-[9px] font-black uppercase text-muted-foreground/60">{item.category}</span>
+                  <h3 className="text-sm md:text-base font-black text-foreground line-clamp-2 leading-tight uppercase italic">{item.title}</h3>
                 </div>
-                
                 <div className="pt-4 border-t border-border/50">
                   <div className="flex flex-col">
-                    {item.original_price && item.original_price !== item.price && (
-                      <span className="text-[10px] line-through text-muted-foreground/50 font-bold tracking-tighter">R$ {item.original_price}</span>
-                    )}
+                    {item.original_price && item.original_price !== item.price && <span className="text-[10px] line-through text-muted-foreground/50 font-bold">R$ {item.original_price}</span>}
                     <div className="flex items-center justify-between">
-                       <div className="text-2xl font-black text-blue-600 tracking-tighter leading-none">R$ {item.price}</div>
-                       <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600 opacity-0 group-hover:opacity-100 transition-all">
-                          <ArrowUpRight className="w-4 h-4" />
-                       </div>
+                       <div className="text-2xl font-black text-blue-600">R$ {item.price}</div>
+                       <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600 opacity-0 group-hover:opacity-100 transition-all"><ArrowUpRight className="w-4 h-4" /></div>
                     </div>
                   </div>
                 </div>
-
                 {isAdmin && (
                   <div className="flex gap-2 pt-2">
-                    <button onClick={(e) => { e.stopPropagation(); setImportingProduct(item); }} className="flex-1 flex items-center justify-center gap-2 py-2 bg-accent/50 text-foreground rounded-xl text-[10px] font-black hover:bg-blue-500 hover:text-white transition-all"><Pencil className="w-3 h-3" /> EDITAR</button>
+                    <button onClick={(e) => { e.stopPropagation(); setImportingProduct(item); }} className="flex-1 flex items-center justify-center gap-2 py-2 bg-accent/50 rounded-xl text-[10px] font-black hover:bg-blue-500 hover:text-white transition-all"><Pencil className="w-3 h-3" /> EDITAR</button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/10"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 )}
@@ -389,7 +379,7 @@ export default function Marketplace() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-32 text-center">
           <PackageSearch className="w-24 h-24 text-muted-foreground/20 mb-8" />
           <h2 className="text-2xl font-black text-foreground uppercase tracking-tight">Nenhum tesouro encontrado</h2>
-          <button onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }} className="mt-10 px-8 py-4 bg-foreground text-background rounded-2xl font-black text-[10px] hover:scale-105 transition-all shadow-2xl active:scale-95 uppercase tracking-[0.2em]">Limpar Busca</button>
+          <button onClick={() => { setSearchTerm(''); setActiveCategory('Todos'); }} className="mt-10 px-8 py-4 bg-foreground text-background rounded-2xl font-black text-[10px] uppercase">Limpar Busca</button>
         </motion.div>
       )}
     </motion.div>
