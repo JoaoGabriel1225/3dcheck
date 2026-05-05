@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { 
   Users, Plus, Edit2, Trash2, Phone, Mail, 
   UserPlus, Search, MessageCircle, TrendingUp, 
-  UserCheck, Calendar 
+  UserCheck, Calendar, MapPin // Adicionado MapPin para o endereço
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -332,6 +332,12 @@ export default function Clients() {
                           <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground font-medium">
                             <Mail className="w-3 h-3" /> {client.email || 'Sem e-mail'}
                           </div>
+                          {/* BLOCO ADICIONADO: Exibe o endereço na lista se ele existir */}
+                          {client.address && (
+                            <div className="flex items-center gap-1.5 mt-1 text-[10px] text-blue-500 font-bold uppercase italic">
+                              <MapPin className="w-3 h-3" /> {client.address}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="px-8 py-5">
                           <div className="flex items-center gap-2">
