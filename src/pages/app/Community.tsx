@@ -116,7 +116,6 @@ const botMessages = [
   "Uma impressora 3D é pouco, duas é bom, três é pouco espaço em casa!",
   "Impressão 3D: transformando rolos de plástico em felicidade."
 ];
-];
 
 // Helper para descobrir se é vídeo
 const isVideo = (url: string) => {
