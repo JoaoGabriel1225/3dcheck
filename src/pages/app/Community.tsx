@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 
 const botMessages = [
-  const botMessages = [
   "Nivelou a mesa hoje, maker?",
   "Aderência perfeita na primeira camada é arte!",
   "Mostra pra gente o que está na sua mesa de impressão!",
