@@ -111,5 +111,24 @@ export const communityService = {
   async addComment(postId: string, userId: string, content: string) {
     const { error } = await supabase.from('post_comments').insert({ post_id: postId, user_id: userId, content });
     if (error) throw error;
+    // --- NOVAS FUNÇÕES DO FÓRUM ---
+  async getDoubtComments(doubtId: string) {
+    const { data, error } = await supabase
+      .from('community_doubt_comments')
+      .select('*, profiles:user_id(name)')
+      .eq('doubt_id', doubtId)
+      .order('created_at', { ascending: true });
+    if (error) return [];
+    return data;
+  },
+
+  async addDoubtComment(doubtId: string, userId: string, content: string) {
+    const { error } = await supabase.from('community_doubt_comments').insert({ doubt_id: doubtId, user_id: userId, content });
+    if (error) throw error;
+  },
+
+  async deleteDoubt(doubtId: string) {
+    const { error } = await supabase.from('community_doubts').delete().eq('id', doubtId);
+    if (error) throw error;
   }
 };
