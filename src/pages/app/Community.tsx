@@ -13,106 +13,116 @@ import {
 } from 'lucide-react';
 
 const botMessages = [
-   "Nivelou a mesa hoje, mestre?",
-
+  const botMessages = [
+  "Nivelou a mesa hoje, maker?",
   "Aderência perfeita na primeira camada é arte!",
-
   "Mostra pra gente o que está na sua mesa de impressão!",
-
   "STL novo? Compartilha aí!",
-
   "O filamento acabou no meio da impressão? Força guerreiro!",
-
   "Bambu Lab, Creality ou Anycubic? O que importa é imprimir!",
-
   "Apoio nunca é demais. Ou é?",
-
   "Z-hop salvando vidas (e peças) desde sempre.",
-
   "Qual a temperatura perfeita pro seu PLA?",
-
   "PETG é vida, mas que stringing chato, hein?",
-
   "Já calibrou o fluxo hoje?",
-
   "Imprimiu algo útil hoje ou só bonecos? (Julgamos não!)",
-
   "Que a sua primeira camada seja sempre lisa como vidro.",
-
   "Bora compartilhar conhecimento e arquivos 3D!",
-
   "Nada como o cheirinho de filamento derretido de manhã.",
-
   "Warping é o terror, mas a gente sempre vence.",
-
   "Posta aquele modelo que você modelou e tem orgulho!",
-
   "Mais um dia, mais uma impressão.",
-
   "Qual o seu fatiador favorito? Conta pra gente!",
-
   "Infill de 20% ou de 100%? Depende da raiva.",
-
   "Ajude a comunidade dando like nos projetos incríveis!",
-
   "Ficou em dúvida? Pergunta ali no Fórum!",
-
   "Uma comunidade forte se faz com compartilhamento.",
-
   "Suportes em árvore são maravilhosos, concorda?",
-
   "Bico entupido de novo? A gente te entende.",
-
   "Resina ou FDM? A batalha continua.",
-
   "Secou o filamento antes de usar? Fica a dica!",
-
   "Mostre sua mais nova invenção em 3D!",
-
   "Erro no G-Code? Reinicia que vai (mentira, não vai).",
-
   "Nada de desistir daquela impressão de 48 horas!",
-
   "Quem nunca esqueceu de gerar suporte que atire a primeira pedra.",
-
   "Sua impressora está pedindo manutenção, não finja que não viu.",
-
   "Imprimindo upgrades para a própria impressora? Clássico.",
-
   "Dê feedback nos projetos da galera, isso motiva muito!",
-
   "Aquele momento de tensão quando a peça não desgruda da mesa...",
-
   "Qual a cor de filamento que mais sai por aí?",
-
   "Um bom design resolve metade dos problemas de impressão.",
-
-  "Bora subir o nível dessa comunidade com seus STLs!",
-
+  "Bora subir o nível do Hub Maker com seus STLs!",
   "Velocidade ou Qualidade? Eis a questão.",
-
   "Já lubrificou os eixos Z hoje?",
-
   "Peça soltou da mesa nas últimas 10 camadas? Trágico.",
-
   "Compartilhe seus perfis de fatiamento com quem precisa!",
-
   "A magia do 3D: Do software para o mundo real.",
-
   "Nenhum modelo é simples demais para ser compartilhado.",
-
   "Iniciante ou Veterano, todo maker tem seu espaço aqui.",
-
   "Brim, Skirt ou Raft? Escolha sua arma.",
-
   "Quebrou a peça tirando o suporte? Super bonder resolve.",
-
   "Aquele barulhinho da impressora trabalhando acalma a alma.",
-
   "Seu projeto pode ajudar outro maker, poste aí!",
-
-  "Bora dominar o mundo (uma camada de cada vez)."
+  "Bora dominar o mundo (uma camada de cada vez).",
+  "Cola bastão ou spray fixador? Qual o seu segredo?",
+  "Mais um rolo de filamento comprado que não cabia no orçamento...",
+  "Imprimir em TPU é um teste de paciência, né?",
+  "Já testou a magia do filamento Silk hoje?",
+  "Não compre, imprima! (Mesmo que demore 3x mais tempo).",
+  "Mesa de vidro ou PEI magnética? Façam suas apostas.",
+  "Odor de ABS logo de manhã... Lembre-se da ventilação!",
+  "Klipper ou Marlin? O que roda no coração da sua máquina?",
+  "OrcaSlicer, Cura ou PrusaSlicer? Conta sua preferência!",
+  "Quem nunca imprimiu um barquinho para testar a impressora?",
+  "O temido monstro de espaguete atacou hoje?",
+  "Retração calibrada é sinônimo de paz de espírito.",
+  "Fusion 360, Blender ou Tinkercad? Como você cria sua magia?",
+  "Aquela peça de 30 horas finalizada com sucesso... Ufa!",
+  "Imprimindo com filamento que brilha no escuro? Mostra pra gente!",
+  "A regra é clara: sempre verifique o G-code antes de dormir.",
+  "Faltou luz no meio da impressão e não tinha no-break? A gente chora junto.",
+  "Seu filamento está úmido? O estalo no bico não perdoa.",
+  "Dúvida cruel: pintar a peça ou imprimir colorido?",
+  "Um bom maker sempre limpa a mesa com álcool isopropílico.",
+  "Ajustar o Z-offset é quase uma terapia.",
+  "Já imprimiu algo útil para a casa hoje?",
+  "Deixe um like naquele post que salvou sua vida!",
+  "Suporte orgânico economiza tempo e material. Concorda?",
+  "Quem nunca queimou o dedo no bloco aquecido não é maker de verdade.",
+  "O segredo de um bom overhang é reza forte e ventilação.",
+  "Imprimindo peças em lote? Haja coragem!",
+  "Nada de jogar fora! Aquela peça com defeito vira teste de pintura.",
+  "Filamento quebra-galho ou marca premium? O que você prefere?",
+  "A primeira camada é a base de todo o sucesso (literalmente).",
+  "Aquele 'crec' ao soltar a peça da mesa magnética é música para os ouvidos.",
+  "Já limpou o bico entupido com agulha hoje?",
+  "O que você está modelando de bom por aí?",
+  "Um projeto falho é só mais uma oportunidade de aprender.",
+  "Qual a velocidade máxima que sua impressora já alcançou?",
+  "A arte de esconder as emendas (Z-seam) no fatiador.",
+  "Camada de 0.12mm para miniaturas, ou 0.28mm pra terminar logo?",
+  "Não julgue a peça pelo monstro de espaguete que ela deixou.",
+  "A impressora está parada? Que heresia! Bota ela pra rodar!",
+  "Quantos quilos de filamento você já transformou em arte?",
+  "Seu design pode ser a solução para o problema de alguém.",
+  "Bora trocar dicas de acabamento e lixamento no Fórum!",
+  "Fez um time-lapse da impressão? Posta o vídeo aqui!",
+  "A paciência é a virtude mais importante de um maker.",
+  "Nada como a magia de ver a peça surgir do nada na mesa.",
+  "Dizem que PLA não aguenta calor... Já testou num dia de sol?",
+  "O botão de Like não gasta o seu mouse, valorize o trabalho da galera!",
+  "Qual o seu truque para evitar pé de elefante (elephant foot)?",
+  "Sextou! E a impressora vai virar a noite trabalhando.",
+  "Uma impressora 3D é pouco, duas é bom, três é pouco espaço em casa!",
+  "Impressão 3D: transformando rolos de plástico em felicidade."
 ];
+];
+
+// Helper para descobrir se é vídeo
+const isVideo = (url: string) => {
+  if (!url) return false;
+  return !!url.match(/\.(mp4|webm|ogg|mov)(?:\?.*)?$/i);
+};
 
 export default function Community() {
   const { profile } = useAuth();
@@ -252,7 +262,7 @@ export default function Community() {
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile || !title || !stlFile || mediaFiles.length === 0) return toast.error("Preencha título, STL e fotos!");
+    if (!profile || !title || !stlFile || mediaFiles.length === 0) return toast.error("Preencha título, STL e no mínimo 1 foto/vídeo!");
     try {
       setIsUploading(true);
       toast.info("Injetando modelo no servidor...");
@@ -268,12 +278,20 @@ export default function Community() {
     }
   };
 
+  // SISTEMA INTELIGENTE DE MÚLTIPLAS MÍDIAS (Adiciona sem substituir)
   const handleMediaSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const filesArray = Array.from(e.target.files).slice(0, 5);
-      setMediaFiles(filesArray);
-      setMediaPreviews(filesArray.map(f => URL.createObjectURL(f)));
+      const newFiles = Array.from(e.target.files);
+      const combinedFiles = [...mediaFiles, ...newFiles].slice(0, 5); // Limite de 5 arquivos
+      setMediaFiles(combinedFiles);
+      setMediaPreviews(combinedFiles.map(f => URL.createObjectURL(f)));
     }
+  };
+
+  const removeMedia = (indexToRemove: number) => {
+    const updatedFiles = mediaFiles.filter((_, idx) => idx !== indexToRemove);
+    setMediaFiles(updatedFiles);
+    setMediaPreviews(updatedFiles.map(f => URL.createObjectURL(f)));
   };
 
   const handleOpenPost = async (post: any) => {
@@ -320,8 +338,9 @@ export default function Community() {
     <div className="w-full h-full p-4 md:p-8 space-y-6 pb-32">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
+          {/* NOME ATUALIZADO AQUI */}
           <h2 className="text-3xl font-black uppercase italic tracking-tighter text-foreground flex items-center gap-3">
-            Datalake <span className="text-blue-500">Makers</span>
+            Hub <span className="text-blue-500">Maker</span>
             {!showBot && (
               <Button variant="outline" size="sm" onClick={toggleBot} className="ml-2 h-8 rounded-full text-xs font-black uppercase text-blue-500 border-blue-500/30 hover:bg-blue-500/10">
                 <Bot className="w-3 h-3 mr-1" /> Ativar 3DBot
@@ -483,7 +502,7 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE DETALHES DO POST (NOVO DESIGN PREMIUM - ESTRUTURA LADO A LADO) */}
+      {/* MODAL DE DETALHES DO POST (NOVO DESIGN PREMIUM - LADO A LADO) */}
       <AnimatePresence>
         {selectedPost && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-6 pl-0 md:pl-64">
@@ -495,16 +514,24 @@ export default function Community() {
                 <X className="w-5 h-5" />
               </Button>
 
-              {/* Lado Esquerdo - Imagem (Dark Theme) */}
+              {/* Lado Esquerdo - Mídia em Destaque */}
               <div className="w-full md:w-3/5 bg-zinc-950 flex flex-col relative h-[40vh] md:h-full border-r border-border/50">
                 <div className="flex-1 w-full h-full p-4 flex items-center justify-center overflow-hidden">
-                   <img src={selectedPost.post_media?.[activeImageIndex]?.media_url} className="max-w-full max-h-full object-contain drop-shadow-xl" alt="Preview" />
+                   {isVideo(selectedPost.post_media?.[activeImageIndex]?.media_url) ? (
+                     <video src={selectedPost.post_media?.[activeImageIndex]?.media_url} autoPlay loop muted playsInline className="max-w-full max-h-full object-contain drop-shadow-xl rounded-xl" />
+                   ) : (
+                     <img src={selectedPost.post_media?.[activeImageIndex]?.media_url} className="max-w-full max-h-full object-contain drop-shadow-xl" alt="Preview" />
+                   )}
                 </div>
                 {selectedPost.post_media?.length > 1 && (
                   <div className="flex gap-2 p-4 overflow-x-auto bg-black/40 backdrop-blur-sm">
                     {selectedPost.post_media.map((media: any, index: number) => (
                       <button key={media.id} onClick={() => setActiveImageIndex(index)} className={`w-16 h-16 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all ${index === activeImageIndex ? 'border-blue-500 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-                        <img src={media.media_url} className="w-full h-full object-cover" />
+                        {isVideo(media.media_url) ? (
+                          <video src={media.media_url} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={media.media_url} className="w-full h-full object-cover" />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -514,7 +541,6 @@ export default function Community() {
               {/* Lado Direito - Informações Premium */}
               <div className="w-full md:w-2/5 flex flex-col bg-background h-[50vh] md:h-full relative">
                 
-                {/* CABEÇALHO DO AUTOR (Fixo no topo) */}
                 <div className="flex items-center gap-3 p-6 border-b border-border/50 bg-background/95 z-10">
                   <ProfileAvatar user={selectedPost.profiles} className="w-12 h-12 shadow-sm" />
                   <div>
@@ -523,10 +549,7 @@ export default function Community() {
                   </div>
                 </div>
 
-                {/* CONTEÚDO ROLÁVEL (Descrição + Comentários) */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-                  
-                  {/* Descrição e Stats */}
                   <div className="space-y-4">
                     <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedPost.description || 'Nenhuma descrição fornecida.'}</p>
                     
@@ -539,7 +562,6 @@ export default function Community() {
                     </div>
                   </div>
 
-                  {/* Sessão de Comentários */}
                   <div className="pt-6 border-t border-border/50 space-y-4">
                     <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-blue-500"/> Comentários ({comments.length})
@@ -564,10 +586,7 @@ export default function Community() {
                   </div>
                 </div>
 
-                {/* RODAPÉ FIXO (Ações, Input e Download) */}
                 <div className="p-4 border-t border-border/50 bg-background/95 flex flex-col gap-3">
-                  
-                  {/* Botões de Like e Dislike do Post */}
                   <div className="flex gap-2">
                     <Button onClick={() => handleInteraction(selectedPost.id, true)} className={`flex-1 h-10 rounded-xl font-black transition-colors ${isLiked ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-muted/50 text-foreground hover:bg-muted'}`}>
                       <ThumbsUp className="w-4 h-4 mr-2" /> {selectedPost.like_count || 0}
@@ -602,7 +621,7 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE UPLOAD DE STL */}
+      {/* MODAL DE UPLOAD DE STL E MÍDIAS (CRIAR POST) */}
       <AnimatePresence>
         {isUploadModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pl-0 md:pl-64">
@@ -623,14 +642,17 @@ export default function Community() {
                     <textarea disabled={isUploading} placeholder="Detalhes, material..." className="w-full min-h-[100px] p-4 rounded-xl font-medium border border-border bg-background resize-none focus:ring-2 focus:ring-blue-500 outline-none" value={description} onChange={(e) => setDescription(e.target.value)} />
                   </div>
                 </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* UPLOAD MÚLTIPLAS MÍDIAS */}
                   <div className="space-y-2">
                     <div className="relative border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl p-6 text-center transition-colors bg-muted/10 group">
-                      <input type="file" accept="image/*,video/*" multiple required disabled={isUploading} onChange={handleMediaSelection} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      <input type="file" accept="image/*,video/*" multiple required={mediaFiles.length === 0} disabled={isUploading || mediaFiles.length >= 5} onChange={handleMediaSelection} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
                       <ImageIcon className={`w-6 h-6 mx-auto mb-2 ${mediaFiles.length ? 'text-blue-500' : 'text-muted-foreground'}`} />
-                      <p className="text-xs font-bold px-2">{mediaFiles.length ? `${mediaFiles.length} mídia(s)` : 'Fotos (Até 5)'}</p>
+                      <p className="text-xs font-bold px-2">{mediaFiles.length ? `${mediaFiles.length}/5 selecionadas` : 'Fotos / Vídeos (Até 5)'}</p>
                     </div>
                   </div>
+                  
                   <div className="space-y-2">
                     <div className="relative border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl p-6 text-center transition-colors bg-muted/10 group h-full flex flex-col justify-center">
                       <input type="file" accept=".stl,.obj" required disabled={isUploading} onChange={(e) => setStlFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
@@ -639,6 +661,25 @@ export default function Community() {
                     </div>
                   </div>
                 </div>
+
+                {/* PREVIEWS NO FORMULÁRIO */}
+                {mediaPreviews.length > 0 && (
+                  <div className="flex gap-3 overflow-x-auto py-2">
+                    {mediaPreviews.map((src, i) => (
+                      <div key={i} className="relative w-16 h-16 flex-shrink-0">
+                         {isVideo(src) ? (
+                           <video src={src} className="w-full h-full object-cover rounded-xl border border-border" />
+                         ) : (
+                           <img src={src} className="w-full h-full object-cover rounded-xl border border-border" />
+                         )}
+                         <button type="button" disabled={isUploading} onClick={() => removeMedia(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform">
+                           <X className="w-3 h-3"/>
+                         </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <Button type="submit" disabled={isUploading} className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-xl text-sm">
                   {isUploading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <UploadCloud className="w-5 h-5 mr-2" />}
                   Publicar Modelo
@@ -652,7 +693,7 @@ export default function Community() {
   );
 }
 
-// Subcomponente de Avatar (Para reutilizar a foto ou a letra em todos os lugares)
+// Subcomponente de Avatar
 function ProfileAvatar({ user, className = '' }: { user: any, className?: string }) {
   if (user?.avatar_url) {
     return <img src={user.avatar_url} className={`rounded-full object-cover border border-border/50 ${className}`} alt={user.name} />;
@@ -664,6 +705,7 @@ function ProfileAvatar({ user, className = '' }: { user: any, className?: string
   );
 }
 
+// Card do Feed
 function STLCard({ post, onClick, onLike, onDislike, profileId }: any) {
   const mainImage = post.post_media?.[0]?.media_url || 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=2070';
   const myInt = post.post_interactions?.find((i:any) => i.user_id === profileId);
@@ -673,7 +715,11 @@ function STLCard({ post, onClick, onLike, onDislike, profileId }: any) {
   return (
     <Card className="group bg-card border-border overflow-hidden rounded-2xl hover:border-blue-500/50 transition-all shadow-sm hover:shadow-xl hover:shadow-blue-500/10 flex flex-col">
       <div className="aspect-square relative overflow-hidden bg-muted cursor-pointer" onClick={onClick}>
-        <img src={mainImage} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt={post.title} />
+        {isVideo(mainImage) ? (
+          <video src={mainImage} autoPlay loop muted playsInline className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        ) : (
+          <img src={mainImage} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt={post.title} />
+        )}
       </div>
       <CardContent className="p-3 md:p-4 flex flex-col justify-between flex-1 space-y-2">
         <h4 className="font-black text-xs md:text-sm uppercase italic tracking-tighter line-clamp-2 leading-tight cursor-pointer hover:text-blue-500 transition-colors" onClick={onClick}>{post.title}</h4>
