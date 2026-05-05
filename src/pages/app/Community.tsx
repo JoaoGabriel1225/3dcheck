@@ -30,7 +30,7 @@ const botMessages = [
   "Nada como o cheirinho de filamento derretido de manhã.",
   "Warping é o terror, mas a gente sempre vence.",
   "Posta aquele modelo que você modelou e tem orgulho!",
-  "Mais um dia, mais um Benchy impresso.",
+  "Mais um dia, mais uma impressão.",
   "Qual o seu fatiador favorito? Conta pra gente!",
   "Infill de 20% ou de 100%? Depende da raiva.",
   "Ajude a comunidade dando like nos projetos incríveis!",
@@ -75,21 +75,19 @@ export default function Community() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Controle do Robô (salvo no navegador)
   const [showBot, setShowBot] = useState(localStorage.getItem('hide3DBot') !== 'true');
   const [botPhrase, setBotPhrase] = useState('');
 
-  // Modais
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDoubtModalOpen, setIsDoubtModalOpen] = useState(false);
   
-  // Post Aberto e Comentários
+  // Post & Fórum Aberto
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
+  const [selectedDoubt, setSelectedDoubt] = useState<any | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
 
-  // Upload Form
   const [isUploading, setIsUploading] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -97,7 +95,6 @@ export default function Community() {
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
 
-  // Carrega a frase do robô
   useEffect(() => {
     setBotPhrase(botMessages[Math.floor(Math.random() * botMessages.length)]);
   }, []);
@@ -121,22 +118,25 @@ export default function Community() {
 
   useEffect(() => { loadData(); }, [sortBy]);
 
-  // Carrega comentários quando abre um post
+  // Carrega comentários do POST
   useEffect(() => {
     if (selectedPost) {
       communityService.getComments(selectedPost.id).then(data => setComments(data));
     }
   }, [selectedPost]);
 
-  // LIKE INTELIGENTE
+  // Carrega comentários da DÚVIDA
+  useEffect(() => {
+    if (selectedDoubt) {
+      communityService.getDoubtComments(selectedDoubt.id).then(data => setComments(data));
+    }
+  }, [selectedDoubt]);
+
   const handleInteraction = async (postId: string, isLikeAction: boolean) => {
     if (!profile) return toast.error("Faça login para interagir.");
-    
-    // Descobre se o usuário já tem uma interação neste post
     const postToUpdate = posts.find(p => p.id === postId);
     const myCurrentInteraction = postToUpdate?.post_interactions?.find((i: any) => i.user_id === profile.id);
     
-    // Se clicou no que já estava ativo, envia NULL para remover
     let newInteractionState: boolean | null = isLikeAction;
     if (myCurrentInteraction && myCurrentInteraction.is_like === isLikeAction) {
       newInteractionState = null; 
@@ -146,7 +146,6 @@ export default function Community() {
       await communityService.interactWithPost(postId, profile.id, newInteractionState);
       loadData(); 
       if (selectedPost && selectedPost.id === postId) {
-        // Atualiza a visualização local para não precisar fechar o modal
         setSelectedPost({...selectedPost, 
            like_count: newInteractionState === true ? (selectedPost.like_count + 1) : (myCurrentInteraction?.is_like === true ? selectedPost.like_count - 1 : selectedPost.like_count),
            dislike_count: newInteractionState === false ? (selectedPost.dislike_count + 1) : (myCurrentInteraction?.is_like === false ? selectedPost.dislike_count - 1 : selectedPost.dislike_count)
@@ -157,16 +156,23 @@ export default function Community() {
     }
   };
 
+  // Enviar comentário (Post ou Dúvida)
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile || !newComment.trim() || !selectedPost) return;
+    if (!profile || !newComment.trim()) return;
+    
     try {
-      await communityService.addComment(selectedPost.id, profile.id, newComment);
+      if (selectedPost) {
+        await communityService.addComment(selectedPost.id, profile.id, newComment);
+        communityService.getComments(selectedPost.id).then(data => setComments(data));
+      } else if (selectedDoubt) {
+        await communityService.addDoubtComment(selectedDoubt.id, profile.id, newComment);
+        communityService.getDoubtComments(selectedDoubt.id).then(data => setComments(data));
+      }
       setNewComment('');
-      communityService.getComments(selectedPost.id).then(data => setComments(data));
-      toast.success("Comentário enviado!");
+      toast.success("Enviado com sucesso!");
     } catch (error) {
-      toast.error("Erro ao comentar.");
+      toast.error("Erro ao enviar.");
     }
   };
 
@@ -176,7 +182,7 @@ export default function Community() {
     try {
       setIsUploading(true);
       await communityService.createDoubt(profile.id, title, description);
-      toast.success("Dúvida publicada no fórum!");
+      toast.success("Dúvida publicada!");
       setIsDoubtModalOpen(false);
       setTitle(''); setDescription('');
       loadData();
@@ -216,7 +222,13 @@ export default function Community() {
   const handleOpenPost = async (post: any) => {
     setSelectedPost(post);
     setActiveImageIndex(0);
+    setNewComment('');
     communityService.incrementViews(post.id, post.views_count || 0);
+  };
+
+  const handleOpenDoubt = (doubt: any) => {
+    setSelectedDoubt(doubt);
+    setNewComment('');
   };
 
   const handleDeletePost = async (postId: string) => {
@@ -227,39 +239,45 @@ export default function Community() {
       setSelectedPost(null);
       loadData();
     } catch (error) {
-      toast.error("Erro ao apagar modelo.");
+      toast.error("Erro ao apagar. Sem permissão.");
     }
   };
 
-  // Verifica as interações do usuário logado no post aberto
+  const handleDeleteDoubt = async (doubtId: string) => {
+    if (!confirm("Apagar esta dúvida permanentemente?")) return;
+    try {
+      await communityService.deleteDoubt(doubtId);
+      toast.success("Dúvida apagada!");
+      setSelectedDoubt(null);
+      loadData();
+    } catch (error) {
+      toast.error("Erro ao apagar. Sem permissão.");
+    }
+  };
+
   const myInteraction = selectedPost?.post_interactions?.find((i: any) => i.user_id === profile?.id);
   const isLiked = myInteraction?.is_like === true;
   const isDisliked = myInteraction?.is_like === false;
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <div className="w-full h-full p-4 md:p-8 space-y-6 pb-32">
-      
-      {/* HEADER DE TÍTULO */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
           <h2 className="text-3xl font-black uppercase italic tracking-tighter text-foreground flex items-center gap-3">
             Datalake <span className="text-blue-500">Makers</span>
             {!showBot && (
               <Button variant="outline" size="sm" onClick={toggleBot} className="ml-2 h-8 rounded-full text-xs font-black uppercase text-blue-500 border-blue-500/30 hover:bg-blue-500/10">
-                <Bot className="w-3 h-3 mr-1" /> Reativar 3DBot
+                <Bot className="w-3 h-3 mr-1" /> Ativar 3DBot
               </Button>
             )}
           </h2>
         </div>
-        <Button 
-          onClick={() => activeTab === 'feed' ? setIsUploadModalOpen(true) : setIsDoubtModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl px-6 h-12 shadow-lg uppercase italic flex items-center gap-2 w-full md:w-auto"
-        >
+        <Button onClick={() => activeTab === 'feed' ? setIsUploadModalOpen(true) : setIsDoubtModalOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl px-6 h-12 shadow-lg uppercase italic flex items-center gap-2 w-full md:w-auto">
           <Plus className="w-5 h-5" /> {activeTab === 'feed' ? 'Novo Modelo' : 'Nova Dúvida'}
         </Button>
       </header>
 
-      {/* BANNER DO ROBÔ (Ocultável) */}
       <AnimatePresence>
         {showBot && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, overflow: 'hidden' }}>
@@ -284,7 +302,6 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      {/* BARRA DE CONTROLES */}
       <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-card p-2 rounded-2xl border border-border shadow-sm">
         <div className="flex gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0">
           <button onClick={() => setActiveTab('feed')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeTab === 'feed' ? 'bg-muted text-blue-500' : 'text-muted-foreground hover:bg-muted/50'}`}>
@@ -310,7 +327,6 @@ export default function Community() {
         )}
       </div>
 
-      {/* FEED DE CONTEÚDO */}
       <AnimatePresence mode="wait">
         {activeTab === 'feed' ? (
           <motion.div key={`feed-${sortBy}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5">
@@ -321,13 +337,13 @@ export default function Community() {
         ) : (
           <motion.div key="forum" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
             {doubts.map((doubt) => (
-              <DoubtItem key={doubt.id} doubt={doubt} />
+              <DoubtItem key={doubt.id} doubt={doubt} onClick={() => handleOpenDoubt(doubt)} />
             ))}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* MODAL DO FÓRUM (Criar Dúvida) */}
+      {/* MODAL DO FÓRUM (CRIAR DÚVIDA) */}
       <AnimatePresence>
         {isDoubtModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pl-0 md:pl-64">
@@ -355,26 +371,82 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE DETALHES DO POST (COM COMENTÁRIOS E LIKES ATIVOS) */}
+      {/* MODAL DE DÚVIDA (RESPONDER E VISUALIZAR) */}
+      <AnimatePresence>
+        {selectedDoubt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pl-0 md:pl-64">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedDoubt(null)} className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-card border border-border rounded-3xl shadow-2xl z-10 flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between p-6 border-b border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-sm text-white font-black uppercase">
+                    {selectedDoubt.profiles?.name?.charAt(0) || 'M'}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black uppercase italic leading-tight">{selectedDoubt.title}</h3>
+                    <p className="text-xs font-bold uppercase text-muted-foreground">@{selectedDoubt.profiles?.name}</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setSelectedDoubt(null)} className="rounded-full"><X className="w-5 h-5" /></Button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedDoubt.content}</p>
+                <div className="border-t border-border/50 pt-4">
+                  <h4 className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2 mb-4">
+                    <MessageSquare className="w-4 h-4"/> Respostas ({comments.length})
+                  </h4>
+                  <div className="space-y-4">
+                    {comments.map((c) => (
+                      <div key={c.id} className="bg-muted/40 p-4 rounded-2xl">
+                        <p className="text-[10px] font-black uppercase text-blue-500 mb-1">@{c.profiles?.name}</p>
+                        <p className="text-sm text-foreground/90">{c.content}</p>
+                      </div>
+                    ))}
+                    {comments.length === 0 && <p className="text-sm text-muted-foreground italic">Ninguém respondeu ainda. Salve o dia!</p>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-border/50 bg-card/90 flex flex-col gap-3">
+                <form onSubmit={handleAddComment} className="relative flex items-center">
+                  <Input placeholder="Escreva sua resposta..." value={newComment} onChange={e => setNewComment(e.target.value)} className="pr-12 rounded-full h-12 bg-muted/50 border-transparent focus-visible:ring-blue-500" />
+                  <Button type="submit" size="icon" variant="ghost" className="absolute right-1 text-blue-500 hover:text-blue-600 hover:bg-transparent rounded-full">
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </form>
+                {(profile?.id === selectedDoubt.user_id || isAdmin) && (
+                  <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-500/10 text-xs font-bold uppercase w-fit mx-auto" onClick={() => handleDeleteDoubt(selectedDoubt.id)}>
+                    <Trash2 className="w-3 h-3 mr-1" /> Apagar Tópico
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL DE DETALHES DO POST (NOVO DESIGN PREMIUM) */}
       <AnimatePresence>
         {selectedPost && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-8 pl-0 md:pl-64">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-6 pl-0 md:pl-64">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedPost(null)} className="absolute inset-0 bg-background/90 backdrop-blur-sm" />
             
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-5xl bg-card border border-border rounded-3xl shadow-2xl z-10 flex flex-col md:flex-row overflow-hidden max-h-[95vh]">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-6xl bg-card border border-border/50 rounded-[2rem] shadow-2xl z-10 flex flex-col md:flex-row overflow-hidden max-h-[90vh]">
               
-              <Button variant="ghost" size="icon" onClick={() => setSelectedPost(null)} className="absolute top-4 right-4 z-20 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md">
+              <Button variant="ghost" size="icon" onClick={() => setSelectedPost(null)} className="absolute top-4 right-4 z-20 bg-background/50 hover:bg-background/80 text-foreground rounded-full backdrop-blur-md transition-colors border border-border/50 shadow-sm">
                 <X className="w-5 h-5" />
               </Button>
 
-              <div className="w-full md:w-3/5 bg-zinc-950 flex flex-col relative h-[35vh] md:h-auto">
-                <div className="flex-1 w-full h-full p-2 flex items-center justify-center">
-                   <img src={selectedPost.post_media?.[activeImageIndex]?.media_url} className="w-full h-full object-contain rounded-xl" alt="Preview" />
+              {/* Lado Esquerdo - Imagem (Dark Theme Vibe) */}
+              <div className="w-full md:w-3/5 bg-muted/30 flex flex-col relative h-[40vh] md:h-auto border-r border-border/50">
+                <div className="flex-1 w-full h-full p-4 flex items-center justify-center">
+                   <img src={selectedPost.post_media?.[activeImageIndex]?.media_url} className="max-w-full max-h-full object-contain drop-shadow-xl" alt="Preview" />
                 </div>
                 {selectedPost.post_media?.length > 1 && (
-                  <div className="flex gap-2 p-4 overflow-x-auto bg-black/40">
+                  <div className="flex gap-2 p-4 overflow-x-auto bg-background/50 backdrop-blur-sm">
                     {selectedPost.post_media.map((media: any, index: number) => (
-                      <button key={media.id} onClick={() => setActiveImageIndex(index)} className={`w-16 h-16 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all ${index === activeImageIndex ? 'border-blue-500 opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`}>
+                      <button key={media.id} onClick={() => setActiveImageIndex(index)} className={`w-16 h-16 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all ${index === activeImageIndex ? 'border-blue-500 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}>
                         <img src={media.media_url} className="w-full h-full object-cover" />
                       </button>
                     ))}
@@ -382,79 +454,86 @@ export default function Community() {
                 )}
               </div>
 
-              <div className="w-full md:w-2/5 flex flex-col bg-card h-[60vh] md:h-auto">
-                <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 pb-24">
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter leading-tight mb-3">{selectedPost.title}</h2>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs text-white font-black uppercase">
-                          {selectedPost.profiles?.name?.charAt(0) || 'M'}
-                        </div>
-                        <div>
-                          <p className="text-xs font-black uppercase text-blue-500 italic">@{selectedPost.profiles?.name || 'Maker'}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase font-bold">{new Date(selectedPost.created_at).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      <span className="flex items-center gap-1 text-[10px] font-black uppercase text-muted-foreground"><Eye className="w-3 h-3" /> {selectedPost.views_count || 0}</span>
+              {/* Lado Direito - Informações Premium */}
+              <div className="w-full md:w-2/5 flex flex-col bg-background h-[50vh] md:h-auto relative">
+                <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 pb-32">
+                  
+                  {/* Cabeçalho do Autor */}
+                  <div className="flex items-center gap-3 border-b border-border/50 pb-4">
+                    <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-lg text-white font-black uppercase shadow-inner">
+                      {selectedPost.profiles?.name?.charAt(0) || 'M'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-black uppercase text-foreground">@{selectedPost.profiles?.name || 'Maker'}</p>
+                      <p className="text-xs text-muted-foreground font-medium">{new Date(selectedPost.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
 
-                  {/* LIKES COM HIGHLIGHT SE CLICADO */}
-                  <div className="flex gap-3 border-y border-border/50 py-4">
-                     <Button 
-                       variant="outline" 
-                       onClick={() => handleInteraction(selectedPost.id, true)}
-                       className={`flex-1 h-12 rounded-xl font-black transition-colors ${isLiked ? 'bg-blue-500/10 border-blue-500/50 text-blue-500' : 'border-border hover:bg-blue-500/10 hover:text-blue-500'}`}
-                     >
-                       <ThumbsUp className="w-4 h-4 mr-2" /> {selectedPost.like_count || 0}
-                     </Button>
-                     <Button 
-                       variant="outline" 
-                       onClick={() => handleInteraction(selectedPost.id, false)}
-                       className={`flex-1 h-12 rounded-xl font-black transition-colors ${isDisliked ? 'bg-red-500/10 border-red-500/50 text-red-500' : 'border-border hover:bg-red-500/10 hover:text-red-500'}`}
-                     >
-                       <ThumbsDown className="w-4 h-4 mr-2" /> {selectedPost.dislike_count || 0}
-                     </Button>
+                  {/* Título e Stats */}
+                  <div>
+                    <h2 className="text-2xl font-black uppercase italic tracking-tighter leading-tight mb-4">{selectedPost.title}</h2>
+                    <div className="flex items-center gap-4 text-sm font-black text-muted-foreground uppercase">
+                      <span className="flex items-center gap-1"><Eye className="w-4 h-4 text-blue-500" /> {selectedPost.views_count || 0}</span>
+                      
+                      {/* Botões de Like Integrados (Pequenos e elegantes) */}
+                      <div className="flex gap-1 bg-muted/50 p-1 rounded-full border border-border/50">
+                        <button onClick={() => handleInteraction(selectedPost.id, true)} className={`flex items-center gap-1 px-3 py-1 rounded-full transition-colors ${isLiked ? 'bg-blue-500 text-white' : 'hover:bg-blue-500/10'}`}>
+                          <ThumbsUp className="w-3 h-3" /> {selectedPost.like_count || 0}
+                        </button>
+                        <button onClick={() => handleInteraction(selectedPost.id, false)} className={`flex items-center gap-1 px-3 py-1 rounded-full transition-colors ${isDisliked ? 'bg-red-500 text-white' : 'hover:bg-red-500/10'}`}>
+                          <ThumbsDown className="w-3 h-3" /> {selectedPost.dislike_count || 0}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Descrição */}
                   <div className="space-y-2">
-                    <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Descrição do Projeto</h4>
                     <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedPost.description || 'Nenhuma descrição fornecida.'}</p>
                   </div>
 
-                  {/* SESSÃO DE COMENTÁRIOS */}
-                  <div className="space-y-4 pt-4">
-                    <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2"><MessageSquare className="w-3 h-3"/> Discussão ({comments.length})</h4>
-                    <div className="space-y-3">
+                  {/* Sessão de Comentários Elegante */}
+                  <div className="space-y-4 pt-6 border-t border-border/50">
+                    <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-blue-500"/> Comentários ({comments.length})
+                    </h4>
+                    <div className="space-y-4">
                       {comments.map((c) => (
-                        <div key={c.id} className="bg-muted/30 p-3 rounded-2xl">
-                          <p className="text-[10px] font-black uppercase text-blue-500 mb-1">@{c.profiles?.name}</p>
-                          <p className="text-xs text-foreground/80">{c.content}</p>
+                        <div key={c.id} className="flex gap-3">
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-black uppercase flex-shrink-0">
+                            {c.profiles?.name?.charAt(0)}
+                          </div>
+                          <div className="bg-muted/30 px-4 py-3 rounded-2xl rounded-tl-sm flex-1 border border-border/30">
+                            <p className="text-[10px] font-black uppercase text-blue-500 mb-1">@{c.profiles?.name}</p>
+                            <p className="text-sm text-foreground/90">{c.content}</p>
+                          </div>
                         </div>
                       ))}
-                      {comments.length === 0 && <p className="text-xs text-muted-foreground italic">Seja o primeiro a comentar!</p>}
+                      {comments.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-4">Sem comentários ainda.</p>}
                     </div>
                   </div>
                 </div>
 
-                {/* ÁREA FIXA NO RODAPÉ DO MODAL (Botão Download, Excluir e Input de Comentário) */}
-                <div className="absolute bottom-0 w-full bg-card/90 backdrop-blur-md p-4 border-t border-border/50">
-                  <form onSubmit={handleAddComment} className="flex gap-2 mb-3">
-                    <Input placeholder="Escreva um comentário..." value={newComment} onChange={e => setNewComment(e.target.value)} className="rounded-xl h-10 text-xs bg-background" />
-                    <Button type="submit" size="icon" className="h-10 w-10 rounded-xl bg-blue-600 text-white"><Send className="w-4 h-4" /></Button>
+                {/* Rodapé Fixo (Input estilo Chat e Botão Download) */}
+                <div className="absolute bottom-0 w-full bg-background/95 backdrop-blur-md p-4 border-t border-border/50 flex flex-col gap-3">
+                  <form onSubmit={handleAddComment} className="relative flex items-center">
+                    <Input placeholder="Adicionar comentário..." value={newComment} onChange={e => setNewComment(e.target.value)} className="pr-12 rounded-full h-12 bg-muted/50 border-transparent focus-visible:ring-blue-500" />
+                    <Button type="submit" size="icon" variant="ghost" className="absolute right-1 text-blue-500 hover:text-blue-600 hover:bg-transparent rounded-full">
+                      <Send className="w-5 h-5" />
+                    </Button>
                   </form>
                   <div className="flex gap-2">
-                    <Button className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-xl text-sm shadow-xl shadow-blue-500/20 active:scale-95" onClick={() => window.open(selectedPost.stl_url, '_blank')}>
-                      <Download className="w-4 h-4 mr-2" /> Baixar STL
+                    <Button className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-full text-sm shadow-lg shadow-blue-500/20 transition-all active:scale-95" onClick={() => window.open(selectedPost.stl_url, '_blank')}>
+                      <Download className="w-4 h-4 mr-2" /> Baixar Modelo STL
                     </Button>
-                    {(profile?.id === selectedPost.user_id || profile?.role === 'admin') && (
-                      <Button variant="destructive" size="icon" className="h-12 w-12 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20" onClick={() => handleDeletePost(selectedPost.id)}>
-                        <Trash2 className="w-4 h-4" />
+                    {(profile?.id === selectedPost.user_id || isAdmin) && (
+                      <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full text-muted-foreground hover:bg-red-500 hover:text-white border border-transparent hover:border-red-500 transition-colors" onClick={() => handleDeletePost(selectedPost.id)}>
+                        <Trash2 className="w-5 h-5" />
                       </Button>
                     )}
                   </div>
                 </div>
+
               </div>
             </motion.div>
           </div>
@@ -513,19 +592,17 @@ export default function Community() {
 
 function STLCard({ post, onClick, onLike, onDislike, profileId }: any) {
   const mainImage = post.post_media?.[0]?.media_url || 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=2070';
-  
-  // Verifica se o usuário atual curtiu no feed externo
   const myInt = post.post_interactions?.find((i:any) => i.user_id === profileId);
   const isLiked = myInt?.is_like === true;
   const isDisliked = myInt?.is_like === false;
 
   return (
-    <Card className="group bg-card border-border overflow-hidden rounded-2xl hover:border-blue-500/50 transition-all shadow-md hover:shadow-xl hover:shadow-blue-500/10 flex flex-col">
+    <Card className="group bg-card border-border overflow-hidden rounded-2xl hover:border-blue-500/50 transition-all shadow-sm hover:shadow-xl hover:shadow-blue-500/10 flex flex-col">
       <div className="aspect-square relative overflow-hidden bg-muted cursor-pointer" onClick={onClick}>
-        <img src={mainImage} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={post.title} />
+        <img src={mainImage} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt={post.title} />
       </div>
       <CardContent className="p-3 md:p-4 flex flex-col justify-between flex-1 space-y-2">
-        <h4 className="font-black text-xs md:text-sm uppercase italic tracking-tighter line-clamp-2 leading-tight cursor-pointer" onClick={onClick}>{post.title}</h4>
+        <h4 className="font-black text-xs md:text-sm uppercase italic tracking-tighter line-clamp-2 leading-tight cursor-pointer hover:text-blue-500 transition-colors" onClick={onClick}>{post.title}</h4>
         <div className="flex items-center justify-between pt-2 border-t border-border/50">
           <span className="text-[9px] md:text-[10px] font-bold uppercase text-muted-foreground truncate max-w-[50%]">@{post.profiles?.name || 'Maker'}</span>
           <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground">
@@ -542,9 +619,9 @@ function STLCard({ post, onClick, onLike, onDislike, profileId }: any) {
   );
 }
 
-function DoubtItem({ doubt }: { doubt: any }) {
+function DoubtItem({ doubt, onClick }: { doubt: any, onClick: () => void }) {
   return (
-    <Card className="bg-card/50 border-border hover:border-blue-500/20 rounded-2xl overflow-hidden cursor-pointer">
+    <Card onClick={onClick} className="bg-card/50 border-border hover:border-blue-500/40 rounded-2xl overflow-hidden cursor-pointer transition-colors shadow-sm">
       <div className="p-4 flex items-center justify-between gap-4">
         <div className="flex items-start gap-3">
           <HelpCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
