@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { 
   MessageCircle, Plus, Search, Trash2, ShoppingBag, Filter, 
   Calendar, User, Tag, Package, Activity, Clock, CheckCircle2,
-  Info, DollarSign, TrendingUp 
+  Info, DollarSign, TrendingUp, MapPin, Copy // Adicionado MapPin e Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -69,6 +69,7 @@ export default function Orders() {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientAddress, setNewClientAddress] = useState(''); // Novo estado de endereço
   const [selectedProductId, setSelectedProductId] = useState('custom');
   const [orderDescription, setOrderDescription] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
@@ -86,7 +87,7 @@ export default function Orders() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select(`id, description, status, final_price, cost_total, created_at, clients(name, phone), products(name)`)
+        .select(`id, description, status, final_price, cost_total, created_at, clients(name, phone, address), products(name)`) // Incluído address
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -98,7 +99,7 @@ export default function Orders() {
     if (!profile) return;
     try {
       const [clientsRes, productsRes] = await Promise.all([
-        supabase.from('clients').select('id, name, phone').eq('user_id', profile.id).order('name'),
+        supabase.from('clients').select('id, name, phone, address').eq('user_id', profile.id).order('name'),
         supabase.from('products').select('id, name, description, final_price, cost_total').eq('user_id', profile.id).order('name')
       ]);
       if (clientsRes.data) setClientsOptions(clientsRes.data);
@@ -176,7 +177,12 @@ export default function Orders() {
         const cleanPhone = newClientPhone.replace(/\D/g, '');
         if (cleanPhone.length < 10) { toast.error('Telefone inválido.'); return; }
         const fullPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-        const { data: newClient, error: clientErr } = await supabase.from('clients').insert({ user_id: profile.id, name: newClientName || clientSearchText, phone: fullPhone }).select().single();
+        const { data: newClient, error: clientErr } = await supabase.from('clients').insert({ 
+          user_id: profile.id, 
+          name: newClientName || clientSearchText, 
+          phone: fullPhone,
+          address: newClientAddress || null // Adicionado salvamento de endereço
+        }).select().single();
         if (clientErr) throw clientErr;
         finalClientId = newClient.id;
       }
@@ -205,6 +211,7 @@ export default function Orders() {
     let p = client.phone || '';
     if (p.startsWith('55') && p.length > 11) p = p.substring(2);
     setNewClientPhone(p);
+    setNewClientAddress(client.address || ''); // Carrega endereço se já existir
     setClientSearchText(client.name);
     setShowClientDropdown(false);
   };
@@ -212,8 +219,13 @@ export default function Orders() {
   const resetOrderForm = () => {
     setClientSearchText(''); setShowClientDropdown(false); setSelectedClientId('');
     setProductSearchText(''); setShowProductDropdown(false);
-    setNewClientName(''); setNewClientPhone(''); setSelectedProductId('custom');
+    setNewClientName(''); setNewClientPhone(''); setNewClientAddress(''); setSelectedProductId('custom');
     setOrderDescription(''); setOrderPrice(''); setOrderCost('');
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Endereço copiado!');
   };
 
   const filteredOrders = orders.filter((order) => {
@@ -232,11 +244,11 @@ export default function Orders() {
     return matchesStatus && matchesTime && (
       (order.clients?.name || '').toLowerCase().includes(term) ||
       (order.products?.name || '').toLowerCase().includes(term) ||
-      (order.description || '').toLowerCase().includes(term)
+      (order.description || '').toLowerCase().includes(term) ||
+      (order.clients?.address || '').toLowerCase().includes(term)
     );
   });
 
-  // --- INÍCIO DA CORREÇÃO ---
   const filteredClients = clientsOptions.filter(client =>
     client.name.toLowerCase().includes(clientSearchText.toLowerCase())
   );
@@ -244,7 +256,6 @@ export default function Orders() {
   const filteredProducts = productsOptions.filter(product =>
     product.name.toLowerCase().includes(productSearchText.toLowerCase())
   );
-  // --- FIM DA CORREÇÃO ---
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-10 max-w-full overflow-hidden">
@@ -319,6 +330,16 @@ export default function Orders() {
                         />
                     </div>
                 </div>
+                {/* Campo de Endereço Opcional no Cadastro */}
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-60 ml-1">Endereço de Entrega (Opcional)</Label>
+                    <Input 
+                        placeholder="Rua, Número, Bairro..." 
+                        value={newClientAddress}
+                        onChange={(e) => setNewClientAddress(e.target.value)}
+                        className="h-12 rounded-xl"
+                    />
+                </div>
               </div>
 
               <div className="space-y-4 pt-4 border-t border-border">
@@ -392,7 +413,7 @@ export default function Orders() {
               </div>
 
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full h-16 bg-blue-600 hover:bg-blue-500 text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-500/20 transition-all active:scale-95">
+                <Button type="submit" className="w-full h-16 bg-blue-600 hover:bg-blue-500 text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-600/20 transition-all active:scale-95">
                   SALVAR PEDIDO
                 </Button>
               </DialogFooter>
@@ -508,6 +529,14 @@ export default function Orders() {
                     <div>
                       <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
                       <h4 className="font-black text-foreground uppercase text-sm">{order.clients?.name}</h4>
+                      {/* Endereço no Mobile com botão copiar */}
+                      {order.clients?.address && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <MapPin className="w-3 h-3 text-blue-500" />
+                          <span className="text-[10px] font-bold text-muted-foreground italic truncate max-w-[150px]">{order.clients.address}</span>
+                          <Button variant="ghost" size="icon" className="h-4 w-4 text-blue-500" onClick={() => copyToClipboard(order.clients.address)}><Copy className="w-3 h-3" /></Button>
+                        </div>
+                      )}
                     </div>
                     <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(order.status)}`}>
                       {order.status}
@@ -533,7 +562,7 @@ export default function Orders() {
           </AnimatePresence>
         </div>
 
-        {/* DESKTOP VIEW: Ajustada para caber na tela sem scroll */}
+        {/* DESKTOP VIEW */}
         <Card className="hidden md:block border-border bg-card/30 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
           <Table className="w-full table-fixed">
             <TableHeader>
@@ -560,6 +589,14 @@ export default function Orders() {
                       <TableCell className="px-4 py-4">
                         <div className="font-black text-sm text-foreground uppercase truncate">{order.clients?.name}</div>
                         <div className="text-[10px] text-muted-foreground font-medium truncate">{order.clients?.phone}</div>
+                        {/* Endereço no Desktop com botão copiar */}
+                        {order.clients?.address && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <MapPin className="w-3 h-3 text-blue-500" />
+                            <span className="text-[9px] font-black text-blue-500 uppercase italic truncate max-w-[120px]">{order.clients.address}</span>
+                            <button onClick={() => copyToClipboard(order.clients.address)} className="hover:text-blue-700 transition-colors"><Copy className="w-2.5 h-2.5" /></button>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="px-4 py-4">
                         <div className="font-bold text-sm text-foreground truncate">{order.products?.name || 'Personalizado'}</div>
