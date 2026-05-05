@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { 
   Users, Plus, Edit2, Trash2, Phone, Mail, 
   UserPlus, Search, MessageCircle, TrendingUp, 
-  UserCheck, Calendar // Adicionado Calendar para o filtro
+  UserCheck, Calendar 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -32,19 +32,19 @@ export default function Clients() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('mes'); // Novo estado de filtro
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('mes'); 
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
 
   const fetchClients = async () => {
     if (!profile) return;
     setLoading(true);
     try {
-      // Lógica de data para o filtro
       let startDate = new Date();
       startDate.setHours(0, 0, 0, 0);
 
@@ -60,7 +60,7 @@ export default function Clients() {
         .from('clients')
         .select('*')
         .eq('user_id', profile.id)
-        .gte('created_at', startDate.toISOString()) // Filtro aplicado na query
+        .gte('created_at', startDate.toISOString())
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -74,7 +74,7 @@ export default function Clients() {
 
   useEffect(() => {
     fetchClients();
-  }, [profile, timeFilter]); // Recarrega quando o filtro muda
+  }, [profile, timeFilter]); 
 
   const totalFiltered = clients.length;
 
@@ -94,7 +94,8 @@ export default function Clients() {
         user_id: profile.id,
         name,
         phone: fullPhone,
-        email: email || null
+        email: email || null,
+        address: address || null
       };
 
       if (editingClientId) {
@@ -127,6 +128,7 @@ export default function Clients() {
     if (p.startsWith('55') && p.length > 11) p = p.substring(2);
     setPhone(p);
     setEmail(client.email || '');
+    setAddress(client.address || '');
     setIsDialogOpen(true);
   };
 
@@ -147,6 +149,7 @@ export default function Clients() {
     setName('');
     setPhone('');
     setEmail('');
+    setAddress('');
   };
 
   const filteredClients = clients.filter(c => 
@@ -226,6 +229,10 @@ export default function Clients() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">E-mail (Opcional)</Label>
                 <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="cliente@exemplo.com" className="flex h-12 w-full rounded-2xl border border-input bg-muted/30 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">Endereço (Opcional)</Label>
+                <input id="address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ex: Rua das Flores, 123" className="flex h-12 w-full rounded-2xl border border-input bg-muted/30 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
               </div>
               <Button type="submit" className="w-full h-14 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-600/20 text-lg transition-all">
                 {editingClientId ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR CADASTRO'}
