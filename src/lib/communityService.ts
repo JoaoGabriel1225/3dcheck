@@ -1,13 +1,12 @@
 import { supabase } from '@/lib/supabase';
 
 export const communityService = {
-  // --- BUSCAR DADOS COM FILTROS ---
   async getPosts(sortBy: 'newest' | 'likes' | 'views' = 'newest') {
     let query = supabase
       .from('community_posts')
       .select(`
         *,
-        profiles:user_id (name, plan_status),
+        profiles:user_id (name, plan_status, avatar_url, role),
         post_media (media_url),
         post_interactions (is_like, user_id)
       `);
@@ -24,18 +23,15 @@ export const communityService = {
   async getDoubts() {
     const { data, error } = await supabase
       .from('community_doubts')
-      .select('*, profiles:user_id (name)')
+      .select('*, profiles:user_id (name, avatar_url, role)')
       .order('created_at', { ascending: false });
     
     if (error) return [];
     return data;
   },
 
-  // --- NOVA FUNÇÃO: CRIAR DÚVIDA NO FÓRUM ---
   async createDoubt(userId: string, title: string, content: string) {
-    const { error } = await supabase
-      .from('community_doubts')
-      .insert({ user_id: userId, title, content });
+    const { error } = await supabase.from('community_doubts').insert({ user_id: userId, title, content });
     if (error) throw error;
   },
 
@@ -81,13 +77,10 @@ export const communityService = {
     await supabase.from('community_posts').update({ views_count: currentViews + 1 }).eq('id', postId);
   },
 
-  // --- INTERAÇÕES INTELIGENTES (Tirar voto / Trocar voto) ---
   async interactWithPost(postId: string, userId: string, isLike: boolean | null) {
     if (isLike === null) {
-      // Remover interação se o usuário clicou no mesmo botão
       await supabase.from('post_interactions').delete().match({ post_id: postId, user_id: userId });
     } else {
-      // Inserir ou atualizar (Upsert)
       await supabase.from('post_interactions').upsert({ post_id: postId, user_id: userId, is_like: isLike }, { onConflict: 'post_id,user_id' });
     }
 
@@ -98,11 +91,10 @@ export const communityService = {
     await supabase.from('community_posts').update({ like_count: likes, dislike_count: dislikes }).eq('id', postId);
   },
 
-  // --- COMENTÁRIOS ---
   async getComments(postId: string) {
     const { data, error } = await supabase
       .from('post_comments')
-      .select('*, profiles:user_id(name)')
+      .select('*, profiles:user_id(name, avatar_url)')
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
     if (error) return [];
@@ -112,13 +104,18 @@ export const communityService = {
   async addComment(postId: string, userId: string, content: string) {
     const { error } = await supabase.from('post_comments').insert({ post_id: postId, user_id: userId, content });
     if (error) throw error;
-  }, // <--- A CHAVE E A VÍRGULA QUE FALTAVAM ESTÃO AQUI!
+  },
 
-  // --- NOVAS FUNÇÕES DO FÓRUM ---
+  async likeComment(commentId: string, userId: string, currentLikes: number) {
+    // Sistema simples: soma +1 no like_count do comentário
+    const { error } = await supabase.from('post_comments').update({ like_count: currentLikes + 1 }).eq('id', commentId);
+    if (error) throw error;
+  },
+
   async getDoubtComments(doubtId: string) {
     const { data, error } = await supabase
       .from('community_doubt_comments')
-      .select('*, profiles:user_id(name)')
+      .select('*, profiles:user_id(name, avatar_url)')
       .eq('doubt_id', doubtId)
       .order('created_at', { ascending: true });
     if (error) return [];
