@@ -42,11 +42,12 @@ Link Público exclusivo para a Bio do Instagram/TikTok.
 4. MARKETPLACE HUB (PRODUTOS CURADOS):
 Diferente da vitrine do maker, esta é uma área interna do 3DCheck com produtos de extrema qualidade e preços/promoções incríveis selecionados a dedo pelo Desenvolvedor. O Maker encontra ótimas oportunidades nas seguintes categorias: IMPRESSORAS 3D, FILAMENTOS, PECAS E REPOSICAO, FERRAMENTAS, ADESAO E ACABAMENTO, ARMAZENAMENTO DE FILAMENTO e UPGRADES.
 
-5. HUB MAKER E FORUM (COMUNIDADE E REDE SOCIAL):
+5. Stl's Da Comunidade (Hub Maker) E FORUM (COMUNIDADE E REDE SOCIAL):
 - Feed Premium: Timeline estilo rede social. O Maker faz upload de até 5 mídias (Fotos e VIDEOS mp4/webm que rodam sozinhos).
 - Arquivos: Pode anexar multipartes em .ZIP, .RAR ou .STL simples.
 - Interação: Likes, Views, Downloads e Chat de Comentários nos posts.
 - Fórum: Para pedir ajuda técnica. Permite anexos de mídia e arquivos.
+- Serve para compartilhar arquivos entre si, tirar dúvidas e interagir socialmente.
 
 6. CONFIGURACOES GLOBAIS E FINANCEIRO:
 - Inteligência de Custos (Financeiro): Onde a margem é garantida. O Maker cadastra valor da energia (R$/kWh), preço médio do filamento, Taxa de Setup (custo fixo de preparo), Depreciação da máquina (R$/hora), Margem de Falha (seguro contra perda de peças) e Margem de Lucro Alvo.
