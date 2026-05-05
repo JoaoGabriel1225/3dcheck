@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { 
   Users, Plus, Edit2, Trash2, Phone, Mail, 
   UserPlus, Search, MessageCircle, TrendingUp, 
-  UserCheck, Calendar, MapPin // Adicionado MapPin para o endereço
+  UserCheck, Calendar, MapPin, Copy // Adicionado Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -152,6 +152,12 @@ export default function Clients() {
     setAddress('');
   };
 
+  // Função de cópia adicionada
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Endereço copiado!');
+  };
+
   const filteredClients = clients.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     c.phone.includes(searchTerm)
@@ -287,7 +293,6 @@ export default function Clients() {
               className="flex h-12 w-full rounded-2xl border border-input bg-card/50 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-11 border-border focus:ring-blue-500/20"
             />
           </motion.div>
-          {/* Badge informativa do filtro */}
           <span className="text-[10px] uppercase font-black text-muted-foreground bg-muted px-3 py-1.5 rounded-lg flex items-center gap-1.5 self-start md:self-auto border border-border">
              <Calendar className="w-3 h-3" /> {timeFilter}
           </span>
@@ -332,10 +337,19 @@ export default function Clients() {
                           <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground font-medium">
                             <Mail className="w-3 h-3" /> {client.email || 'Sem e-mail'}
                           </div>
-                          {/* BLOCO ADICIONADO: Exibe o endereço na lista se ele existir */}
+                          {/* BLOCO ATUALIZADO: Endereço com botão de cópia */}
                           {client.address && (
-                            <div className="flex items-center gap-1.5 mt-1 text-[10px] text-blue-500 font-bold uppercase italic">
-                              <MapPin className="w-3 h-3" /> {client.address}
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-1.5 text-[10px] text-blue-500 font-bold uppercase italic truncate max-w-[200px]">
+                                <MapPin className="w-3 h-3" /> {client.address}
+                              </div>
+                              <button 
+                                onClick={() => copyToClipboard(client.address)} 
+                                className="text-blue-500 hover:text-blue-700 transition-colors p-0.5"
+                                title="Copiar endereço"
+                              >
+                                <Copy className="w-2.5 h-2.5" />
+                              </button>
                             </div>
                           )}
                         </TableCell>
