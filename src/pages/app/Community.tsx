@@ -9,59 +9,108 @@ import { toast } from 'sonner';
 import { 
   Download, ThumbsUp, ThumbsDown, Plus, Search, Box, HelpCircle, Sparkles, 
   ChevronRight, X, UploadCloud, FileBox, ImageIcon, Loader2, 
-  Eye, Trash2, Clock, Flame, TrendingUp, Bot, MessageSquare, Send
+  Eye, Trash2, Clock, Flame, TrendingUp, Bot, MessageSquare, Send, Heart
 } from 'lucide-react';
 
 const botMessages = [
-  "Nivelou a mesa hoje, mestre?",
+   "Nivelou a mesa hoje, mestre?",
+
   "Aderência perfeita na primeira camada é arte!",
+
   "Mostra pra gente o que está na sua mesa de impressão!",
+
   "STL novo? Compartilha aí!",
+
   "O filamento acabou no meio da impressão? Força guerreiro!",
+
   "Bambu Lab, Creality ou Anycubic? O que importa é imprimir!",
+
   "Apoio nunca é demais. Ou é?",
+
   "Z-hop salvando vidas (e peças) desde sempre.",
+
   "Qual a temperatura perfeita pro seu PLA?",
+
   "PETG é vida, mas que stringing chato, hein?",
+
   "Já calibrou o fluxo hoje?",
+
   "Imprimiu algo útil hoje ou só bonecos? (Julgamos não!)",
+
   "Que a sua primeira camada seja sempre lisa como vidro.",
+
   "Bora compartilhar conhecimento e arquivos 3D!",
+
   "Nada como o cheirinho de filamento derretido de manhã.",
+
   "Warping é o terror, mas a gente sempre vence.",
+
   "Posta aquele modelo que você modelou e tem orgulho!",
+
   "Mais um dia, mais uma impressão.",
+
   "Qual o seu fatiador favorito? Conta pra gente!",
+
   "Infill de 20% ou de 100%? Depende da raiva.",
+
   "Ajude a comunidade dando like nos projetos incríveis!",
+
   "Ficou em dúvida? Pergunta ali no Fórum!",
+
   "Uma comunidade forte se faz com compartilhamento.",
+
   "Suportes em árvore são maravilhosos, concorda?",
+
   "Bico entupido de novo? A gente te entende.",
+
   "Resina ou FDM? A batalha continua.",
+
   "Secou o filamento antes de usar? Fica a dica!",
+
   "Mostre sua mais nova invenção em 3D!",
+
   "Erro no G-Code? Reinicia que vai (mentira, não vai).",
+
   "Nada de desistir daquela impressão de 48 horas!",
+
   "Quem nunca esqueceu de gerar suporte que atire a primeira pedra.",
+
   "Sua impressora está pedindo manutenção, não finja que não viu.",
+
   "Imprimindo upgrades para a própria impressora? Clássico.",
+
   "Dê feedback nos projetos da galera, isso motiva muito!",
+
   "Aquele momento de tensão quando a peça não desgruda da mesa...",
+
   "Qual a cor de filamento que mais sai por aí?",
+
   "Um bom design resolve metade dos problemas de impressão.",
+
   "Bora subir o nível dessa comunidade com seus STLs!",
+
   "Velocidade ou Qualidade? Eis a questão.",
+
   "Já lubrificou os eixos Z hoje?",
+
   "Peça soltou da mesa nas últimas 10 camadas? Trágico.",
+
   "Compartilhe seus perfis de fatiamento com quem precisa!",
+
   "A magia do 3D: Do software para o mundo real.",
+
   "Nenhum modelo é simples demais para ser compartilhado.",
+
   "Iniciante ou Veterano, todo maker tem seu espaço aqui.",
+
   "Brim, Skirt ou Raft? Escolha sua arma.",
+
   "Quebrou a peça tirando o suporte? Super bonder resolve.",
+
   "Aquele barulhinho da impressora trabalhando acalma a alma.",
+
   "Seu projeto pode ajudar outro maker, poste aí!",
+
   "Bora dominar o mundo (uma camada de cada vez)."
 ];
 
@@ -81,7 +130,6 @@ export default function Community() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDoubtModalOpen, setIsDoubtModalOpen] = useState(false);
   
-  // Post & Fórum Aberto
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [selectedDoubt, setSelectedDoubt] = useState<any | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -94,6 +142,8 @@ export default function Community() {
   const [stlFile, setStlFile] = useState<File | null>(null);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     setBotPhrase(botMessages[Math.floor(Math.random() * botMessages.length)]);
@@ -118,14 +168,12 @@ export default function Community() {
 
   useEffect(() => { loadData(); }, [sortBy]);
 
-  // Carrega comentários do POST
   useEffect(() => {
     if (selectedPost) {
       communityService.getComments(selectedPost.id).then(data => setComments(data));
     }
   }, [selectedPost]);
 
-  // Carrega comentários da DÚVIDA
   useEffect(() => {
     if (selectedDoubt) {
       communityService.getDoubtComments(selectedDoubt.id).then(data => setComments(data));
@@ -156,7 +204,6 @@ export default function Community() {
     }
   };
 
-  // Enviar comentário (Post ou Dúvida)
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile || !newComment.trim()) return;
@@ -172,7 +219,17 @@ export default function Community() {
       setNewComment('');
       toast.success("Enviado com sucesso!");
     } catch (error) {
-      toast.error("Erro ao enviar.");
+      toast.error("Erro ao enviar. Verifique o banco.");
+    }
+  };
+
+  const handleLikeComment = async (commentId: string, currentLikes: number) => {
+    if (!profile) return;
+    try {
+      await communityService.likeComment(commentId, profile.id, currentLikes);
+      if (selectedPost) communityService.getComments(selectedPost.id).then(data => setComments(data));
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -258,7 +315,6 @@ export default function Community() {
   const myInteraction = selectedPost?.post_interactions?.find((i: any) => i.user_id === profile?.id);
   const isLiked = myInteraction?.is_like === true;
   const isDisliked = myInteraction?.is_like === false;
-  const isAdmin = profile?.role === 'admin';
 
   return (
     <div className="w-full h-full p-4 md:p-8 space-y-6 pb-32">
@@ -337,7 +393,7 @@ export default function Community() {
         ) : (
           <motion.div key="forum" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
             {doubts.map((doubt) => (
-              <DoubtItem key={doubt.id} doubt={doubt} onClick={() => handleOpenDoubt(doubt)} />
+              <DoubtItem key={doubt.id} doubt={doubt} onClick={() => handleOpenDoubt(doubt)} isAdmin={isAdmin} currentUserId={profile?.id} />
             ))}
           </motion.div>
         )}
@@ -379,9 +435,7 @@ export default function Community() {
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-card border border-border rounded-3xl shadow-2xl z-10 flex flex-col max-h-[85vh]">
               <div className="flex items-center justify-between p-6 border-b border-border/50">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-sm text-white font-black uppercase">
-                    {selectedDoubt.profiles?.name?.charAt(0) || 'M'}
-                  </div>
+                  <ProfileAvatar user={selectedDoubt.profiles} className="w-10 h-10" />
                   <div>
                     <h3 className="text-lg font-black uppercase italic leading-tight">{selectedDoubt.title}</h3>
                     <p className="text-xs font-bold uppercase text-muted-foreground">@{selectedDoubt.profiles?.name}</p>
@@ -398,12 +452,15 @@ export default function Community() {
                   </h4>
                   <div className="space-y-4">
                     {comments.map((c) => (
-                      <div key={c.id} className="bg-muted/40 p-4 rounded-2xl">
-                        <p className="text-[10px] font-black uppercase text-blue-500 mb-1">@{c.profiles?.name}</p>
-                        <p className="text-sm text-foreground/90">{c.content}</p>
+                      <div key={c.id} className="flex gap-3">
+                        <ProfileAvatar user={c.profiles} className="w-8 h-8 flex-shrink-0" />
+                        <div className="bg-muted/40 p-4 rounded-2xl rounded-tl-sm flex-1 border border-border/30">
+                          <p className="text-[10px] font-black uppercase text-blue-500 mb-1">@{c.profiles?.name}</p>
+                          <p className="text-sm text-foreground/90">{c.content}</p>
+                        </div>
                       </div>
                     ))}
-                    {comments.length === 0 && <p className="text-sm text-muted-foreground italic">Ninguém respondeu ainda. Salve o dia!</p>}
+                    {comments.length === 0 && <p className="text-sm text-muted-foreground italic text-center py-4">Ninguém respondeu ainda. Salve o dia!</p>}
                   </div>
                 </div>
               </div>
@@ -426,25 +483,25 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE DETALHES DO POST (NOVO DESIGN PREMIUM) */}
+      {/* MODAL DE DETALHES DO POST (NOVO DESIGN PREMIUM - ESTRUTURA LADO A LADO) */}
       <AnimatePresence>
         {selectedPost && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-6 pl-0 md:pl-64">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedPost(null)} className="absolute inset-0 bg-background/90 backdrop-blur-sm" />
             
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-6xl bg-card border border-border/50 rounded-[2rem] shadow-2xl z-10 flex flex-col md:flex-row overflow-hidden max-h-[90vh]">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-6xl h-[85vh] bg-card border border-border/50 rounded-[2rem] shadow-2xl z-10 flex flex-col md:flex-row overflow-hidden">
               
               <Button variant="ghost" size="icon" onClick={() => setSelectedPost(null)} className="absolute top-4 right-4 z-20 bg-background/50 hover:bg-background/80 text-foreground rounded-full backdrop-blur-md transition-colors border border-border/50 shadow-sm">
                 <X className="w-5 h-5" />
               </Button>
 
-              {/* Lado Esquerdo - Imagem (Dark Theme Vibe) */}
-              <div className="w-full md:w-3/5 bg-muted/30 flex flex-col relative h-[40vh] md:h-auto border-r border-border/50">
-                <div className="flex-1 w-full h-full p-4 flex items-center justify-center">
+              {/* Lado Esquerdo - Imagem (Dark Theme) */}
+              <div className="w-full md:w-3/5 bg-zinc-950 flex flex-col relative h-[40vh] md:h-full border-r border-border/50">
+                <div className="flex-1 w-full h-full p-4 flex items-center justify-center overflow-hidden">
                    <img src={selectedPost.post_media?.[activeImageIndex]?.media_url} className="max-w-full max-h-full object-contain drop-shadow-xl" alt="Preview" />
                 </div>
                 {selectedPost.post_media?.length > 1 && (
-                  <div className="flex gap-2 p-4 overflow-x-auto bg-background/50 backdrop-blur-sm">
+                  <div className="flex gap-2 p-4 overflow-x-auto bg-black/40 backdrop-blur-sm">
                     {selectedPost.post_media.map((media: any, index: number) => (
                       <button key={media.id} onClick={() => setActiveImageIndex(index)} className={`w-16 h-16 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all ${index === activeImageIndex ? 'border-blue-500 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}>
                         <img src={media.media_url} className="w-full h-full object-cover" />
@@ -455,75 +512,80 @@ export default function Community() {
               </div>
 
               {/* Lado Direito - Informações Premium */}
-              <div className="w-full md:w-2/5 flex flex-col bg-background h-[50vh] md:h-auto relative">
-                <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6 pb-32">
-                  
-                  {/* Cabeçalho do Autor */}
-                  <div className="flex items-center gap-3 border-b border-border/50 pb-4">
-                    <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-lg text-white font-black uppercase shadow-inner">
-                      {selectedPost.profiles?.name?.charAt(0) || 'M'}
-                    </div>
-                    <div>
-                      <p className="text-sm font-black uppercase text-foreground">@{selectedPost.profiles?.name || 'Maker'}</p>
-                      <p className="text-xs text-muted-foreground font-medium">{new Date(selectedPost.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-
-                  {/* Título e Stats */}
+              <div className="w-full md:w-2/5 flex flex-col bg-background h-[50vh] md:h-full relative">
+                
+                {/* CABEÇALHO DO AUTOR (Fixo no topo) */}
+                <div className="flex items-center gap-3 p-6 border-b border-border/50 bg-background/95 z-10">
+                  <ProfileAvatar user={selectedPost.profiles} className="w-12 h-12 shadow-sm" />
                   <div>
-                    <h2 className="text-2xl font-black uppercase italic tracking-tighter leading-tight mb-4">{selectedPost.title}</h2>
-                    <div className="flex items-center gap-4 text-sm font-black text-muted-foreground uppercase">
-                      <span className="flex items-center gap-1"><Eye className="w-4 h-4 text-blue-500" /> {selectedPost.views_count || 0}</span>
-                      
-                      {/* Botões de Like Integrados (Pequenos e elegantes) */}
-                      <div className="flex gap-1 bg-muted/50 p-1 rounded-full border border-border/50">
-                        <button onClick={() => handleInteraction(selectedPost.id, true)} className={`flex items-center gap-1 px-3 py-1 rounded-full transition-colors ${isLiked ? 'bg-blue-500 text-white' : 'hover:bg-blue-500/10'}`}>
-                          <ThumbsUp className="w-3 h-3" /> {selectedPost.like_count || 0}
-                        </button>
-                        <button onClick={() => handleInteraction(selectedPost.id, false)} className={`flex items-center gap-1 px-3 py-1 rounded-full transition-colors ${isDisliked ? 'bg-red-500 text-white' : 'hover:bg-red-500/10'}`}>
-                          <ThumbsDown className="w-3 h-3" /> {selectedPost.dislike_count || 0}
-                        </button>
-                      </div>
+                    <h2 className="text-lg font-black uppercase tracking-tighter leading-tight line-clamp-1">{selectedPost.title}</h2>
+                    <p className="text-xs font-bold text-muted-foreground uppercase">@{selectedPost.profiles?.name || 'Maker'}</p>
+                  </div>
+                </div>
+
+                {/* CONTEÚDO ROLÁVEL (Descrição + Comentários) */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+                  
+                  {/* Descrição e Stats */}
+                  <div className="space-y-4">
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedPost.description || 'Nenhuma descrição fornecida.'}</p>
+                    
+                    <div className="flex items-center gap-4 text-xs font-black text-muted-foreground uppercase pt-2">
+                      <span className="flex items-center gap-1"><Eye className="w-4 h-4 text-blue-500" /> {selectedPost.views_count || 0} views</span>
+                      <span className="text-muted-foreground/30">•</span>
+                      <span className="flex items-center gap-1"><Download className="w-4 h-4 text-emerald-500" /> {selectedPost.download_count || 0} downloads</span>
+                      <span className="text-muted-foreground/30">•</span>
+                      <span>{new Date(selectedPost.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
 
-                  {/* Descrição */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedPost.description || 'Nenhuma descrição fornecida.'}</p>
-                  </div>
-
-                  {/* Sessão de Comentários Elegante */}
-                  <div className="space-y-4 pt-6 border-t border-border/50">
+                  {/* Sessão de Comentários */}
+                  <div className="pt-6 border-t border-border/50 space-y-4">
                     <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-blue-500"/> Comentários ({comments.length})
                     </h4>
                     <div className="space-y-4">
                       {comments.map((c) => (
                         <div key={c.id} className="flex gap-3">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-black uppercase flex-shrink-0">
-                            {c.profiles?.name?.charAt(0)}
-                          </div>
-                          <div className="bg-muted/30 px-4 py-3 rounded-2xl rounded-tl-sm flex-1 border border-border/30">
-                            <p className="text-[10px] font-black uppercase text-blue-500 mb-1">@{c.profiles?.name}</p>
-                            <p className="text-sm text-foreground/90">{c.content}</p>
+                          <ProfileAvatar user={c.profiles} className="w-8 h-8 flex-shrink-0" />
+                          <div className="flex-1 space-y-1">
+                            <div className="bg-muted/30 px-4 py-3 rounded-2xl rounded-tl-sm border border-border/30">
+                              <p className="text-[10px] font-black uppercase text-foreground mb-1">@{c.profiles?.name}</p>
+                              <p className="text-sm text-foreground/90">{c.content}</p>
+                            </div>
+                            <button onClick={() => handleLikeComment(c.id, c.like_count || 0)} className="text-[10px] font-bold text-muted-foreground hover:text-red-500 flex items-center gap-1 ml-2 transition-colors">
+                              <Heart className="w-3 h-3" /> Curtir {c.like_count > 0 && `(${c.like_count})`}
+                            </button>
                           </div>
                         </div>
                       ))}
-                      {comments.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-4">Sem comentários ainda.</p>}
+                      {comments.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-8">Seja o primeiro a comentar neste modelo!</p>}
                     </div>
                   </div>
                 </div>
 
-                {/* Rodapé Fixo (Input estilo Chat e Botão Download) */}
-                <div className="absolute bottom-0 w-full bg-background/95 backdrop-blur-md p-4 border-t border-border/50 flex flex-col gap-3">
+                {/* RODAPÉ FIXO (Ações, Input e Download) */}
+                <div className="p-4 border-t border-border/50 bg-background/95 flex flex-col gap-3">
+                  
+                  {/* Botões de Like e Dislike do Post */}
+                  <div className="flex gap-2">
+                    <Button onClick={() => handleInteraction(selectedPost.id, true)} className={`flex-1 h-10 rounded-xl font-black transition-colors ${isLiked ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-muted/50 text-foreground hover:bg-muted'}`}>
+                      <ThumbsUp className="w-4 h-4 mr-2" /> {selectedPost.like_count || 0}
+                    </Button>
+                    <Button onClick={() => handleInteraction(selectedPost.id, false)} className={`flex-1 h-10 rounded-xl font-black transition-colors ${isDisliked ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-muted/50 text-foreground hover:bg-muted'}`}>
+                      <ThumbsDown className="w-4 h-4 mr-2" /> {selectedPost.dislike_count || 0}
+                    </Button>
+                  </div>
+
                   <form onSubmit={handleAddComment} className="relative flex items-center">
                     <Input placeholder="Adicionar comentário..." value={newComment} onChange={e => setNewComment(e.target.value)} className="pr-12 rounded-full h-12 bg-muted/50 border-transparent focus-visible:ring-blue-500" />
                     <Button type="submit" size="icon" variant="ghost" className="absolute right-1 text-blue-500 hover:text-blue-600 hover:bg-transparent rounded-full">
                       <Send className="w-5 h-5" />
                     </Button>
                   </form>
-                  <div className="flex gap-2">
-                    <Button className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-full text-sm shadow-lg shadow-blue-500/20 transition-all active:scale-95" onClick={() => window.open(selectedPost.stl_url, '_blank')}>
+                  
+                  <div className="flex gap-2 mt-1">
+                    <Button className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-full text-sm shadow-lg shadow-blue-500/20 transition-all active:scale-95" onClick={() => { window.open(selectedPost.stl_url, '_blank'); communityService.incrementDownload(selectedPost.id, selectedPost.download_count || 0); }}>
                       <Download className="w-4 h-4 mr-2" /> Baixar Modelo STL
                     </Button>
                     {(profile?.id === selectedPost.user_id || isAdmin) && (
@@ -590,6 +652,18 @@ export default function Community() {
   );
 }
 
+// Subcomponente de Avatar (Para reutilizar a foto ou a letra em todos os lugares)
+function ProfileAvatar({ user, className = '' }: { user: any, className?: string }) {
+  if (user?.avatar_url) {
+    return <img src={user.avatar_url} className={`rounded-full object-cover border border-border/50 ${className}`} alt={user.name} />;
+  }
+  return (
+    <div className={`rounded-full bg-blue-500 flex items-center justify-center text-white font-black uppercase ${className}`}>
+      {user?.name?.charAt(0) || 'M'}
+    </div>
+  );
+}
+
 function STLCard({ post, onClick, onLike, onDislike, profileId }: any) {
   const mainImage = post.post_media?.[0]?.media_url || 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=2070';
   const myInt = post.post_interactions?.find((i:any) => i.user_id === profileId);
@@ -603,8 +677,11 @@ function STLCard({ post, onClick, onLike, onDislike, profileId }: any) {
       </div>
       <CardContent className="p-3 md:p-4 flex flex-col justify-between flex-1 space-y-2">
         <h4 className="font-black text-xs md:text-sm uppercase italic tracking-tighter line-clamp-2 leading-tight cursor-pointer hover:text-blue-500 transition-colors" onClick={onClick}>{post.title}</h4>
-        <div className="flex items-center justify-between pt-2 border-t border-border/50">
-          <span className="text-[9px] md:text-[10px] font-bold uppercase text-muted-foreground truncate max-w-[50%]">@{post.profiles?.name || 'Maker'}</span>
+        <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-auto">
+          <div className="flex items-center gap-1.5 truncate max-w-[50%]">
+            <ProfileAvatar user={post.profiles} className="w-4 h-4 text-[8px]" />
+            <span className="text-[9px] md:text-[10px] font-bold uppercase text-muted-foreground truncate">@{post.profiles?.name || 'Maker'}</span>
+          </div>
           <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground">
             <button onClick={onLike} className={`flex items-center gap-0.5 hover:text-blue-500 transition-colors ${isLiked ? 'text-blue-500' : ''}`}>
               <ThumbsUp className="w-3 h-3" /> {post.like_count || 0}
@@ -619,12 +696,12 @@ function STLCard({ post, onClick, onLike, onDislike, profileId }: any) {
   );
 }
 
-function DoubtItem({ doubt, onClick }: { doubt: any, onClick: () => void }) {
+function DoubtItem({ doubt, onClick, isAdmin, currentUserId }: any) {
   return (
     <Card onClick={onClick} className="bg-card/50 border-border hover:border-blue-500/40 rounded-2xl overflow-hidden cursor-pointer transition-colors shadow-sm">
       <div className="p-4 flex items-center justify-between gap-4">
         <div className="flex items-start gap-3">
-          <HelpCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <ProfileAvatar user={doubt.profiles} className="w-8 h-8 flex-shrink-0 text-xs" />
           <div>
             <h5 className="font-black uppercase italic text-sm line-clamp-1">{doubt.title}</h5>
             <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{doubt.content}</p>
