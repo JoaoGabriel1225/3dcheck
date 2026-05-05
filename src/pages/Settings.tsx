@@ -99,6 +99,9 @@ export default function Settings() {
         data: { avatar_url: finalUrl }
       });
 
+      // ---> LINHA NOVA AQUI: Sincroniza a foto com a tabela pública da Comunidade!
+      await supabase.from('profiles').update({ avatar_url: finalUrl }).eq('id', user.id);
+
       setAvatarUrl(finalUrl);
       toast.success('Foto de perfil atualizada!');
     } catch (error: any) {
@@ -117,6 +120,9 @@ export default function Settings() {
       await supabase.auth.updateUser({
         data: { full_name: fullName }
       });
+
+      // ---> LINHA NOVA AQUI: Sincroniza o nome com a tabela pública da Comunidade!
+      await supabase.from('profiles').update({ name: fullName }).eq('id', user.id);
 
       const { error } = await supabase.from('store_settings').upsert({
         user_id: user.id,
