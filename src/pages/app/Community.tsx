@@ -246,7 +246,29 @@ export default function Community() {
     if (!profile || !title || !description) return toast.error("Preencha tudo!");
     try {
       setIsUploading(true);
-      await communityService.createDoubt(profile.id, title, description);
+      
+      let finalContent = description;
+      let attachments = { stl: null as string | null, media: [] as string[] };
+      
+      if (stlFile) {
+        const stlExt = stlFile.name.split('.').pop();
+        attachments.stl = await communityService.uploadFile('community_stls', stlFile, `${profile.id}/${Date.now()}_doubt.${stlExt}`);
+      }
+      
+      if (mediaFiles.length > 0) {
+        for (let i = 0; i < mediaFiles.length; i++) {
+          const file = mediaFiles[i];
+          const ext = file.name.split('.').pop();
+          const url = await communityService.uploadFile('community_images', file, `${profile.id}/${Date.now()}_doubt_media_${i}.${ext}`);
+          attachments.media.push(url);
+        }
+      }
+      
+      if (attachments.stl || attachments.media.length > 0) {
+        finalContent += `|ATTACHMENTS|${JSON.stringify(attachments)}`;
+      }
+
+      await communityService.createDoubt(profile.id, title, finalContent);
       toast.success("Dúvida publicada!");
       setIsDoubtModalOpen(false);
       setTitle(''); setDescription(''); setStlFile(null); setMediaFiles([]); setMediaPreviews([]);
@@ -505,26 +527,66 @@ export default function Community() {
                 <Button variant="ghost" size="icon" onClick={() => setSelectedDoubt(null)} className="rounded-full"><X className="w-5 h-5" /></Button>
               </div>
               
-              <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-                <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedDoubt.content}</p>
-                <div className="border-t border-border/50 pt-4">
-                  <h4 className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2 mb-4">
-                    <MessageSquare className="w-4 h-4"/> Respostas ({comments.length})
-                  </h4>
-                  <div className="space-y-4">
-                    {comments.map((c) => (
-                      <div key={c.id} className="flex gap-3">
-                        <ProfileAvatar user={c.profiles} className="w-8 h-8 flex-shrink-0" />
-                        <div className="bg-muted/40 p-4 rounded-2xl rounded-tl-sm flex-1 border border-border/30">
-                          <p className="text-[10px] font-black uppercase text-blue-500 mb-1">@{c.profiles?.name}</p>
-                          <p className="text-sm text-foreground/90">{c.content}</p>
-                        </div>
+              {/* CONTEÚDO DA DÚVIDA COM ANEXOS */}
+              {(() => {
+                let doubtText = selectedDoubt.content || '';
+                let doubtMedia: string[] = [];
+                let doubtStl: string | null = null;
+                
+                if (doubtText.includes('|ATTACHMENTS|')) {
+                  const parts = doubtText.split('|ATTACHMENTS|');
+                  doubtText = parts[0];
+                  try {
+                    const parsed = JSON.parse(parts[1]);
+                    doubtMedia = parsed.media || [];
+                    doubtStl = parsed.stl || null;
+                  } catch(e) {}
+                }
+
+                return (
+                  <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{doubtText}</p>
+                    
+                    {doubtMedia.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {doubtMedia.map((url, i) => (
+                          <div key={i} className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 rounded-xl overflow-hidden border border-border bg-black/50">
+                            {isVideo(url) ? (
+                              <video src={url} controls className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={url} className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    {comments.length === 0 && <p className="text-sm text-muted-foreground italic text-center py-4">Ninguém respondeu ainda. Salve o dia!</p>}
+                    )}
+
+                    {doubtStl && (
+                      <Button onClick={() => window.open(doubtStl, '_blank')} variant="outline" className="w-full h-12 border-blue-500/30 text-blue-500 hover:bg-blue-500/10 font-bold uppercase tracking-widest text-xs">
+                        <Download className="w-4 h-4 mr-2" /> Baixar Anexo da Dúvida
+                      </Button>
+                    )}
+
+                    <div className="border-t border-border/50 pt-4">
+                      <h4 className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2 mb-4">
+                        <MessageSquare className="w-4 h-4"/> Respostas ({comments.length})
+                      </h4>
+                      <div className="space-y-4">
+                        {comments.map((c) => (
+                          <div key={c.id} className="flex gap-3">
+                            <ProfileAvatar user={c.profiles} className="w-8 h-8 flex-shrink-0" />
+                            <div className="bg-muted/40 p-4 rounded-2xl rounded-tl-sm flex-1 border border-border/30">
+                              <p className="text-[10px] font-black uppercase text-blue-500 mb-1">@{c.profiles?.name}</p>
+                              <p className="text-sm text-foreground/90">{c.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {comments.length === 0 && <p className="text-sm text-muted-foreground italic text-center py-4">Ninguém respondeu ainda. Salve o dia!</p>}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
 
               <div className="p-3 md:p-4 border-t border-border/50 bg-card/90 flex flex-col gap-3">
                 <form onSubmit={handleAddComment} className="relative flex items-center">
@@ -785,6 +847,11 @@ function STLCard({ post, onClick, onLike, onDislike, profileId }: any) {
 }
 
 function DoubtItem({ doubt, onClick, isAdmin, currentUserId }: any) {
+  let doubtText = doubt.content || '';
+  if (doubtText.includes('|ATTACHMENTS|')) {
+    doubtText = doubtText.split('|ATTACHMENTS|')[0];
+  }
+
   return (
     <Card onClick={onClick} className="bg-card/50 border-border hover:border-blue-500/40 rounded-2xl overflow-hidden cursor-pointer transition-colors shadow-sm">
       <div className="p-4 flex items-center justify-between gap-4">
@@ -792,7 +859,7 @@ function DoubtItem({ doubt, onClick, isAdmin, currentUserId }: any) {
           <ProfileAvatar user={doubt.profiles} className="w-8 h-8 flex-shrink-0 text-xs" />
           <div>
             <h5 className="font-black uppercase italic text-sm line-clamp-1">{doubt.title}</h5>
-            <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{doubt.content}</p>
+            <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{doubtText}</p>
           </div>
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
