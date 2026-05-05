@@ -276,7 +276,6 @@ export default function Community() {
     }
   };
 
-  // SISTEMA INTELIGENTE DE MÚLTIPLAS MÍDIAS (Adiciona sem substituir)
   const handleMediaSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
@@ -336,7 +335,6 @@ export default function Community() {
     <div className="w-full h-full p-4 md:p-8 space-y-6 pb-32">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          {/* NOME ATUALIZADO AQUI */}
           <h2 className="text-3xl font-black uppercase italic tracking-tighter text-foreground flex items-center gap-3">
             Hub <span className="text-blue-500">Maker</span>
             {!showBot && (
@@ -355,13 +353,14 @@ export default function Community() {
         {showBot && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, overflow: 'hidden' }}>
             <Card className="bg-card border border-border shadow-sm overflow-hidden relative rounded-3xl mb-6 group">
-              <Button variant="ghost" size="icon" onClick={toggleBot} className="absolute top-2 right-2 z-20 text-muted-foreground hover:text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                <X className="w-4 h-4" />
+              {/* Botão de fechar aprimorado para o celular */}
+              <Button variant="ghost" size="icon" onClick={toggleBot} className="absolute top-2 right-2 z-20 text-muted-foreground hover:text-red-500 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-background/80 md:bg-transparent w-10 h-10 flex items-center justify-center shadow-sm md:shadow-none">
+                <X className="w-5 h-5" />
               </Button>
               <div className="absolute right-0 top-0 opacity-[0.03] transform translate-x-4 -translate-y-4 pointer-events-none">
                 <Bot className="w-48 h-48" />
               </div>
-              <CardContent className="p-5 md:p-6 flex items-center gap-5 relative z-10">
+              <CardContent className="p-5 md:p-6 flex items-center gap-5 relative z-10 pr-12 md:pr-6">
                 <div className="bg-blue-500/10 p-3 rounded-2xl flex-shrink-0 hidden sm:block border border-blue-500/20">
                   <Bot className="w-8 h-8 text-blue-500" />
                 </div>
@@ -375,41 +374,60 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-card p-2 rounded-2xl border border-border shadow-sm">
-        <div className="flex gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0">
-          <button onClick={() => setActiveTab('feed')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeTab === 'feed' ? 'bg-muted text-blue-500' : 'text-muted-foreground hover:bg-muted/50'}`}>
-            <Box className="w-4 h-4" /> Modelos
-          </button>
-          <button onClick={() => setActiveTab('doubts')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeTab === 'doubts' ? 'bg-muted text-blue-500' : 'text-muted-foreground hover:bg-muted/50'}`}>
-            <HelpCircle className="w-4 h-4" /> Fórum
-          </button>
+      <div className="flex flex-col bg-card p-3 rounded-2xl border border-border shadow-sm gap-4">
+        
+        {/* BARRA DE PESQUISA */}
+        <div className="relative w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input 
+            placeholder="Pesquisar modelos, fórum..." 
+            className="pl-11 h-12 rounded-xl bg-muted/50 border-transparent focus-visible:ring-blue-500 font-medium w-full"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
 
-        {activeTab === 'feed' && (
-          <div className="flex gap-2 w-full xl:w-auto">
-            <button onClick={() => setSortBy('views')} className={`flex items-center justify-center flex-1 xl:flex-none gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'views' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
-              <TrendingUp className="w-3 h-3" /> Populares
+        {/* TABS E ORDENAÇÃO ENQUADRADOS */}
+        <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center w-full">
+          <div className="flex flex-wrap gap-2 w-full xl:w-auto">
+            <button onClick={() => setActiveTab('feed')} className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${activeTab === 'feed' ? 'bg-muted text-blue-500' : 'text-muted-foreground hover:bg-muted/50'}`}>
+              <Box className="w-4 h-4" /> Modelos
             </button>
-            <button onClick={() => setSortBy('likes')} className={`flex items-center justify-center flex-1 xl:flex-none gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'likes' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
-              <Flame className="w-3 h-3" /> Curtidos
-            </button>
-            <button onClick={() => setSortBy('newest')} className={`flex items-center justify-center flex-1 xl:flex-none gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'newest' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
-              <Clock className="w-3 h-3" /> Novos
+            <button onClick={() => setActiveTab('doubts')} className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${activeTab === 'doubts' ? 'bg-muted text-blue-500' : 'text-muted-foreground hover:bg-muted/50'}`}>
+              <HelpCircle className="w-4 h-4" /> Fórum
             </button>
           </div>
-        )}
+
+          {activeTab === 'feed' && (
+            <div className="flex flex-wrap gap-2 w-full xl:w-auto">
+              <button onClick={() => setSortBy('views')} className={`flex items-center justify-center flex-1 md:flex-none gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'views' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
+                <TrendingUp className="w-3 h-3" /> Populares
+              </button>
+              <button onClick={() => setSortBy('likes')} className={`flex items-center justify-center flex-1 md:flex-none gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'likes' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
+                <Flame className="w-3 h-3" /> Curtidos
+              </button>
+              <button onClick={() => setSortBy('newest')} className={`flex items-center justify-center flex-1 md:flex-none gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${sortBy === 'newest' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 'border-transparent text-muted-foreground hover:bg-muted'}`}>
+                <Clock className="w-3 h-3" /> Novos
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
         {activeTab === 'feed' ? (
           <motion.div key={`feed-${sortBy}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5">
-            {posts.map((post) => (
+            {posts
+              .filter(post => post.title.toLowerCase().includes(searchTerm.toLowerCase()) || (post.description && post.description.toLowerCase().includes(searchTerm.toLowerCase())))
+              .map((post) => (
               <STLCard key={post.id} post={post} profileId={profile?.id} onLike={() => handleInteraction(post.id, true)} onDislike={() => handleInteraction(post.id, false)} onClick={() => handleOpenPost(post)} />
             ))}
           </motion.div>
         ) : (
           <motion.div key="forum" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-            {doubts.map((doubt) => (
+            {doubts
+              .filter(doubt => doubt.title.toLowerCase().includes(searchTerm.toLowerCase()) || doubt.content.toLowerCase().includes(searchTerm.toLowerCase()))
+              .map((doubt) => (
               <DoubtItem key={doubt.id} doubt={doubt} onClick={() => handleOpenDoubt(doubt)} isAdmin={isAdmin} currentUserId={profile?.id} />
             ))}
           </motion.div>
@@ -450,7 +468,7 @@ export default function Community() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pl-0 md:pl-64">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedDoubt(null)} className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-card border border-border rounded-3xl shadow-2xl z-10 flex flex-col max-h-[85vh]">
-              <div className="flex items-center justify-between p-6 border-b border-border/50">
+              <div className="flex items-center justify-between p-4 md:p-6 border-b border-border/50">
                 <div className="flex items-center gap-3">
                   <ProfileAvatar user={selectedDoubt.profiles} className="w-10 h-10" />
                   <div>
@@ -461,7 +479,7 @@ export default function Community() {
                 <Button variant="ghost" size="icon" onClick={() => setSelectedDoubt(null)} className="rounded-full"><X className="w-5 h-5" /></Button>
               </div>
               
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+              <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
                 <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedDoubt.content}</p>
                 <div className="border-t border-border/50 pt-4">
                   <h4 className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2 mb-4">
@@ -482,7 +500,7 @@ export default function Community() {
                 </div>
               </div>
 
-              <div className="p-4 border-t border-border/50 bg-card/90 flex flex-col gap-3">
+              <div className="p-3 md:p-4 border-t border-border/50 bg-card/90 flex flex-col gap-3">
                 <form onSubmit={handleAddComment} className="relative flex items-center">
                   <Input placeholder="Escreva sua resposta..." value={newComment} onChange={e => setNewComment(e.target.value)} className="pr-12 rounded-full h-12 bg-muted/50 border-transparent focus-visible:ring-blue-500" />
                   <Button type="submit" size="icon" variant="ghost" className="absolute right-1 text-blue-500 hover:text-blue-600 hover:bg-transparent rounded-full">
@@ -500,21 +518,21 @@ export default function Community() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE DETALHES DO POST (NOVO DESIGN PREMIUM - LADO A LADO) */}
+      {/* MODAL DE DETALHES DO POST (DESIGN ADAPTADO PARA CELULAR) */}
       <AnimatePresence>
         {selectedPost && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-6 pl-0 md:pl-64">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedPost(null)} className="absolute inset-0 bg-background/90 backdrop-blur-sm" />
             
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-6xl h-[85vh] bg-card border border-border/50 rounded-[2rem] shadow-2xl z-10 flex flex-col md:flex-row overflow-hidden">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-6xl h-[92vh] md:h-[85vh] bg-card border border-border/50 rounded-[2rem] shadow-2xl z-10 flex flex-col md:flex-row overflow-hidden">
               
-              <Button variant="ghost" size="icon" onClick={() => setSelectedPost(null)} className="absolute top-4 right-4 z-20 bg-background/50 hover:bg-background/80 text-foreground rounded-full backdrop-blur-md transition-colors border border-border/50 shadow-sm">
+              <Button variant="ghost" size="icon" onClick={() => setSelectedPost(null)} className="absolute top-4 right-4 z-30 bg-background/50 hover:bg-background/80 text-foreground rounded-full backdrop-blur-md transition-colors border border-border/50 shadow-sm">
                 <X className="w-5 h-5" />
               </Button>
 
-              {/* Lado Esquerdo - Mídia em Destaque */}
-              <div className="w-full md:w-3/5 bg-zinc-950 flex flex-col relative h-[40vh] md:h-full border-r border-border/50">
-                <div className="flex-1 w-full h-full p-4 flex items-center justify-center overflow-hidden">
+              {/* Lado Esquerdo - Mídia em Destaque (Fixo na altura no celular) */}
+              <div className="w-full md:w-3/5 bg-zinc-950 flex flex-col relative h-[35vh] md:h-full border-b md:border-b-0 md:border-r border-border/50 flex-shrink-0">
+                <div className="flex-1 w-full h-full p-2 md:p-4 flex items-center justify-center overflow-hidden">
                    {isVideo(selectedPost.post_media?.[activeImageIndex]?.media_url) ? (
                      <video src={selectedPost.post_media?.[activeImageIndex]?.media_url} autoPlay loop muted playsInline className="max-w-full max-h-full object-contain drop-shadow-xl rounded-xl" />
                    ) : (
@@ -522,9 +540,9 @@ export default function Community() {
                    )}
                 </div>
                 {selectedPost.post_media?.length > 1 && (
-                  <div className="flex gap-2 p-4 overflow-x-auto bg-black/40 backdrop-blur-sm">
+                  <div className="flex gap-2 p-3 md:p-4 overflow-x-auto bg-black/40 backdrop-blur-sm">
                     {selectedPost.post_media.map((media: any, index: number) => (
-                      <button key={media.id} onClick={() => setActiveImageIndex(index)} className={`w-16 h-16 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all ${index === activeImageIndex ? 'border-blue-500 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}>
+                      <button key={media.id} onClick={() => setActiveImageIndex(index)} className={`w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all ${index === activeImageIndex ? 'border-blue-500 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}>
                         {isVideo(media.media_url) ? (
                           <video src={media.media_url} className="w-full h-full object-cover" />
                         ) : (
@@ -536,32 +554,32 @@ export default function Community() {
                 )}
               </div>
 
-              {/* Lado Direito - Informações Premium */}
-              <div className="w-full md:w-2/5 flex flex-col bg-background h-[50vh] md:h-full relative">
+              {/* Lado Direito - Informações Roláveis no Celular */}
+              <div className="w-full md:w-2/5 flex flex-col flex-1 md:h-full bg-background relative overflow-hidden">
                 
-                <div className="flex items-center gap-3 p-6 border-b border-border/50 bg-background/95 z-10">
-                  <ProfileAvatar user={selectedPost.profiles} className="w-12 h-12 shadow-sm" />
+                <div className="flex items-center gap-3 p-4 md:p-6 border-b border-border/50 bg-background/95 z-10 flex-shrink-0">
+                  <ProfileAvatar user={selectedPost.profiles} className="w-10 h-10 md:w-12 md:h-12 shadow-sm" />
                   <div>
-                    <h2 className="text-lg font-black uppercase tracking-tighter leading-tight line-clamp-1">{selectedPost.title}</h2>
-                    <p className="text-xs font-bold text-muted-foreground uppercase">@{selectedPost.profiles?.name || 'Maker'}</p>
+                    <h2 className="text-base md:text-lg font-black uppercase tracking-tighter leading-tight line-clamp-1">{selectedPost.title}</h2>
+                    <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase">@{selectedPost.profiles?.name || 'Maker'}</p>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6">
                   <div className="space-y-4">
-                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedPost.description || 'Nenhuma descrição fornecida.'}</p>
+                    <p className="text-xs md:text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{selectedPost.description || 'Nenhuma descrição fornecida.'}</p>
                     
-                    <div className="flex items-center gap-4 text-xs font-black text-muted-foreground uppercase pt-2">
-                      <span className="flex items-center gap-1"><Eye className="w-4 h-4 text-blue-500" /> {selectedPost.views_count || 0} views</span>
+                    <div className="flex items-center gap-3 text-[10px] md:text-xs font-black text-muted-foreground uppercase pt-2 flex-wrap">
+                      <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5 text-blue-500" /> {selectedPost.views_count || 0} views</span>
                       <span className="text-muted-foreground/30">•</span>
-                      <span className="flex items-center gap-1"><Download className="w-4 h-4 text-emerald-500" /> {selectedPost.download_count || 0} downloads</span>
+                      <span className="flex items-center gap-1"><Download className="w-3.5 h-3.5 text-emerald-500" /> {selectedPost.download_count || 0} down</span>
                       <span className="text-muted-foreground/30">•</span>
                       <span>{new Date(selectedPost.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
 
-                  <div className="pt-6 border-t border-border/50 space-y-4">
-                    <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                  <div className="pt-6 border-t border-border/50 space-y-4 pb-4">
+                    <h4 className="text-[10px] md:text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-blue-500"/> Comentários ({comments.length})
                     </h4>
                     <div className="space-y-4">
@@ -571,7 +589,7 @@ export default function Community() {
                           <div className="flex-1 space-y-1">
                             <div className="bg-muted/30 px-4 py-3 rounded-2xl rounded-tl-sm border border-border/30">
                               <p className="text-[10px] font-black uppercase text-foreground mb-1">@{c.profiles?.name}</p>
-                              <p className="text-sm text-foreground/90">{c.content}</p>
+                              <p className="text-xs md:text-sm text-foreground/90">{c.content}</p>
                             </div>
                             <button onClick={() => handleLikeComment(c.id, c.like_count || 0)} className="text-[10px] font-bold text-muted-foreground hover:text-red-500 flex items-center gap-1 ml-2 transition-colors">
                               <Heart className="w-3 h-3" /> Curtir {c.like_count > 0 && `(${c.like_count})`}
@@ -584,7 +602,7 @@ export default function Community() {
                   </div>
                 </div>
 
-                <div className="p-4 border-t border-border/50 bg-background/95 flex flex-col gap-3">
+                <div className="p-3 md:p-4 border-t border-border/50 bg-background/95 flex flex-col gap-2 md:gap-3 flex-shrink-0 z-20 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)]">
                   <div className="flex gap-2">
                     <Button onClick={() => handleInteraction(selectedPost.id, true)} className={`flex-1 h-10 rounded-xl font-black transition-colors ${isLiked ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-muted/50 text-foreground hover:bg-muted'}`}>
                       <ThumbsUp className="w-4 h-4 mr-2" /> {selectedPost.like_count || 0}
@@ -595,19 +613,19 @@ export default function Community() {
                   </div>
 
                   <form onSubmit={handleAddComment} className="relative flex items-center">
-                    <Input placeholder="Adicionar comentário..." value={newComment} onChange={e => setNewComment(e.target.value)} className="pr-12 rounded-full h-12 bg-muted/50 border-transparent focus-visible:ring-blue-500" />
-                    <Button type="submit" size="icon" variant="ghost" className="absolute right-1 text-blue-500 hover:text-blue-600 hover:bg-transparent rounded-full">
-                      <Send className="w-5 h-5" />
+                    <Input placeholder="Adicionar comentário..." value={newComment} onChange={e => setNewComment(e.target.value)} className="pr-12 rounded-full h-10 md:h-12 bg-muted/50 border-transparent focus-visible:ring-blue-500 text-xs md:text-sm" />
+                    <Button type="submit" size="icon" variant="ghost" className="absolute right-1 text-blue-500 hover:text-blue-600 hover:bg-transparent rounded-full h-8 w-8 md:h-10 md:w-10">
+                      <Send className="w-4 h-4 md:w-5 md:h-5" />
                     </Button>
                   </form>
                   
-                  <div className="flex gap-2 mt-1">
-                    <Button className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-full text-sm shadow-lg shadow-blue-500/20 transition-all active:scale-95" onClick={() => { window.open(selectedPost.stl_url, '_blank'); communityService.incrementDownload(selectedPost.id, selectedPost.download_count || 0); }}>
-                      <Download className="w-4 h-4 mr-2" /> Baixar Modelo STL
+                  <div className="flex gap-2">
+                    <Button className="flex-1 h-10 md:h-12 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase italic rounded-full text-xs md:text-sm shadow-lg shadow-blue-500/20 transition-all active:scale-95" onClick={() => { window.open(selectedPost.stl_url, '_blank'); communityService.incrementDownload(selectedPost.id, selectedPost.download_count || 0); }}>
+                      <Download className="w-4 h-4 mr-2" /> Baixar Modelo
                     </Button>
                     {(profile?.id === selectedPost.user_id || isAdmin) && (
-                      <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full text-muted-foreground hover:bg-red-500 hover:text-white border border-transparent hover:border-red-500 transition-colors" onClick={() => handleDeletePost(selectedPost.id)}>
-                        <Trash2 className="w-5 h-5" />
+                      <Button variant="ghost" size="icon" className="h-10 w-10 md:h-12 md:w-12 rounded-full text-muted-foreground hover:bg-red-500 hover:text-white border border-transparent hover:border-red-500 transition-colors" onClick={() => handleDeletePost(selectedPost.id)}>
+                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                       </Button>
                     )}
                   </div>
