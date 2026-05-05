@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
 export const communityService = {
+  // --- BUSCAR DADOS COM FILTROS ---
   async getPosts(sortBy: 'newest' | 'likes' | 'views' = 'newest') {
     let query = supabase
       .from('community_posts')
@@ -111,7 +112,9 @@ export const communityService = {
   async addComment(postId: string, userId: string, content: string) {
     const { error } = await supabase.from('post_comments').insert({ post_id: postId, user_id: userId, content });
     if (error) throw error;
-    // --- NOVAS FUNÇÕES DO FÓRUM ---
+  }, // <--- A CHAVE E A VÍRGULA QUE FALTAVAM ESTÃO AQUI!
+
+  // --- NOVAS FUNÇÕES DO FÓRUM ---
   async getDoubtComments(doubtId: string) {
     const { data, error } = await supabase
       .from('community_doubt_comments')
