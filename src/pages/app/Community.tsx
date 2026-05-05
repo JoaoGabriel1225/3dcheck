@@ -249,7 +249,7 @@ export default function Community() {
       await communityService.createDoubt(profile.id, title, description);
       toast.success("Dúvida publicada!");
       setIsDoubtModalOpen(false);
-      setTitle(''); setDescription('');
+      setTitle(''); setDescription(''); setStlFile(null); setMediaFiles([]); setMediaPreviews([]);
       loadData();
     } catch (e) {
       toast.error("Erro ao criar dúvida.");
@@ -353,7 +353,6 @@ export default function Community() {
         {showBot && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, overflow: 'hidden' }}>
             <Card className="bg-card border border-border shadow-sm overflow-hidden relative rounded-3xl mb-6 group">
-              {/* Botão de fechar aprimorado para o celular */}
               <Button variant="ghost" size="icon" onClick={toggleBot} className="absolute top-2 right-2 z-20 text-muted-foreground hover:text-red-500 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-background/80 md:bg-transparent w-10 h-10 flex items-center justify-center shadow-sm md:shadow-none">
                 <X className="w-5 h-5" />
               </Button>
@@ -376,7 +375,6 @@ export default function Community() {
 
       <div className="flex flex-col bg-card p-3 rounded-2xl border border-border shadow-sm gap-4">
         
-        {/* BARRA DE PESQUISA */}
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
@@ -387,7 +385,6 @@ export default function Community() {
           />
         </div>
 
-        {/* TABS E ORDENAÇÃO ENQUADRADOS */}
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center w-full">
           <div className="flex flex-wrap gap-2 w-full xl:w-auto">
             <button onClick={() => setActiveTab('feed')} className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${activeTab === 'feed' ? 'bg-muted text-blue-500' : 'text-muted-foreground hover:bg-muted/50'}`}>
@@ -453,6 +450,35 @@ export default function Community() {
                   <label className="text-xs font-black uppercase">Explicação detalhada</label>
                   <textarea required placeholder="Detalhe sua impressora, temperatura..." className="w-full h-32 p-4 rounded-xl border border-border bg-background resize-none focus:ring-2 focus:ring-blue-500 outline-none" value={description} onChange={e => setDescription(e.target.value)} />
                 </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="relative border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl p-4 text-center transition-colors bg-muted/10 group">
+                      <input type="file" accept="image/*,video/*" multiple disabled={isUploading || mediaFiles.length >= 5} onChange={handleMediaSelection} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+                      <ImageIcon className={`w-5 h-5 mx-auto mb-1 ${mediaFiles.length ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                      <p className="text-[10px] font-bold px-2">{mediaFiles.length ? `${mediaFiles.length}/5 selecionadas` : 'Fotos/Vídeos (Opcional)'}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="relative border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl p-4 text-center transition-colors bg-muted/10 group h-full flex flex-col justify-center">
+                      <input type="file" accept=".stl,.obj,.zip,.rar,.7z" disabled={isUploading} onChange={(e) => setStlFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      <FileBox className={`w-5 h-5 mx-auto mb-1 ${stlFile ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                      <p className="text-[10px] font-bold truncate px-2">{stlFile ? stlFile.name : 'Arquivo (.STL, .ZIP)'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {mediaPreviews.length > 0 && (
+                  <div className="flex gap-3 overflow-x-auto py-2">
+                    {mediaPreviews.map((src, i) => (
+                      <div key={i} className="relative w-12 h-12 flex-shrink-0">
+                         {isVideo(src) ? <video src={src} className="w-full h-full object-cover rounded-xl border border-border" /> : <img src={src} className="w-full h-full object-cover rounded-xl border border-border" />}
+                         <button type="button" disabled={isUploading} onClick={() => removeMedia(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow-md hover:scale-110 transition-transform"><X className="w-3 h-3"/></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <Button type="submit" disabled={isUploading} className="w-full h-12 bg-blue-600 text-white font-black uppercase italic rounded-xl">
                   {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Publicar no Fórum'}
                 </Button>
@@ -671,9 +697,9 @@ export default function Community() {
                   
                   <div className="space-y-2">
                     <div className="relative border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl p-6 text-center transition-colors bg-muted/10 group h-full flex flex-col justify-center">
-                      <input type="file" accept=".stl,.obj" required disabled={isUploading} onChange={(e) => setStlFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      <input type="file" accept=".stl,.obj,.zip,.rar,.7z" required disabled={isUploading} onChange={(e) => setStlFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                       <FileBox className={`w-6 h-6 mx-auto mb-2 ${stlFile ? 'text-blue-500' : 'text-muted-foreground'}`} />
-                      <p className="text-xs font-bold truncate px-2">{stlFile ? stlFile.name : 'Arquivo 3D (.STL)'}</p>
+                      <p className="text-xs font-bold truncate px-2">{stlFile ? stlFile.name : 'Arquivo (.STL, .ZIP)'}</p>
                     </div>
                   </div>
                 </div>
