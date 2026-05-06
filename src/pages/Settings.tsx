@@ -17,7 +17,8 @@ import {
   Loader2,
   HelpCircle,
   TrendingUp,
-  AlertTriangle
+  AlertTriangle,
+  Store // Adicionado ícone Store
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -37,6 +38,10 @@ export default function Settings() {
   const [buffer, setBuffer] = useState('5');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarPreview, setAvatarPreview] = useState('');
+  
+  // NOVOS ESTADOS: Taxas de Marketplace
+  const [taxML, setTaxML] = useState('18');
+  const [taxShopee, setTaxShopee] = useState('20');
 
   useEffect(() => {
     async function loadSettings() {
@@ -56,6 +61,9 @@ export default function Settings() {
           setSetupFee(data.setup_fee?.toString() || '5.00');
           setDepreciation(data.machine_depreciation_hour?.toString() || '1.50');
           setBuffer(data.failure_buffer_pct?.toString() || '5');
+          // Carregando as taxas
+          setTaxML(data.tax_ml?.toString() || '18');
+          setTaxShopee(data.tax_shopee?.toString() || '20');
         }
         
         setFullName(user.user_metadata?.full_name || '');
@@ -99,7 +107,7 @@ export default function Settings() {
         data: { avatar_url: finalUrl }
       });
 
-      // ---> LINHA NOVA AQUI: Sincroniza a foto com a tabela pública da Comunidade!
+      // Sincroniza a foto com a tabela pública da Comunidade!
       await supabase.from('profiles').update({ avatar_url: finalUrl }).eq('id', user.id);
 
       setAvatarUrl(finalUrl);
@@ -121,7 +129,7 @@ export default function Settings() {
         data: { full_name: fullName }
       });
 
-      // ---> LINHA NOVA AQUI: Sincroniza o nome com a tabela pública da Comunidade!
+      // Sincroniza o nome com a tabela pública da Comunidade!
       await supabase.from('profiles').update({ name: fullName }).eq('id', user.id);
 
       const { error } = await supabase.from('store_settings').upsert({
@@ -133,6 +141,9 @@ export default function Settings() {
         setup_fee: parseFloat(setupFee),
         machine_depreciation_hour: parseFloat(depreciation),
         failure_buffer_pct: parseInt(buffer),
+        // Salvando as novas taxas
+        tax_ml: parseFloat(taxML),
+        tax_shopee: parseFloat(taxShopee),
         updated_at: new Date().toISOString()
       });
 
@@ -204,13 +215,13 @@ export default function Settings() {
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* CARD: FINANCEIRO */}
-          <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden border-2">
+          <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden border-2 flex flex-col">
             <CardHeader className="border-b border-border bg-emerald-500/5 p-8">
               <CardTitle className="text-xl font-black flex items-center gap-3 text-foreground uppercase tracking-tight">
                 <DollarSign className="w-6 h-6 text-emerald-500" /> Inteligência Financeira
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-8 space-y-6">
+            <CardContent className="p-8 space-y-6 flex-1">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
                   Custo Energia (R$ / kWh)
@@ -231,34 +242,56 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* CARD: OFICINA */}
-          <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden border-2">
-            <CardHeader className="border-b border-border bg-orange-500/5 p-8">
-              <CardTitle className="text-xl font-black flex items-center gap-3 text-foreground uppercase tracking-tight">
-                <Wrench className="w-6 h-6 text-orange-500" /> Parâmetros da Máquina
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Taxa de Setup (R$)</Label>
-                <Input type="number" step="0.10" min="0" value={setupFee} onChange={e => setSetupFee(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
-                <p className="text-[9px] text-muted-foreground opacity-70">Custo fixo de preparação, fatiamento e limpeza.</p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
-                  Depreciação (R$ / hora)
-                  <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Custo de desgaste da máquina por hora de uso." />
-                </Label>
-                <Input type="number" step="0.01" min="0" value={depreciation} onChange={e => setDepreciation(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-orange-600 flex items-center gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Margem de Erro/Falha (%)
-                </Label>
-                <Input type="number" min="0" max="100" value={buffer} onChange={e => setBuffer(e.target.value)} className="h-14 rounded-2xl bg-orange-500/5 border-orange-500/20 text-orange-700 font-black text-lg" />
-              </div>
-            </CardContent>
-          </Card>
+          {/* COLUNA DA DIREITA: OFICINA + MARKETPLACE */}
+          <div className="flex flex-col gap-8">
+            {/* CARD: OFICINA */}
+            <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden border-2">
+              <CardHeader className="border-b border-border bg-orange-500/5 p-8">
+                <CardTitle className="text-xl font-black flex items-center gap-3 text-foreground uppercase tracking-tight">
+                  <Wrench className="w-6 h-6 text-orange-500" /> Parâmetros da Máquina
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Taxa de Setup (R$)</Label>
+                  <Input type="number" step="0.10" min="0" value={setupFee} onChange={e => setSetupFee(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
+                  <p className="text-[9px] text-muted-foreground opacity-70">Custo fixo de preparação e limpeza.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
+                    Depreciação (R$ / hora)
+                    <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Custo de desgaste da máquina por hora de uso." />
+                  </Label>
+                  <Input type="number" step="0.01" min="0" value={depreciation} onChange={e => setDepreciation(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-orange-600 flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Margem de Erro/Falha (%)
+                  </Label>
+                  <Input type="number" min="0" max="100" value={buffer} onChange={e => setBuffer(e.target.value)} className="h-14 rounded-2xl bg-orange-500/5 border-orange-500/20 text-orange-700 font-black text-lg" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* NOVO CARD: TAXAS DE VENDA (MARKETPLACE) */}
+            <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden border-2">
+              <CardHeader className="border-b border-border bg-indigo-500/5 p-8">
+                <CardTitle className="text-xl font-black flex items-center gap-3 text-foreground uppercase tracking-tight">
+                  <Store className="w-6 h-6 text-indigo-500" /> Taxas de Venda
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8 grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-yellow-500">Mercado Livre (%)</Label>
+                  <Input type="number" step="0.1" min="0" value={taxML} onChange={e => setTaxML(e.target.value)} className="h-14 rounded-2xl bg-yellow-500/5 border-yellow-500/20 text-yellow-600 font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-orange-500">Shopee (%)</Label>
+                  <Input type="number" step="0.1" min="0" value={taxShopee} onChange={e => setTaxShopee(e.target.value)} className="h-14 rounded-2xl bg-orange-500/5 border-orange-500/20 text-orange-600 font-bold" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <Button 
