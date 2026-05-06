@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'; // CORREÇÃO: react-router-dom para o roteamento funcionar
 import { AuthProvider } from '@/lib/AuthContext';
 import { ThemeProvider } from './components/ThemeProvider';
 import { ProtectedLayout, AdminLayout } from './components/layouts/ProtectedLayout';
@@ -25,6 +25,7 @@ import Clients from './pages/Clients';
 import Support from './pages/Support'; 
 // CORREÇÃO: Usando caminho relativo direto para garantir que o Vercel encontre dentro de src
 import Community from './pages/app/Community'; 
+import Landing from './pages/Landing'; // NOVA IMPORTAÇÃO DA LANDING PAGE
 
 export default function App() {
   return (
@@ -32,6 +33,9 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* ROTA PÚBLICA DA LANDING PAGE */}
+            <Route path="/maker" element={<Landing />} />
+
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password" element={<ResetPassword />} />
