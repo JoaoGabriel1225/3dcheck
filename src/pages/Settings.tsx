@@ -42,6 +42,10 @@ export default function Settings() {
   // NOVOS ESTADOS: Taxas de Marketplace
   const [taxML, setTaxML] = useState('18');
   const [taxShopee, setTaxShopee] = useState('20');
+  
+  // NOVOS ESTADOS: Parâmetros de Energia e Trabalho
+  const [powerWatts, setPowerWatts] = useState('300');
+  const [laborRate, setLaborRate] = useState('30');
 
   useEffect(() => {
     async function loadSettings() {
@@ -61,9 +65,12 @@ export default function Settings() {
           setSetupFee(data.setup_fee?.toString() || '5.00');
           setDepreciation(data.machine_depreciation_hour?.toString() || '1.50');
           setBuffer(data.failure_buffer_pct?.toString() || '5');
-          // Carregando as taxas
+          
+          // Carregando as taxas e novas métricas
           setTaxML(data.tax_ml?.toString() || '18');
           setTaxShopee(data.tax_shopee?.toString() || '20');
+          setPowerWatts(data.machine_power_watts?.toString() || '300');
+          setLaborRate(data.labor_rate_hour?.toString() || '30');
         }
         
         setFullName(user.user_metadata?.full_name || '');
@@ -141,9 +148,11 @@ export default function Settings() {
         setup_fee: parseFloat(setupFee),
         machine_depreciation_hour: parseFloat(depreciation),
         failure_buffer_pct: parseInt(buffer),
-        // Salvando as novas taxas
+        // Salvando as novas taxas e métricas
         tax_ml: parseFloat(taxML),
         tax_shopee: parseFloat(taxShopee),
+        machine_power_watts: parseFloat(powerWatts),
+        labor_rate_hour: parseFloat(laborRate),
         updated_at: new Date().toISOString()
       });
 
@@ -233,7 +242,16 @@ export default function Settings() {
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Média do Filamento (R$ / kg)</Label>
                 <Input type="number" step="0.01" min="0" value={filamentPrice} onChange={e => setFilamentPrice(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
               </div>
+              
               <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
+                  Valor da sua Hora (R$ / h)
+                  <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Quanto vale a sua hora de trabalho manual (acabamento, pintura, embalagem)?" />
+                </Label>
+                <Input type="number" step="0.50" min="0" value={laborRate} onChange={e => setLaborRate(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
+              </div>
+
+              <div className="space-y-2 pt-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-2">
                   <TrendingUp className="w-3.5 h-3.5" /> Margem de Lucro Sugerida (%)
                 </Label>
@@ -252,18 +270,30 @@ export default function Settings() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6">
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
+                      Potência (Watts)
+                      <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Consumo médio da sua impressora 3D em Watts." />
+                    </Label>
+                    <Input type="number" step="1" min="0" value={powerWatts} onChange={e => setPowerWatts(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
+                      Depreciação (R$/h)
+                      <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Custo de desgaste da máquina por hora de uso." />
+                    </Label>
+                    <Input type="number" step="0.01" min="0" value={depreciation} onChange={e => setDepreciation(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Taxa de Setup (R$)</Label>
                   <Input type="number" step="0.10" min="0" value={setupFee} onChange={e => setSetupFee(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
-                  <p className="text-[9px] text-muted-foreground opacity-70">Custo fixo de preparação e limpeza.</p>
+                  <p className="text-[9px] text-muted-foreground opacity-70">Custo fixo de preparação e limpeza da mesa.</p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
-                    Depreciação (R$ / hora)
-                    <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Custo de desgaste da máquina por hora de uso." />
-                  </Label>
-                  <Input type="number" step="0.01" min="0" value={depreciation} onChange={e => setDepreciation(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
-                </div>
+                
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-orange-600 flex items-center gap-2">
                     <AlertTriangle className="w-3.5 h-3.5" /> Margem de Erro/Falha (%)
@@ -273,7 +303,7 @@ export default function Settings() {
               </CardContent>
             </Card>
 
-            {/* NOVO CARD: TAXAS DE VENDA (MARKETPLACE) */}
+            {/* CARD: TAXAS DE VENDA (MARKETPLACE) */}
             <Card className="rounded-[2.5rem] border-border bg-card shadow-xl overflow-hidden border-2">
               <CardHeader className="border-b border-border bg-indigo-500/5 p-8">
                 <CardTitle className="text-xl font-black flex items-center gap-3 text-foreground uppercase tracking-tight">
