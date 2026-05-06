@@ -16,11 +16,10 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { 
   PackageSearch, Plus, Image as ImageIcon, Trash2, Eye, EyeOff, 
-  Edit2, Wand2, Calculator, Zap, Clock, RotateCcw, ShieldAlert 
+  Edit2, Wand2, Calculator, Zap, Clock, RotateCcw, ShieldAlert, Store
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion'; // Adicionado para animações
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Variantes para animação em cascata
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -51,6 +50,7 @@ export default function Products() {
   const [isPublic, setIsPublic] = useState(true);
   const [discount, setDiscount] = useState('');
   
+  // Variáveis Base
   const [filamentPrice, setFilamentPrice] = useState('');
   const [gramsUsed, setGramsUsed] = useState('');
   const [printTime, setPrintTime] = useState('');
@@ -60,6 +60,16 @@ export default function Products() {
   const [depreciation, setDepreciation] = useState('');
   const [setupFee, setSetupFee] = useState('');
   const [failureBuffer, setFailureBuffer] = useState('');
+
+  // ---> NOVOS ESTADOS (Sprint de Melhorias) <---
+  const [isMultiColor, setIsMultiColor] = useState(false);
+  const [powerWatts, setPowerWatts] = useState('300');
+  const [postProcessingMin, setPostProcessingMin] = useState('0');
+  const [laborRate, setLaborRate] = useState('30'); // Valor da hora do Maker
+  const [taxML, setTaxML] = useState('18');
+  const [taxShopee, setTaxShopee] = useState('20');
+  const [suggestedPriceML, setSuggestedPriceML] = useState('0.00');
+  const [suggestedPriceShopee, setSuggestedPriceShopee] = useState('0.00');
 
   const [calculatedCost, setCalculatedCost] = useState(0);
   const [suggestedPrice, setSuggestedPrice] = useState('0.00');
@@ -71,7 +81,11 @@ export default function Products() {
       .select('*')
       .eq('user_id', user.id)
       .single();
-    if (data) setGlobalSettings(data);
+    if (data) {
+      setGlobalSettings(data);
+      if (data.tax_ml) setTaxML(data.tax_ml.toString());
+      if (data.tax_shopee) setTaxShopee(data.tax_shopee.toString());
+    }
   };
 
   const applyGlobalDefaults = () => {
@@ -82,6 +96,8 @@ export default function Products() {
       setDepreciation(globalSettings.machine_depreciation_hour?.toString() || '1.50');
       setSetupFee(globalSettings.setup_fee?.toString() || '5.00');
       setFailureBuffer(globalSettings.failure_buffer_pct?.toString() || '5');
+      if (globalSettings.tax_ml) setTaxML(globalSettings.tax_ml.toString());
+      if (globalSettings.tax_shopee) setTaxShopee(globalSettings.tax_shopee.toString());
       toast.info('Padrões globais aplicados à calculadora.');
     }
   };
@@ -109,6 +125,7 @@ export default function Products() {
     fetchGlobalSettings();
   }, [profile]);
 
+  // ---> NOVO MOTOR DE CÁLCULO <---
   useEffect(() => {
     const fPrice = parseFloat(filamentPrice) || 0;
     const gUsed = parseFloat(gramsUsed) || 0;
@@ -118,17 +135,36 @@ export default function Products() {
     const dep = parseFloat(depreciation) || 0;
     const kwh = parseFloat(kwhPrice) || 0;
     const buff = 1 + (parseFloat(failureBuffer) || 0) / 100;
-
-    const materialCost = ((fPrice / 1000) * gUsed) * buff;
-    const energyCost = (kwh * 0.15) * pTime; 
-    const depreciationCost = dep * pTime;
     
-    const cTotal = materialCost + energyCost + depreciationCost + sFee;
+    // Novas Variáveis
+    const watts = parseFloat(powerWatts) || 0;
+    const postProc = parseFloat(postProcessingMin) || 0;
+    const lRate = parseFloat(laborRate) || 0;
+    const tML = parseFloat(taxML) || 0;
+    const tShopee = parseFloat(taxShopee) || 0;
+
+    // Lógica Multi-Cor (Adiciona 15% de peso para a torre de purga)
+    const multicolorMultiplier = isMultiColor ? 1.15 : 1; 
+
+    const materialCost = ((fPrice / 1000) * (gUsed * multicolorMultiplier)) * buff;
+    const energyCost = ((watts / 1000) * kwh) * pTime; 
+    const depreciationCost = dep * pTime;
+    const laborCost = (lRate / 60) * postProc; // Mão de obra do acabamento
+    
+    const cTotal = materialCost + energyCost + depreciationCost + sFee + laborCost;
     
     setCalculatedCost(cTotal);
     const calcPrice = cTotal * (1 + margin / 100);
     setSuggestedPrice(calcPrice.toFixed(2));
-  }, [filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer]);
+
+    // Lógica Marketplaces (Calcula o preço de venda para não perder a margem após a taxa)
+    const priceML = calcPrice / (1 - (tML / 100));
+    const priceShopee = calcPrice / (1 - (tShopee / 100));
+    
+    setSuggestedPriceML(isFinite(priceML) ? priceML.toFixed(2) : '0.00');
+    setSuggestedPriceShopee(isFinite(priceShopee) ? priceShopee.toFixed(2) : '0.00');
+
+  }, [filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee]);
 
   const handleOpenNewProduct = () => {
     resetForm();
@@ -156,7 +192,12 @@ export default function Products() {
         profit_margin: profitMarginNum,
         discount: discountNum,
         stock_quantity: parseInt(stock, 10) || 0,
-        is_public: isPublic
+        is_public: isPublic,
+        // Salvando os novos dados
+        post_processing_min: parseFloat(postProcessingMin) || 0,
+        is_multicolor: isMultiColor,
+        suggested_price_ml: parseFloat(suggestedPriceML) || 0,
+        suggested_price_shopee: parseFloat(suggestedPriceShopee) || 0
       };
 
       let productData;
@@ -248,11 +289,17 @@ export default function Products() {
     setProfitMargin(product.profit_margin?.toString() || '');
     setCalculatedCost(product.cost_total || 0);
     
+    // Carrega os novos dados salvos
+    setIsMultiColor(product.is_multicolor || false);
+    setPostProcessingMin(product.post_processing_min?.toString() || '0');
+
     if (globalSettings) {
         setKwhPrice(globalSettings.kwh_price?.toString());
         setDepreciation(globalSettings.machine_depreciation_hour?.toString());
         setSetupFee(globalSettings.setup_fee?.toString());
         setFailureBuffer(globalSettings.failure_buffer_pct?.toString());
+        if (globalSettings.tax_ml) setTaxML(globalSettings.tax_ml.toString());
+        if (globalSettings.tax_shopee) setTaxShopee(globalSettings.tax_shopee.toString());
     }
     
     setIsDialogOpen(true);
@@ -293,6 +340,13 @@ export default function Products() {
     setFailureBuffer('');
     setCalculatedCost(0);
     setSuggestedPrice('0.00');
+    // Limpa novos campos
+    setIsMultiColor(false);
+    setPostProcessingMin('0');
+    setPowerWatts('300');
+    setLaborRate('30');
+    setSuggestedPriceML('0.00');
+    setSuggestedPriceShopee('0.00');
   };
 
   return (
@@ -316,7 +370,7 @@ export default function Products() {
             <Plus className="w-5 h-5" /> Novo Produto
           </Button>
 
-          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl border-border bg-card shadow-2xl p-0">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border-border bg-card shadow-2xl p-0">
             <DialogHeader className="p-8 pb-0">
               <DialogTitle className="text-2xl font-black flex items-center gap-2">
                 <PackageSearch className="w-6 h-6 text-blue-500" /> Configurar Produto
@@ -334,9 +388,15 @@ export default function Products() {
                    <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required className="rounded-2xl border-border bg-muted/30 min-h-[100px]" placeholder="Fale sobre o material, escala e acabamento..." />
                  </div>
                  
-                 <div className="flex items-center space-x-3 bg-muted/20 p-4 rounded-2xl border border-border">
-                   <Switch id="is-public" checked={isPublic} onCheckedChange={setIsPublic} />
-                   <Label htmlFor="is-public" className="font-bold text-sm cursor-pointer">Visível na Vitrine Pública</Label>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="flex items-center space-x-3 bg-muted/20 p-4 rounded-2xl border border-border">
+                     <Switch id="is-public" checked={isPublic} onCheckedChange={setIsPublic} />
+                     <Label htmlFor="is-public" className="font-bold text-sm cursor-pointer">Visível na Vitrine Pública</Label>
+                   </div>
+                   <div className="flex items-center space-x-3 bg-indigo-500/5 p-4 rounded-2xl border border-indigo-500/20">
+                     <Switch id="is-multicolor" checked={isMultiColor} onCheckedChange={setIsMultiColor} />
+                     <Label htmlFor="is-multicolor" className="font-bold text-sm text-indigo-700 cursor-pointer">Impressão Multi-Cor (AMS)</Label>
+                   </div>
                  </div>
                </div>
 
@@ -375,69 +435,95 @@ export default function Products() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-background/50 rounded-2xl border border-dashed border-border/50">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-background/50 rounded-2xl border border-dashed border-border/50">
                     <div className="space-y-1">
                       <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
                       <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-8 text-xs rounded-lg" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Potência (W)</Label>
+                      <Input type="number" value={powerWatts} onChange={(e) => setPowerWatts(e.target.value)} className="h-8 text-xs rounded-lg bg-yellow-500/10 text-yellow-700 font-bold border-yellow-500/30" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Depreciação (R$/h)</Label>
                       <Input type="number" value={depreciation} onChange={(e) => setDepreciation(e.target.value)} className="h-8 text-xs rounded-lg" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
-                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-8 text-xs rounded-lg" />
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Acabamento (min)</Label>
+                      <Input type="number" value={postProcessingMin} onChange={(e) => setPostProcessingMin(e.target.value)} className="h-8 text-xs rounded-lg bg-blue-500/10 text-blue-700 font-bold border-blue-500/30" placeholder="Ex: 15" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Buffer Falha (%)</Label>
-                      <Input type="number" value={failureBuffer} onChange={(e) => setFailureBuffer(e.target.value)} className="h-8 text-xs rounded-lg" />
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Sua Hora (R$/h)</Label>
+                      <Input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="h-8 text-xs rounded-lg" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
+                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-8 text-xs rounded-lg" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="pTime" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Tempo (Horas)
+                        <Clock className="w-3 h-3" /> Tempo Máquina (Horas)
                       </Label>
                       <Input id="pTime" type="number" step="0.1" value={printTime} onChange={(e) => setPrintTime(e.target.value)} required className="h-11 bg-background rounded-xl border-border" placeholder="Ex: 4.5" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="pMargin" className="font-black text-blue-600 text-[9px] uppercase tracking-wider">Lucro Desejado (%)</Label>
-                      <Input id="pMargin" type="number" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="h-11 bg-blue-500/5 border-blue-500/20 text-blue-600 font-bold rounded-xl" />
+                      <Label htmlFor="pMargin" className="font-black text-emerald-600 text-[9px] uppercase tracking-wider">Lucro Desejado (%)</Label>
+                      <Input id="pMargin" type="number" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="h-11 bg-emerald-500/5 border-emerald-500/20 text-emerald-700 font-bold rounded-xl" />
                     </div>
                   </div>
                   
-                  <div className="pt-4 border-t border-border/50 flex justify-between items-center">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-muted-foreground uppercase">Custo de Fabricação</span>
-                      <span className="text-xl font-black text-foreground tracking-tighter">R$ {calculatedCost.toFixed(2)}</span>
+                  <div className="pt-4 border-t border-border/50 flex flex-col gap-4">
+                    <div className="flex justify-between items-center">
+                        <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-muted-foreground uppercase">Custo de Fabricação</span>
+                        <span className="text-xl font-black text-foreground tracking-tighter">R$ {calculatedCost.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl text-right">
+                            <span className="block text-[9px] font-black text-emerald-600 uppercase">Preço Venda Direta</span>
+                            <span className="text-lg font-black text-emerald-600 tracking-tighter leading-none">R$ {suggestedPrice}</span>
+                            <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setPrice(suggestedPrice)}
+                                className="h-6 mt-1 text-[9px] font-black text-emerald-700 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-lg px-2"
+                            >
+                                <Wand2 className="w-3 h-3 mr-1" /> APLICAR
+                            </Button>
+                        </div>
                     </div>
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl text-right">
-                       <span className="block text-[9px] font-black text-emerald-600 uppercase">Preço Sugerido</span>
-                       <span className="text-lg font-black text-emerald-600 tracking-tighter leading-none">R$ {suggestedPrice}</span>
-                       <Button 
-                         type="button"
-                         variant="ghost" 
-                         size="sm" 
-                         onClick={() => setPrice(suggestedPrice)}
-                         className="h-6 mt-1 text-[9px] font-black text-emerald-700 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-lg px-2"
-                       >
-                         <Wand2 className="w-3 h-3 mr-1" /> APLICAR
-                       </Button>
+
+                    {/* CARDS MARKETPLACE */}
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-2xl relative group">
+                            <Store className="w-8 h-8 absolute right-2 bottom-2 opacity-10 text-yellow-600" />
+                            <span className="block text-[8px] font-black text-yellow-600 uppercase tracking-widest">Mercado Livre ({taxML}%)</span>
+                            <span className="block text-sm font-black text-yellow-600 tracking-tighter">R$ {suggestedPriceML}</span>
+                            <button type="button" onClick={() => setPrice(suggestedPriceML)} className="text-[8px] uppercase font-bold text-yellow-700 mt-1 opacity-60 hover:opacity-100 transition-opacity">Usar este preço</button>
+                        </div>
+                        <div className="bg-orange-500/10 border border-orange-500/20 p-3 rounded-2xl relative group">
+                            <Store className="w-8 h-8 absolute right-2 bottom-2 opacity-10 text-orange-600" />
+                            <span className="block text-[8px] font-black text-orange-600 uppercase tracking-widest">Shopee ({taxShopee}%)</span>
+                            <span className="block text-sm font-black text-orange-600 tracking-tighter">R$ {suggestedPriceShopee}</span>
+                            <button type="button" onClick={() => setPrice(suggestedPriceShopee)} className="text-[8px] uppercase font-bold text-orange-700 mt-1 opacity-60 hover:opacity-100 transition-opacity">Usar este preço</button>
+                        </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="price" className="text-[10px] font-black uppercase text-muted-foreground">Preço Final de Venda</Label>
+                    <Label htmlFor="price" className="text-[10px] font-black uppercase text-muted-foreground">Preço Final Oficial</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">R$</span>
                       <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required className="h-12 pl-10 rounded-2xl border-blue-500/30 bg-blue-500/5 font-black text-lg" />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="discount" className="text-[10px] font-black uppercase text-muted-foreground">Desconto Especial</Label>
+                    <Label htmlFor="discount" className="text-[10px] font-black uppercase text-muted-foreground">Desconto Vitrine</Label>
                     <Input id="discount" type="number" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} className="h-12 rounded-2xl border-border" placeholder="0.00" />
                   </div>
                 </div>
@@ -445,7 +531,7 @@ export default function Products() {
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
                 <div className="space-y-2">
-                  <Label htmlFor="stock" className="text-[10px] font-black uppercase text-muted-foreground">Estoque Disponível</Label>
+                  <Label htmlFor="stock" className="text-[10px] font-black uppercase text-muted-foreground">Estoque</Label>
                   <Input id="stock" type="number" value={stock} onChange={(e) => setStock(e.target.value)} required className="h-12 rounded-2xl border-border bg-muted/30" />
                 </div>
                 <div className="space-y-2">
@@ -491,7 +577,7 @@ export default function Products() {
                    layout
                    key={product.id}
                    variants={itemVariants}
-                   whileHover={{ y: -5 }} // Efeito sutil ao passar o mouse
+                   whileHover={{ y: -5 }} 
                    transition={{ duration: 0.2 }}
                  >
                    <Card className="overflow-hidden h-full flex flex-col group rounded-[2.5rem] border-border bg-card/40 backdrop-blur-sm hover:border-blue-500/30 hover:shadow-2xl transition-all duration-500">
