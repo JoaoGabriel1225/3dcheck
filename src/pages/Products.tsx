@@ -65,9 +65,10 @@ export default function Products() {
   const [isMultiColor, setIsMultiColor] = useState(false);
   const [powerWatts, setPowerWatts] = useState('300');
   const [postProcessingMin, setPostProcessingMin] = useState('0');
-  const [laborRate, setLaborRate] = useState('30'); // Valor da hora do Maker
+  const [laborRate, setLaborRate] = useState('35'); // Valor da hora do Maker
   const [taxML, setTaxML] = useState('18');
   const [taxShopee, setTaxShopee] = useState('20');
+  const [multicolorWaste, setMulticolorWaste] = useState('15'); // Estado da Purga
   const [suggestedPriceML, setSuggestedPriceML] = useState('0.00');
   const [suggestedPriceShopee, setSuggestedPriceShopee] = useState('0.00');
 
@@ -85,19 +86,27 @@ export default function Products() {
       setGlobalSettings(data);
       if (data.tax_ml) setTaxML(data.tax_ml.toString());
       if (data.tax_shopee) setTaxShopee(data.tax_shopee.toString());
+      if (data.machine_power_watts) setPowerWatts(data.machine_power_watts.toString());
+      if (data.labor_rate_hour) setLaborRate(data.labor_rate_hour.toString());
+      if (data.multicolor_waste_pct) setMulticolorWaste(data.multicolor_waste_pct.toString());
     }
   };
 
   const applyGlobalDefaults = () => {
     if (globalSettings) {
-      setFilamentPrice(globalSettings.filament_avg_price?.toString() || '120.00');
-      setProfitMargin(globalSettings.profit_margin_pct?.toString() || '100');
-      setKwhPrice(globalSettings.kwh_price?.toString() || '0.85');
-      setDepreciation(globalSettings.machine_depreciation_hour?.toString() || '1.50');
+      setFilamentPrice(globalSettings.filament_avg_price?.toString() || '130.00');
+      setProfitMargin(globalSettings.profit_margin_pct?.toString() || '150');
+      setKwhPrice(globalSettings.kwh_price?.toString() || '0.95');
+      setDepreciation(globalSettings.machine_depreciation_hour?.toString() || '1.00');
       setSetupFee(globalSettings.setup_fee?.toString() || '5.00');
-      setFailureBuffer(globalSettings.failure_buffer_pct?.toString() || '5');
+      setFailureBuffer(globalSettings.failure_buffer_pct?.toString() || '10');
+      
       if (globalSettings.tax_ml) setTaxML(globalSettings.tax_ml.toString());
       if (globalSettings.tax_shopee) setTaxShopee(globalSettings.tax_shopee.toString());
+      if (globalSettings.machine_power_watts) setPowerWatts(globalSettings.machine_power_watts.toString());
+      if (globalSettings.labor_rate_hour) setLaborRate(globalSettings.labor_rate_hour.toString());
+      if (globalSettings.multicolor_waste_pct) setMulticolorWaste(globalSettings.multicolor_waste_pct.toString());
+      
       toast.info('Padrões globais aplicados à calculadora.');
     }
   };
@@ -142,9 +151,10 @@ export default function Products() {
     const lRate = parseFloat(laborRate) || 0;
     const tML = parseFloat(taxML) || 0;
     const tShopee = parseFloat(taxShopee) || 0;
+    const wastePct = parseFloat(multicolorWaste) || 0;
 
-    // Lógica Multi-Cor (Adiciona 15% de peso para a torre de purga)
-    const multicolorMultiplier = isMultiColor ? 1.15 : 1; 
+    // Lógica Multi-Cor Dinâmica
+    const multicolorMultiplier = isMultiColor ? (1 + (wastePct / 100)) : 1; 
 
     const materialCost = ((fPrice / 1000) * (gUsed * multicolorMultiplier)) * buff;
     const energyCost = ((watts / 1000) * kwh) * pTime; 
@@ -157,14 +167,14 @@ export default function Products() {
     const calcPrice = cTotal * (1 + margin / 100);
     setSuggestedPrice(calcPrice.toFixed(2));
 
-    // Lógica Marketplaces (Calcula o preço de venda para não perder a margem após a taxa)
+    // Lógica Marketplaces
     const priceML = calcPrice / (1 - (tML / 100));
     const priceShopee = calcPrice / (1 - (tShopee / 100));
     
     setSuggestedPriceML(isFinite(priceML) ? priceML.toFixed(2) : '0.00');
     setSuggestedPriceShopee(isFinite(priceShopee) ? priceShopee.toFixed(2) : '0.00');
 
-  }, [filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee]);
+  }, [filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste]);
 
   const handleOpenNewProduct = () => {
     resetForm();
@@ -300,6 +310,9 @@ export default function Products() {
         setFailureBuffer(globalSettings.failure_buffer_pct?.toString());
         if (globalSettings.tax_ml) setTaxML(globalSettings.tax_ml.toString());
         if (globalSettings.tax_shopee) setTaxShopee(globalSettings.tax_shopee.toString());
+        if (globalSettings.machine_power_watts) setPowerWatts(globalSettings.machine_power_watts.toString());
+        if (globalSettings.labor_rate_hour) setLaborRate(globalSettings.labor_rate_hour.toString());
+        if (globalSettings.multicolor_waste_pct) setMulticolorWaste(globalSettings.multicolor_waste_pct.toString());
     }
     
     setIsDialogOpen(true);
@@ -340,11 +353,13 @@ export default function Products() {
     setFailureBuffer('');
     setCalculatedCost(0);
     setSuggestedPrice('0.00');
+    
     // Limpa novos campos
     setIsMultiColor(false);
     setPostProcessingMin('0');
-    setPowerWatts('300');
-    setLaborRate('30');
+    setPowerWatts(globalSettings?.machine_power_watts?.toString() || '300');
+    setLaborRate(globalSettings?.labor_rate_hour?.toString() || '35');
+    setMulticolorWaste(globalSettings?.multicolor_waste_pct?.toString() || '15');
     setSuggestedPriceML('0.00');
     setSuggestedPriceShopee('0.00');
   };
@@ -395,7 +410,9 @@ export default function Products() {
                    </div>
                    <div className="flex items-center space-x-3 bg-indigo-500/5 p-4 rounded-2xl border border-indigo-500/20">
                      <Switch id="is-multicolor" checked={isMultiColor} onCheckedChange={setIsMultiColor} />
-                     <Label htmlFor="is-multicolor" className="font-bold text-sm text-indigo-700 cursor-pointer">Impressão Multi-Cor (AMS)</Label>
+                     <Label htmlFor="is-multicolor" className="font-bold text-sm text-indigo-700 cursor-pointer">
+                       Impressão Multi-Cor (+{multicolorWaste}%)
+                     </Label>
                    </div>
                  </div>
                </div>
