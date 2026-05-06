@@ -27,25 +27,24 @@ export default function Settings() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
-  // Estados do Formulário
+  // Estados do Formulário (Com Valores Padrões Realistas de Mercado)
   const [storeName, setStoreName] = useState('');
   const [fullName, setFullName] = useState('');
-  const [kwhPrice, setKwhPrice] = useState('0.85');
-  const [filamentPrice, setFilamentPrice] = useState('120.00');
-  const [profitMargin, setProfitMargin] = useState('100');
+  const [kwhPrice, setKwhPrice] = useState('0.95'); // Realidade br
+  const [filamentPrice, setFilamentPrice] = useState('130.00'); // PLA médio
+  const [profitMargin, setProfitMargin] = useState('150'); // Margem segura
   const [setupFee, setSetupFee] = useState('5.00');
-  const [depreciation, setDepreciation] = useState('1.50');
-  const [buffer, setBuffer] = useState('5');
+  const [depreciation, setDepreciation] = useState('1.00');
+  const [buffer, setBuffer] = useState('10'); // 10% de erro
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarPreview, setAvatarPreview] = useState('');
   
-  // NOVOS ESTADOS: Taxas de Marketplace
+  // Taxas de Marketplace e Parâmetros de Energia/Trabalho/Purga
   const [taxML, setTaxML] = useState('18');
   const [taxShopee, setTaxShopee] = useState('20');
-  
-  // NOVOS ESTADOS: Parâmetros de Energia e Trabalho
-  const [powerWatts, setPowerWatts] = useState('300');
-  const [laborRate, setLaborRate] = useState('30');
+  const [powerWatts, setPowerWatts] = useState('300'); // Média Ender/Bambu
+  const [laborRate, setLaborRate] = useState('35.00'); // Hora do Maker
+  const [multicolorWaste, setMulticolorWaste] = useState('15'); // Desperdício AMS/MMU
 
   useEffect(() => {
     async function loadSettings() {
@@ -59,18 +58,18 @@ export default function Settings() {
 
         if (data) {
           setStoreName(data.store_name || '');
-          setKwhPrice(data.kwh_price?.toString() || '0.85');
-          setFilamentPrice(data.filament_avg_price?.toString() || '120.00');
-          setProfitMargin(data.profit_margin_pct?.toString() || '100');
+          setKwhPrice(data.kwh_price?.toString() || '0.95');
+          setFilamentPrice(data.filament_avg_price?.toString() || '130.00');
+          setProfitMargin(data.profit_margin_pct?.toString() || '150');
           setSetupFee(data.setup_fee?.toString() || '5.00');
-          setDepreciation(data.machine_depreciation_hour?.toString() || '1.50');
-          setBuffer(data.failure_buffer_pct?.toString() || '5');
+          setDepreciation(data.machine_depreciation_hour?.toString() || '1.00');
+          setBuffer(data.failure_buffer_pct?.toString() || '10');
           
-          // Carregando as taxas e novas métricas
           setTaxML(data.tax_ml?.toString() || '18');
           setTaxShopee(data.tax_shopee?.toString() || '20');
           setPowerWatts(data.machine_power_watts?.toString() || '300');
-          setLaborRate(data.labor_rate_hour?.toString() || '30');
+          setLaborRate(data.labor_rate_hour?.toString() || '35.00');
+          setMulticolorWaste(data.multicolor_waste_pct?.toString() || '15');
         }
         
         setFullName(user.user_metadata?.full_name || '');
@@ -88,13 +87,11 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    // Preview local imediato
     setAvatarPreview(URL.createObjectURL(file));
     setLoading(true);
 
     try {
       const fileExt = file.name.split('.').pop();
-      // Nome fixo para sobrescrever (upsert) e manter o storage limpo
       const filePath = `avatars/${user.id}-profile.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -107,14 +104,12 @@ export default function Settings() {
         .from('store-assets')
         .getPublicUrl(filePath);
 
-      // Adiciona timestamp para forçar atualização da imagem em cache
       const finalUrl = `${publicUrl}?t=${Date.now()}`;
 
       await supabase.auth.updateUser({
         data: { avatar_url: finalUrl }
       });
 
-      // Sincroniza a foto com a tabela pública da Comunidade!
       await supabase.from('profiles').update({ avatar_url: finalUrl }).eq('id', user.id);
 
       setAvatarUrl(finalUrl);
@@ -136,7 +131,6 @@ export default function Settings() {
         data: { full_name: fullName }
       });
 
-      // Sincroniza o nome com a tabela pública da Comunidade!
       await supabase.from('profiles').update({ name: fullName }).eq('id', user.id);
 
       const { error } = await supabase.from('store_settings').upsert({
@@ -148,11 +142,11 @@ export default function Settings() {
         setup_fee: parseFloat(setupFee),
         machine_depreciation_hour: parseFloat(depreciation),
         failure_buffer_pct: parseInt(buffer),
-        // Salvando as novas taxas e métricas
         tax_ml: parseFloat(taxML),
         tax_shopee: parseFloat(taxShopee),
         machine_power_watts: parseFloat(powerWatts),
         labor_rate_hour: parseFloat(laborRate),
+        multicolor_waste_pct: parseInt(multicolorWaste), // Salvando purga
         updated_at: new Date().toISOString()
       });
 
@@ -277,28 +271,37 @@ export default function Settings() {
                       Potência (Watts)
                       <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Consumo médio da sua impressora 3D em Watts." />
                     </Label>
-                    <Input type="number" step="1" min="0" value={powerWatts} onChange={e => setPowerWatts(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
+                    <Input type="number" step="1" min="0" value={powerWatts} onChange={e => setPowerWatts(e.target.value)} className="h-12 rounded-2xl bg-muted/30 font-bold" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
                       Depreciação (R$/h)
                       <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Custo de desgaste da máquina por hora de uso." />
                     </Label>
-                    <Input type="number" step="0.01" min="0" value={depreciation} onChange={e => setDepreciation(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
+                    <Input type="number" step="0.01" min="0" value={depreciation} onChange={e => setDepreciation(e.target.value)} className="h-12 rounded-2xl bg-muted/30 font-bold" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Taxa de Setup (R$)</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Taxa de Setup Fixo (R$)</Label>
                   <Input type="number" step="0.10" min="0" value={setupFee} onChange={e => setSetupFee(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
                   <p className="text-[9px] text-muted-foreground opacity-70">Custo fixo de preparação e limpeza da mesa.</p>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-orange-600 flex items-center gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Margem de Erro/Falha (%)
-                  </Label>
-                  <Input type="number" min="0" max="100" value={buffer} onChange={e => setBuffer(e.target.value)} className="h-14 rounded-2xl bg-orange-500/5 border-orange-500/20 text-orange-700 font-black text-lg" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-orange-600 flex items-center gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Margem de Erro (%)
+                    </Label>
+                    <Input type="number" min="0" max="100" value={buffer} onChange={e => setBuffer(e.target.value)} className="h-14 rounded-2xl bg-orange-500/5 border-orange-500/20 text-orange-700 font-black text-lg" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center justify-between">
+                      <span className="flex items-center gap-2"><Settings2 className="w-3.5 h-3.5" /> Purga (AMS/MMU)</span>
+                      <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Porcentagem de desperdício em peças com troca de cor." />
+                    </Label>
+                    <Input type="number" min="0" max="100" value={multicolorWaste} onChange={e => setMulticolorWaste(e.target.value)} className="h-14 rounded-2xl bg-indigo-500/5 border-indigo-500/20 text-indigo-700 font-black text-lg" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
