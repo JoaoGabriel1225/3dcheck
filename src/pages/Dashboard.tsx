@@ -138,7 +138,7 @@ const BOT_PHRASES = [
   "Configurações Globais: Ajuste o app para o seu estilo de vida maker.",
   "Marketplace Hub: Só o filamento que não quebra e o bico que não entope.",
   "A aba Produtos é a sua prateleira infinita. Explore-a!",
-  "Dica: Verifique seus custos periodicamente para manter a margem de lucro real.",
+  "Dica: Verifique seus custos periodicamente para mantener a margem de lucro real.",
   "O Dashboard é a bússola do seu empreendimento 3D.",
   "Seja bem-vindo a mais um dia de produtividade máxima!",
   "O 3DCheck Bot está de olho: Já atualizou seus status de entrega hoje?",
@@ -201,7 +201,7 @@ const BOT_PHRASES = [
   "Configurações da Loja: Dê um toque de profissionalismo ao seu negócio.",
   "Marketplace Hub: A vitrine das melhores ofertas do mundo 3D.",
   "O Dashboard é o ponto de partida para as suas melhores decisões.",
-  "O 3DCheck Bot está orgulhoso da sua production. Continue assim!",
+  "O 3DCheck Bot está orgulhoso da sua produção. Continue assim!",
   "Nos SQLs da Comunidade, o próximo grande projeto pode ser seu.",
   "Aba Clientes: Porque por trás de cada pedido existe uma grande parceria.",
   "3DCheck: Criado de maker para maker, visando a Elite da impressão."
@@ -293,6 +293,9 @@ export default function Dashboard() {
   const [onboarding, setOnboarding] = useState<OnboardingStatus>({
     hasClient: false, hasProduct: false, hasOrder: false, hasSettings: false, isComplete: false
   });
+  
+  // ESTADO PARA EXIBIR OU OCULTAR O ONBOARDING (O Botão de X)
+  const [showOnboarding, setShowOnboarding] = useState(true);
 
   // ESTADOS DO BOT
   const [showBot, setShowBot] = useState(true);
@@ -301,6 +304,11 @@ export default function Dashboard() {
   const storeDisplayName = user?.user_metadata?.full_name || profile?.name || 'Maker';
 
   useEffect(() => {
+    // Verifica se o usuário já ocultou as missões antes
+    if (localStorage.getItem('hide_3dcheck_onboarding') === 'true') {
+      setShowOnboarding(false);
+    }
+
     // PERSISTÊNCIA DO BOT
     const botPreference = localStorage.getItem('hide_3dcheck_bot');
     if (botPreference === 'true') {
@@ -350,6 +358,11 @@ export default function Dashboard() {
     localStorage.setItem('hide_3dcheck_bot', 'true');
   };
 
+  const handleDismissOnboarding = () => {
+    setShowOnboarding(false);
+    localStorage.setItem('hide_3dcheck_onboarding', 'true');
+  };
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -364,18 +377,28 @@ export default function Dashboard() {
     const fetchStatsAndOnboarding = async () => {
       setLoading(true);
       try {
-        // Busca Missões do Onboarding
-        const [clientsRes, productsRes, settingsRes] = await Promise.all([
+        // Busca Missões do Onboarding (INDEPENDENTE DO FILTRO DE TEMPO PARA CORRIGIR O BUG)
+        const [clientsRes, productsRes, settingsRes, ordersCheckRes] = await Promise.all([
           supabase.from('clients').select('id').eq('user_id', profile.id).limit(1),
           supabase.from('products').select('id').eq('user_id', profile.id).limit(1),
-          supabase.from('store_settings').select('id').eq('user_id', profile.id).limit(1)
+          supabase.from('store_settings').select('id').eq('user_id', profile.id).limit(1),
+          supabase.from('orders').select('id').eq('user_id', profile.id).limit(1)
         ]);
 
         const hasClient = (clientsRes.data && clientsRes.data.length > 0) as boolean;
         const hasProduct = (productsRes.data && productsRes.data.length > 0) as boolean;
         const hasSettings = (settingsRes.data && settingsRes.data.length > 0) as boolean;
+        const hasOrder = (ordersCheckRes.data && ordersCheckRes.data.length > 0) as boolean;
 
-        // Filtro de Tempo para Estatísticas
+        setOnboarding({
+          hasClient,
+          hasProduct,
+          hasSettings,
+          hasOrder,
+          isComplete: hasClient && hasProduct && hasSettings && hasOrder
+        });
+
+        // Filtro de Tempo para Estatísticas do Dashboard
         let startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
         if (timeFilter === 'semana') startDate.setDate(startDate.getDate() - 7);
@@ -390,16 +413,6 @@ export default function Dashboard() {
           .order('created_at', { ascending: true });
 
         if (error) throw error;
-
-        const hasOrder = orders && orders.length > 0;
-        
-        setOnboarding({
-          hasClient,
-          hasProduct,
-          hasSettings,
-          hasOrder,
-          isComplete: hasClient && hasProduct && hasSettings && hasOrder
-        });
 
         // Cálculo das Estatísticas
         const dailyData: Record<string, { rev: number, cst: number }> = {};
@@ -459,7 +472,7 @@ export default function Dashboard() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-10 pb-10">
       
-      {/* #3DCHECK BOT COMPONENT - LEITURA EM MODO CLARO E MOBILE SEMPRE VISÍVEL */}
+      {/* #3DCHECK BOT COMPONENT */}
       <AnimatePresence>
         {showBot && (
           <motion.div 
@@ -468,7 +481,6 @@ export default function Dashboard() {
             exit={{ opacity: 0, scale: 0.95 }} 
             className="relative p-6 rounded-[2.5rem] bg-gradient-to-br from-blue-600/10 to-blue-600/5 border border-blue-500/20 shadow-xl overflow-hidden group"
           >
-            {/* BOTÃO FECHAR - MOBILE FRIENDLY */}
             <div className="absolute top-2 right-2 p-2 z-20">
               <button 
                 onClick={handleHideBot}
@@ -492,7 +504,6 @@ export default function Dashboard() {
                   <h3 className="font-black text-blue-700 dark:text-blue-500 uppercase text-[10px] tracking-[0.2em] italic">#3DCheck Bot</h3>
                   <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
                 </div>
-                {/* TEXTO DE ALTA VISIBILIDADE NO MODO CLARO SEM FUNDO EXTRA */}
                 <p className="text-sm md:text-base text-zinc-950 dark:text-zinc-100 font-bold leading-relaxed italic pr-12">
                   "{botPhrase}"
                 </p>
@@ -527,122 +538,153 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* NOVO: CARD MISSÕES DO MAKER (Refatorado para visual responsivo perfeito) */}
-      {!loading && !onboarding.isComplete && (
-        <motion.div variants={itemVariants} className="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border-2 border-indigo-500/20 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
-          
-          <div className="relative z-10 flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between">
-            <div className="space-y-2 max-w-sm">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-500 rounded-xl text-white shadow-lg shadow-indigo-500/30">
-                  <Rocket className="w-5 h-5" />
-                </div>
-                <h3 className="font-black text-xl text-foreground uppercase tracking-tight">Missões Iniciais</h3>
-              </div>
-              <p className="text-sm text-muted-foreground font-medium leading-relaxed">Siga estes 4 passos rápidos para dominar a gestão e liberar o verdadeiro poder do seu negócio 3D.</p>
-            </div>
+      {/* CARD MISSÕES DO MAKER */}
+      <AnimatePresence>
+        {!loading && !onboarding.isComplete && showOnboarding && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0, margin: 0, padding: 0 }}
+            className="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border-2 border-indigo-500/20 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden"
+          >
+            {/* BOTÃO FECHAR ONBOARDING */}
+            <button 
+              onClick={handleDismissOnboarding}
+              className="absolute top-4 right-4 p-2 z-20 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all"
+              title="Ocultar missões"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-[65%] shrink-0">
-              {/* Missão 1 */}
-              <div 
-                onClick={() => !onboarding.hasSettings && navigate('/app/settings')}
-                className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
-                  onboarding.hasSettings 
-                  ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
-                  : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
-                }`}
-              >
-                <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasSettings ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
-                  {onboarding.hasSettings ? <CheckCircle2 className="w-5 h-5" /> : <Settings2 className="w-5 h-5" />}
+            <div className="relative z-10 flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between mt-2">
+              <div className="space-y-2 max-w-sm">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-indigo-500 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+                    <Rocket className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-black text-xl text-foreground uppercase tracking-tight">Missões Iniciais</h3>
                 </div>
-                <div className={`flex-1 min-w-0 ${onboarding.hasSettings ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
-                  <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 1</span>
-                  <span className="font-bold text-sm leading-tight block truncate">Config. Financeira</span>
-                </div>
-                {!onboarding.hasSettings && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
+                <p className="text-sm text-muted-foreground font-medium leading-relaxed">Siga estes 4 passos rápidos para dominar a gestão e liberar o verdadeiro poder do seu negócio 3D.</p>
               </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-[65%] shrink-0">
+                {/* Missão 1 */}
+                <div 
+                  onClick={() => !onboarding.hasSettings && navigate('/app/settings')}
+                  className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                    onboarding.hasSettings 
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
+                    : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasSettings ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
+                    {onboarding.hasSettings ? <CheckCircle2 className="w-5 h-5" /> : <Settings2 className="w-5 h-5" />}
+                  </div>
+                  <div className={`flex-1 min-w-0 ${onboarding.hasSettings ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
+                    <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 1</span>
+                    <span className="font-bold text-sm leading-tight block truncate">Config. Financeira</span>
+                  </div>
+                  {!onboarding.hasSettings && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
+                </div>
 
-              {/* Missão 2 */}
-              <div 
-                onClick={() => !onboarding.hasClient && navigate('/app/clients')}
-                className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
-                  onboarding.hasClient 
-                  ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
-                  : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
-                }`}
-              >
-                <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasClient ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
-                  {onboarding.hasClient ? <CheckCircle2 className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+                {/* Missão 2 */}
+                <div 
+                  onClick={() => !onboarding.hasClient && navigate('/app/clients')}
+                  className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                    onboarding.hasClient 
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
+                    : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasClient ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
+                    {onboarding.hasClient ? <CheckCircle2 className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+                  </div>
+                  <div className={`flex-1 min-w-0 ${onboarding.hasClient ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
+                    <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 2</span>
+                    <span className="font-bold text-sm leading-tight block truncate">Cadastrar Cliente</span>
+                  </div>
+                  {!onboarding.hasClient && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
                 </div>
-                <div className={`flex-1 min-w-0 ${onboarding.hasClient ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
-                  <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 2</span>
-                  <span className="font-bold text-sm leading-tight block truncate">Cadastrar Cliente</span>
-                </div>
-                {!onboarding.hasClient && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
-              </div>
 
-              {/* Missão 3 */}
-              <div 
-                onClick={() => !onboarding.hasProduct && navigate('/app/products')}
-                className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
-                  onboarding.hasProduct 
-                  ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
-                  : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
-                }`}
-              >
-                <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasProduct ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
-                  {onboarding.hasProduct ? <CheckCircle2 className="w-5 h-5" /> : <Box className="w-5 h-5" />}
+                {/* Missão 3 */}
+                <div 
+                  onClick={() => !onboarding.hasProduct && navigate('/app/products')}
+                  className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                    onboarding.hasProduct 
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
+                    : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasProduct ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
+                    {onboarding.hasProduct ? <CheckCircle2 className="w-5 h-5" /> : <Box className="w-5 h-5" />}
+                  </div>
+                  <div className={`flex-1 min-w-0 ${onboarding.hasProduct ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
+                    <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 3</span>
+                    <span className="font-bold text-sm leading-tight block truncate">Criar Produto</span>
+                  </div>
+                  {!onboarding.hasProduct && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
                 </div>
-                <div className={`flex-1 min-w-0 ${onboarding.hasProduct ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
-                  <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 3</span>
-                  <span className="font-bold text-sm leading-tight block truncate">Criar Produto</span>
-                </div>
-                {!onboarding.hasProduct && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
-              </div>
 
-              {/* Missão 4 */}
-              <div 
-                onClick={() => !onboarding.hasOrder && navigate('/app/orders')}
-                className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
-                  onboarding.hasOrder 
-                  ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
-                  : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
-                }`}
-              >
-                <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasOrder ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
-                  {onboarding.hasOrder ? <CheckCircle2 className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+                {/* Missão 4 */}
+                <div 
+                  onClick={() => !onboarding.hasOrder && navigate('/app/orders')}
+                  className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                    onboarding.hasOrder 
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
+                    : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasOrder ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
+                    {onboarding.hasOrder ? <CheckCircle2 className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+                  </div>
+                  <div className={`flex-1 min-w-0 ${onboarding.hasOrder ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
+                    <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 4</span>
+                    <span className="font-bold text-sm leading-tight block truncate">Gerar Pedido</span>
+                  </div>
+                  {!onboarding.hasOrder && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
                 </div>
-                <div className={`flex-1 min-w-0 ${onboarding.hasOrder ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
-                  <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 4</span>
-                  <span className="font-bold text-sm leading-tight block truncate">Gerar Pedido</span>
-                </div>
-                {!onboarding.hasOrder && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
               </div>
             </div>
-
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MENSAGEM DE VITÓRIA SE COMPLETAR TUDO */}
-      {!loading && onboarding.isComplete && (
-        <motion.div variants={itemVariants} className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-2 border-emerald-500/30 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6">
-           <div className="flex items-center gap-5 z-10">
-              <div className="h-16 w-16 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center shrink-0">
-                 <Trophy className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                 <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Oficina 100% Operacional!</h3>
-                 <p className="text-sm text-muted-foreground font-medium mt-1">Parabéns, Maker! Sua gestão está configurada. Explore o Hub Maker e descubra novas oportunidades para escalar seu negócio.</p>
-              </div>
-           </div>
-           <Button onClick={() => navigate('/app/community')} className="w-full sm:w-auto h-12 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl shadow-lg shadow-emerald-500/20 gap-2 z-10 transition-all active:scale-95">
-              <Sparkles className="w-4 h-4" /> EXPLORAR HUB
-           </Button>
-           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {!loading && onboarding.isComplete && showOnboarding && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0, margin: 0, padding: 0 }}
+            className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-2 border-emerald-500/30 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6"
+          >
+             {/* BOTÃO FECHAR MENSAGEM DE VITÓRIA */}
+             <button 
+                onClick={handleDismissOnboarding}
+                className="absolute top-4 right-4 p-2 z-20 rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all"
+                title="Ocultar mensagem"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+             <div className="flex items-center gap-5 z-10 mt-2 sm:mt-0">
+                <div className="h-16 w-16 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center shrink-0">
+                   <Trophy className="w-8 h-8 text-white" />
+                </div>
+                <div className="pr-8 sm:pr-0">
+                   <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Oficina 100% Operacional!</h3>
+                   <p className="text-sm text-muted-foreground font-medium mt-1">Parabéns, Maker! Sua gestão está configurada. Explore o Hub Maker e descubra novas oportunidades para escalar seu negócio.</p>
+                </div>
+             </div>
+             <Button onClick={() => navigate('/app/community')} className="w-full sm:w-auto h-12 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl shadow-lg shadow-emerald-500/20 gap-2 z-10 transition-all active:scale-95">
+                <Sparkles className="w-4 h-4" /> EXPLORAR HUB
+             </Button>
+             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
