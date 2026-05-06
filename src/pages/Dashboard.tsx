@@ -201,7 +201,7 @@ const BOT_PHRASES = [
   "Configurações da Loja: Dê um toque de profissionalismo ao seu negócio.",
   "Marketplace Hub: A vitrine das melhores ofertas do mundo 3D.",
   "O Dashboard é o ponto de partida para as suas melhores decisões.",
-  "O 3DCheck Bot está orgulhoso da sua produção. Continue assim!",
+  "O 3DCheck Bot está orgulhoso da sua production. Continue assim!",
   "Nos SQLs da Comunidade, o próximo grande projeto pode ser seu.",
   "Aba Clientes: Porque por trás de cada pedido existe uma grande parceria.",
   "3DCheck: Criado de maker para maker, visando a Elite da impressão."
@@ -527,87 +527,120 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* NOVO: CARD MISSÕES DO MAKER */}
+      {/* NOVO: CARD MISSÕES DO MAKER (Refatorado para visual responsivo perfeito) */}
       {!loading && !onboarding.isComplete && (
         <motion.div variants={itemVariants} className="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border-2 border-indigo-500/20 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
-          <div className="relative z-10 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-            <div className="space-y-2 max-w-lg">
+          
+          <div className="relative z-10 flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between">
+            <div className="space-y-2 max-w-sm">
               <div className="flex items-center gap-2">
-                <Rocket className="w-5 h-5 text-indigo-500" />
-                <h3 className="font-black text-lg text-foreground uppercase tracking-tight">Missões do Maker</h3>
+                <div className="p-2 bg-indigo-500 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+                  <Rocket className="w-5 h-5" />
+                </div>
+                <h3 className="font-black text-xl text-foreground uppercase tracking-tight">Missões Iniciais</h3>
               </div>
-              <p className="text-sm text-muted-foreground font-medium">Siga estes passos rápidos para dominar sua gestão e liberar o verdadeiro poder do seu negócio 3D.</p>
+              <p className="text-sm text-muted-foreground font-medium leading-relaxed">Siga estes 4 passos rápidos para dominar a gestão e liberar o verdadeiro poder do seu negócio 3D.</p>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto flex-1">
-              <Button 
-                variant={onboarding.hasSettings ? "ghost" : "default"} 
-                className={`h-auto p-4 justify-start text-left rounded-2xl transition-all ${onboarding.hasSettings ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1'}`}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-[65%] shrink-0">
+              {/* Missão 1 */}
+              <div 
                 onClick={() => !onboarding.hasSettings && navigate('/app/settings')}
+                className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                  onboarding.hasSettings 
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
+                  : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
+                }`}
               >
-                {onboarding.hasSettings ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-500" /> : <Settings2 className="w-5 h-5 mr-3 shrink-0" />}
-                <div>
-                  <span className="block font-black uppercase text-[10px] tracking-widest opacity-80">Passo 1</span>
-                  <span className="font-bold text-sm">Configurações Financeiras</span>
+                <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasSettings ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
+                  {onboarding.hasSettings ? <CheckCircle2 className="w-5 h-5" /> : <Settings2 className="w-5 h-5" />}
                 </div>
-              </Button>
+                <div className={`flex-1 min-w-0 ${onboarding.hasSettings ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
+                  <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 1</span>
+                  <span className="font-bold text-sm leading-tight block truncate">Config. Financeira</span>
+                </div>
+                {!onboarding.hasSettings && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
+              </div>
 
-              <Button 
-                variant={onboarding.hasClient ? "ghost" : "default"} 
-                className={`h-auto p-4 justify-start text-left rounded-2xl transition-all ${onboarding.hasClient ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1'}`}
+              {/* Missão 2 */}
+              <div 
                 onClick={() => !onboarding.hasClient && navigate('/app/clients')}
+                className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                  onboarding.hasClient 
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
+                  : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
+                }`}
               >
-                {onboarding.hasClient ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-500" /> : <UserPlus className="w-5 h-5 mr-3 shrink-0" />}
-                <div>
-                  <span className="block font-black uppercase text-[10px] tracking-widest opacity-80">Passo 2</span>
-                  <span className="font-bold text-sm">Cadastre um Cliente</span>
+                <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasClient ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
+                  {onboarding.hasClient ? <CheckCircle2 className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
                 </div>
-              </Button>
+                <div className={`flex-1 min-w-0 ${onboarding.hasClient ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
+                  <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 2</span>
+                  <span className="font-bold text-sm leading-tight block truncate">Cadastrar Cliente</span>
+                </div>
+                {!onboarding.hasClient && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
+              </div>
 
-              <Button 
-                variant={onboarding.hasProduct ? "ghost" : "default"} 
-                className={`h-auto p-4 justify-start text-left rounded-2xl transition-all ${onboarding.hasProduct ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1'}`}
+              {/* Missão 3 */}
+              <div 
                 onClick={() => !onboarding.hasProduct && navigate('/app/products')}
+                className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                  onboarding.hasProduct 
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
+                  : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
+                }`}
               >
-                {onboarding.hasProduct ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-500" /> : <Box className="w-5 h-5 mr-3 shrink-0" />}
-                <div>
-                  <span className="block font-black uppercase text-[10px] tracking-widest opacity-80">Passo 3</span>
-                  <span className="font-bold text-sm">Crie seu 1º Produto</span>
+                <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasProduct ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
+                  {onboarding.hasProduct ? <CheckCircle2 className="w-5 h-5" /> : <Box className="w-5 h-5" />}
                 </div>
-              </Button>
+                <div className={`flex-1 min-w-0 ${onboarding.hasProduct ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
+                  <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 3</span>
+                  <span className="font-bold text-sm leading-tight block truncate">Criar Produto</span>
+                </div>
+                {!onboarding.hasProduct && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
+              </div>
 
-              <Button 
-                variant={onboarding.hasOrder ? "ghost" : "default"} 
-                className={`h-auto p-4 justify-start text-left rounded-2xl transition-all ${onboarding.hasOrder ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1'}`}
+              {/* Missão 4 */}
+              <div 
                 onClick={() => !onboarding.hasOrder && navigate('/app/orders')}
+                className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                  onboarding.hasOrder 
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
+                  : 'bg-indigo-600 border border-indigo-500 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 cursor-pointer group'
+                }`}
               >
-                {onboarding.hasOrder ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-500" /> : <ShoppingCart className="w-5 h-5 mr-3 shrink-0" />}
-                <div>
-                  <span className="block font-black uppercase text-[10px] tracking-widest opacity-80">Passo 4</span>
-                  <span className="font-bold text-sm">Gere o 1º Pedido</span>
+                <div className={`p-2.5 rounded-xl shrink-0 ${onboarding.hasOrder ? 'bg-emerald-500/20 text-emerald-600' : 'bg-white/20 text-white'}`}>
+                  {onboarding.hasOrder ? <CheckCircle2 className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
                 </div>
-              </Button>
+                <div className={`flex-1 min-w-0 ${onboarding.hasOrder ? 'text-emerald-700 dark:text-emerald-500' : 'text-white'}`}>
+                  <span className="block font-black uppercase text-[9px] tracking-widest opacity-80 mb-0.5">Passo 4</span>
+                  <span className="font-bold text-sm leading-tight block truncate">Gerar Pedido</span>
+                </div>
+                {!onboarding.hasOrder && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
+              </div>
             </div>
+
           </div>
         </motion.div>
       )}
 
-      {/* MENSAGEM DE VITÓRIA SE COMPLETAR TUDO (Desaparece após alguns dias se já tem dados) */}
+      {/* MENSAGEM DE VITÓRIA SE COMPLETAR TUDO */}
       {!loading && onboarding.isComplete && (
-        <motion.div variants={itemVariants} className="bg-gradient-to-r from-emerald-500/10 to-transparent border border-emerald-500/20 p-4 rounded-2xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/30">
-              <Trophy className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="font-black text-foreground uppercase tracking-tight text-sm">Oficina Operacional!</p>
-              <p className="text-xs text-muted-foreground font-medium">Tudo configurado. Explore o Hub Maker e descubra novas oportunidades.</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => navigate('/app/community')} className="text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500 hover:text-white rounded-full">
-            <ArrowUpRight className="w-4 h-4" />
-          </Button>
+        <motion.div variants={itemVariants} className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-2 border-emerald-500/30 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6">
+           <div className="flex items-center gap-5 z-10">
+              <div className="h-16 w-16 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center shrink-0">
+                 <Trophy className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                 <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Oficina 100% Operacional!</h3>
+                 <p className="text-sm text-muted-foreground font-medium mt-1">Parabéns, Maker! Sua gestão está configurada. Explore o Hub Maker e descubra novas oportunidades para escalar seu negócio.</p>
+              </div>
+           </div>
+           <Button onClick={() => navigate('/app/community')} className="w-full sm:w-auto h-12 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl shadow-lg shadow-emerald-500/20 gap-2 z-10 transition-all active:scale-95">
+              <Sparkles className="w-4 h-4" /> EXPLORAR HUB
+           </Button>
+           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
         </motion.div>
       )}
 
