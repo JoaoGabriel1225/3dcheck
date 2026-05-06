@@ -316,18 +316,16 @@ export default function Dashboard() {
     };
   }, []);
 
-  // EFEITO 2: Preferencias atreladas APENAS AO USUARIO ATUAL (Corrigindo o bug das telas escondidas)
+  // EFEITO 2: Preferencias atreladas APENAS AO USUARIO ATUAL
   useEffect(() => {
     if (!user) return;
     
-    // Mostra/Oculta Onboarding especifico do usuario
     if (localStorage.getItem(`hide_onboard_${user.id}`) === 'true') {
       setShowOnboarding(false);
     } else {
       setShowOnboarding(true);
     }
 
-    // Mostra/Oculta Bot especifico do usuario
     if (localStorage.getItem(`hide_bot_${user.id}`) === 'true') {
       setShowBot(false);
     } else {
@@ -378,7 +376,8 @@ export default function Dashboard() {
         const [clientsRes, productsRes, settingsRes, ordersCheckRes] = await Promise.all([
           supabase.from('clients').select('id').eq('user_id', profile.id).limit(1),
           supabase.from('products').select('id').eq('user_id', profile.id).limit(1),
-          supabase.from('store_settings').select('id').eq('user_id', profile.id).limit(1),
+          // CORREÇÃO: Busca por 'user_id' em vez de 'id' para evitar Erro 400
+          supabase.from('store_settings').select('user_id').eq('user_id', profile.id).limit(1),
           supabase.from('orders').select('id').eq('user_id', profile.id).limit(1)
         ]);
 
@@ -386,7 +385,6 @@ export default function Dashboard() {
         const hasProduct = (productsRes.data && productsRes.data.length > 0) as boolean;
         const hasOrder = (ordersCheckRes.data && ordersCheckRes.data.length > 0) as boolean;
         
-        // Verifica se clicou ou se ja salvou no banco
         const visitedSettings = localStorage.getItem(`visited_settings_${user.id}`) === 'true';
         const hasSettings = visitedSettings || ((settingsRes.data && settingsRes.data.length > 0) as boolean);
 
@@ -398,7 +396,6 @@ export default function Dashboard() {
           isComplete: hasClient && hasProduct && hasSettings && hasOrder
         });
 
-        // Filtro de Tempo
         let startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
         if (timeFilter === 'semana') startDate.setDate(startDate.getDate() - 7);
@@ -414,7 +411,6 @@ export default function Dashboard() {
 
         if (error) throw error;
 
-        // Calculos
         const dailyData: Record<string, { rev: number, cst: number }> = {};
         const productMap: Record<string, { count: number, revenue: number }> = {};
         
@@ -537,7 +533,6 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* CARD MISSÕES DO MAKER */}
       <AnimatePresence>
         {!loading && !onboarding.isComplete && showOnboarding && (
           <motion.div 
