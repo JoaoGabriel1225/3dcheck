@@ -184,7 +184,7 @@ export default function Landing() {
               ].map((item, i) => (
                 <motion.li key={i} whileHover={{ x: 10 }} className="flex items-center gap-4 font-bold text-zinc-100 text-lg">
                   <CheckCircle2 className="w-7 h-7 text-emerald-500 shrink-0" /> {item.text}
-                </li>
+                </motion.li>
               ))}
             </ul>
           </motion.div>
@@ -248,7 +248,7 @@ export default function Landing() {
                         </motion.div>
                       </AnimatePresence>
                       <span className="text-[10px] font-bold text-zinc-500 mt-2 uppercase tracking-widest">{t.label}</span>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
