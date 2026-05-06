@@ -387,8 +387,11 @@ export default function Dashboard() {
 
         const hasClient = (clientsRes.data && clientsRes.data.length > 0) as boolean;
         const hasProduct = (productsRes.data && productsRes.data.length > 0) as boolean;
-        const hasSettings = (settingsRes.data && settingsRes.data.length > 0) as boolean;
         const hasOrder = (ordersCheckRes.data && ordersCheckRes.data.length > 0) as boolean;
+        
+        // CORREÇÃO: Configurações Globais dá "check" se ele já salvou OU se apenas clicou no botão!
+        const visitedSettings = localStorage.getItem('3dcheck_visited_settings') === 'true';
+        const hasSettings = visitedSettings || ((settingsRes.data && settingsRes.data.length > 0) as boolean);
 
         setOnboarding({
           hasClient,
@@ -570,9 +573,14 @@ export default function Dashboard() {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-[65%] shrink-0">
-                {/* Missão 1 */}
+                {/* Missão 1 - CORRIGIDA COM O LOCALSTORAGE */}
                 <div 
-                  onClick={() => !onboarding.hasSettings && navigate('/app/settings')}
+                  onClick={() => {
+                    if (!onboarding.hasSettings) {
+                      localStorage.setItem('3dcheck_visited_settings', 'true');
+                      navigate('/app/settings');
+                    }
+                  }}
                   className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
                     onboarding.hasSettings 
                     ? 'bg-emerald-500/10 border border-emerald-500/20 opacity-80 cursor-default' 
