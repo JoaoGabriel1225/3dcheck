@@ -24,7 +24,12 @@ import {
   Bot,
   Sparkles,
   Info,
-  MessageSquareOff
+  MessageSquareOff,
+  UserPlus,
+  Settings2,
+  Box,
+  ShoppingCart,
+  Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -217,6 +222,14 @@ type OrderContext = {
   topProducts: TopProduct[];
 }
 
+type OnboardingStatus = {
+  hasClient: boolean;
+  hasProduct: boolean;
+  hasOrder: boolean;
+  hasSettings: boolean;
+  isComplete: boolean;
+};
+
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
 const MiniBarChart = ({ data, color }: { data: number[], color: string }) => {
@@ -277,6 +290,9 @@ export default function Dashboard() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('mes');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
+  const [onboarding, setOnboarding] = useState<OnboardingStatus>({
+    hasClient: false, hasProduct: false, hasOrder: false, hasSettings: false, isComplete: false
+  });
 
   // ESTADOS DO BOT
   const [showBot, setShowBot] = useState(true);
@@ -345,9 +361,21 @@ export default function Dashboard() {
   useEffect(() => {
     if (!profile) return;
 
-    const fetchStats = async () => {
+    const fetchStatsAndOnboarding = async () => {
       setLoading(true);
       try {
+        // Busca Missões do Onboarding
+        const [clientsRes, productsRes, settingsRes] = await Promise.all([
+          supabase.from('clients').select('id').eq('user_id', profile.id).limit(1),
+          supabase.from('products').select('id').eq('user_id', profile.id).limit(1),
+          supabase.from('store_settings').select('id').eq('user_id', profile.id).limit(1)
+        ]);
+
+        const hasClient = (clientsRes.data && clientsRes.data.length > 0) as boolean;
+        const hasProduct = (productsRes.data && productsRes.data.length > 0) as boolean;
+        const hasSettings = (settingsRes.data && settingsRes.data.length > 0) as boolean;
+
+        // Filtro de Tempo para Estatísticas
         let startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
         if (timeFilter === 'semana') startDate.setDate(startDate.getDate() - 7);
@@ -363,6 +391,17 @@ export default function Dashboard() {
 
         if (error) throw error;
 
+        const hasOrder = orders && orders.length > 0;
+        
+        setOnboarding({
+          hasClient,
+          hasProduct,
+          hasSettings,
+          hasOrder,
+          isComplete: hasClient && hasProduct && hasSettings && hasOrder
+        });
+
+        // Cálculo das Estatísticas
         const dailyData: Record<string, { rev: number, cst: number }> = {};
         const productMap: Record<string, { count: number, revenue: number }> = {};
         
@@ -414,7 +453,7 @@ export default function Dashboard() {
       } catch (error) { console.error(error); } 
       finally { setLoading(false); }
     };
-    fetchStats();
+    fetchStatsAndOnboarding();
   }, [profile, timeFilter]);
 
   return (
@@ -487,6 +526,90 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* NOVO: CARD MISSÕES DO MAKER */}
+      {!loading && !onboarding.isComplete && (
+        <motion.div variants={itemVariants} className="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border-2 border-indigo-500/20 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
+          <div className="relative z-10 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+            <div className="space-y-2 max-w-lg">
+              <div className="flex items-center gap-2">
+                <Rocket className="w-5 h-5 text-indigo-500" />
+                <h3 className="font-black text-lg text-foreground uppercase tracking-tight">Missões do Maker</h3>
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">Siga estes passos rápidos para dominar sua gestão e liberar o verdadeiro poder do seu negócio 3D.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto flex-1">
+              <Button 
+                variant={onboarding.hasSettings ? "ghost" : "default"} 
+                className={`h-auto p-4 justify-start text-left rounded-2xl transition-all ${onboarding.hasSettings ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1'}`}
+                onClick={() => !onboarding.hasSettings && navigate('/app/settings')}
+              >
+                {onboarding.hasSettings ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-500" /> : <Settings2 className="w-5 h-5 mr-3 shrink-0" />}
+                <div>
+                  <span className="block font-black uppercase text-[10px] tracking-widest opacity-80">Passo 1</span>
+                  <span className="font-bold text-sm">Configurações Financeiras</span>
+                </div>
+              </Button>
+
+              <Button 
+                variant={onboarding.hasClient ? "ghost" : "default"} 
+                className={`h-auto p-4 justify-start text-left rounded-2xl transition-all ${onboarding.hasClient ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1'}`}
+                onClick={() => !onboarding.hasClient && navigate('/app/clients')}
+              >
+                {onboarding.hasClient ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-500" /> : <UserPlus className="w-5 h-5 mr-3 shrink-0" />}
+                <div>
+                  <span className="block font-black uppercase text-[10px] tracking-widest opacity-80">Passo 2</span>
+                  <span className="font-bold text-sm">Cadastre um Cliente</span>
+                </div>
+              </Button>
+
+              <Button 
+                variant={onboarding.hasProduct ? "ghost" : "default"} 
+                className={`h-auto p-4 justify-start text-left rounded-2xl transition-all ${onboarding.hasProduct ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1'}`}
+                onClick={() => !onboarding.hasProduct && navigate('/app/products')}
+              >
+                {onboarding.hasProduct ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-500" /> : <Box className="w-5 h-5 mr-3 shrink-0" />}
+                <div>
+                  <span className="block font-black uppercase text-[10px] tracking-widest opacity-80">Passo 3</span>
+                  <span className="font-bold text-sm">Crie seu 1º Produto</span>
+                </div>
+              </Button>
+
+              <Button 
+                variant={onboarding.hasOrder ? "ghost" : "default"} 
+                className={`h-auto p-4 justify-start text-left rounded-2xl transition-all ${onboarding.hasOrder ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1'}`}
+                onClick={() => !onboarding.hasOrder && navigate('/app/orders')}
+              >
+                {onboarding.hasOrder ? <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-500" /> : <ShoppingCart className="w-5 h-5 mr-3 shrink-0" />}
+                <div>
+                  <span className="block font-black uppercase text-[10px] tracking-widest opacity-80">Passo 4</span>
+                  <span className="font-bold text-sm">Gere o 1º Pedido</span>
+                </div>
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* MENSAGEM DE VITÓRIA SE COMPLETAR TUDO (Desaparece após alguns dias se já tem dados) */}
+      {!loading && onboarding.isComplete && (
+        <motion.div variants={itemVariants} className="bg-gradient-to-r from-emerald-500/10 to-transparent border border-emerald-500/20 p-4 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/30">
+              <Trophy className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-black text-foreground uppercase tracking-tight text-sm">Oficina Operacional!</p>
+              <p className="text-xs text-muted-foreground font-medium">Tudo configurado. Explore o Hub Maker e descubra novas oportunidades.</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/app/community')} className="text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500 hover:text-white rounded-full">
+            <ArrowUpRight className="w-4 h-4" />
+          </Button>
+        </motion.div>
+      )}
 
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
