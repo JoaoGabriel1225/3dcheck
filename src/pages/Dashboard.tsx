@@ -34,36 +34,26 @@ import {
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- DATABASE DE MENSAGENS DO #3DCHECK BOT (150 FRASES MANTIDAS) ---
 const BOT_PHRASES = [
-  // MARKETPLACE HUB (O Ouro Garimpado)
   "Garimpei o 'ouro' no Marketplace Hub! Filamento premium com preço de banana. Já viu hoje?",
   "O Marketplace Hub atualizou com peças que são raridade. Curadoria de quem entende!",
   "Link de afiliado? Sim, mas só do que eu usaria na minha própria bancada. Confira o Marketplace Hub!",
   "Parei tudo para te avisar: tem extrusora em promoção no Marketplace Hub. Ouro puro!",
   "No Marketplace Hub eu encontro o que presta, você só clica e economiza.",
   "Sabe aquele componente que nunca baixa de preço? Garimpei ele no Marketplace Hub hoje!",
-
-  // SQLs DA COMUNIDADE
   "Os SQLs da Comunidade estão pegando fogo! Já viu o arquivo que subiram hoje?",
   "Não reinvente a roda. Dá um pulo nos SQLs da Comunidade e veja o que os outros makers estão compartilhando.",
   "Alguém postou um suporte de fone incrível nos SQLs da Comunidade. Vai lá baixar!",
   "Compartilhar é crescer. Já subiu seu melhor arquivo nos SQLs da Comunidade?",
-
-  // GESTÃO OPERACIONAL (CLIENTES, PEDIDOS, PRODUTOS, VITRINE)
   "Um cliente bem cadastrado é uma venda recorrente garantida. Já revisou seus contatos?",
   "Pedidos parados são máquinas paradas. Mantenha seu fluxo de produção atualizado!",
   "Sua Vitrine é sua cara. Vá em Configurações da Loja e deixe ela com o brilho da Elite.",
   "Dica: Fotos reais dos seus produtos na Vitrine aumentam a conversão em 40%!",
   "Gestão de Produtos: Se o custo do filamento subiu, o 3DCheck te avisa para ajustar o preço.",
   "O status 'Imprimindo' dá um alívio, né? Não esqueça de atualizar o pedido quando acabar!",
-
-  // FINANCEIRO E CONFIGURAÇÕES
   "O Financeiro não mente: Gerenciar custos é o que separa o amador do profissional.",
   "Nas Configurações Globais você ajusta o 3DCheck para bater com o ritmo da sua oficina.",
   "Dinheiro no bolso é melhor que filamento no ar. Confira seu Lucro Líquido hoje!",
-
-  // HUMOR, FATOS E CURIOSIDADES
   "Nivelar a mesa é 1% técnica e 99% oração. Mas no 3DCheck a gestão é 100% garantida!",
   "Sabia que a primeira impressora 3D é de 1984? Mais velha que muito mestre maker por aí.",
   "Spaghetti de plástico só é bom se for erro dos outros. No seu 3DCheck, a gente evita o prejuízo!",
@@ -75,7 +65,6 @@ const BOT_PHRASES = [
   "A primeira camada é a base de tudo: na impressão e no seu negócio. Use o Dashboard!",
   "Dica de mestre: Um bico limpo evita 90% das dores de cabeça. Os outros 10% o 3DCheck resolve.",
   "A comunidade 3D é gigante. Você faz parte da Elite agora!",
-
   "Suporte & Feedback: Teve uma ideia genial pro app? Manda pra gente!",
   "Já configurou seu faturamento hoje? O 3DCheck ama ver seus números crescendo.",
   "A aba Clientes é o seu tesouro. Use o filtro para ver quem são seus melhores compradores.",
@@ -188,8 +177,8 @@ const BOT_PHRASES = [
   "Configurações Globais: Onde a sua experiência com o app se torna única.",
   "Marketplace Hub: O caminho mais curto para o melhor hardware 3D.",
   "Fato: A impressão 3D em metal já é usada na Fórmula 1!",
-  "A aba Clientes é the sua agenda de ouro. Mantenha-a sempre atualizada.",
-  "O 3DCheck é the ferramenta que faltava na sua caixa de ferramentas maker.",
+  "A aba Clientes é sua agenda de ouro. Mantenha-a sempre atualizada.",
+  "O 3DCheck é a ferramenta que faltava na sua caixa de ferramentas maker.",
   "Produção: Cada camada conta, cada pedido importa.",
   "Vitrine: Mostre ao mundo o poder da sua fabricação digital.",
   "O 3DCheck Bot deseja a você um dia produtivo e sem entupimentos!",
@@ -294,31 +283,15 @@ export default function Dashboard() {
     hasClient: false, hasProduct: false, hasOrder: false, hasSettings: false, isComplete: false
   });
   
-  // ESTADO PARA EXIBIR OU OCULTAR O ONBOARDING (O Botão de X)
+  // ESTADOS DE EXIBICAO DOS CARDS
   const [showOnboarding, setShowOnboarding] = useState(true);
-
-  // ESTADOS DO BOT
   const [showBot, setShowBot] = useState(true);
   const [botPhrase, setBotPhrase] = useState("");
 
   const storeDisplayName = user?.user_metadata?.full_name || profile?.name || 'Maker';
 
+  // EFEITO 1: Inscricao no Realtime (Roda apenas 1 vez)
   useEffect(() => {
-    // Verifica se o usuário já ocultou as missões antes
-    if (localStorage.getItem('hide_3dcheck_onboarding') === 'true') {
-      setShowOnboarding(false);
-    }
-
-    // PERSISTÊNCIA DO BOT
-    const botPreference = localStorage.getItem('hide_3dcheck_bot');
-    if (botPreference === 'true') {
-      setShowBot(false);
-    } else {
-      const randomIndex = Math.floor(Math.random() * BOT_PHRASES.length);
-      setBotPhrase(BOT_PHRASES[randomIndex]);
-    }
-
-    // --- REALTIME PARA NOVOS STLS ---
     const communitySubscription = supabase
       .channel('community_alerts')
       .on('postgres_changes', { 
@@ -343,10 +316,32 @@ export default function Dashboard() {
     };
   }, []);
 
+  // EFEITO 2: Preferencias atreladas APENAS AO USUARIO ATUAL (Corrigindo o bug das telas escondidas)
+  useEffect(() => {
+    if (!user) return;
+    
+    // Mostra/Oculta Onboarding especifico do usuario
+    if (localStorage.getItem(`hide_onboard_${user.id}`) === 'true') {
+      setShowOnboarding(false);
+    } else {
+      setShowOnboarding(true);
+    }
+
+    // Mostra/Oculta Bot especifico do usuario
+    if (localStorage.getItem(`hide_bot_${user.id}`) === 'true') {
+      setShowBot(false);
+    } else {
+      setShowBot(true);
+      const randomIndex = Math.floor(Math.random() * BOT_PHRASES.length);
+      setBotPhrase(BOT_PHRASES[randomIndex]);
+    }
+  }, [user]);
+
   const toggleBotVisibility = () => {
+    if (!user) return;
     const nextState = !showBot;
     setShowBot(nextState);
-    localStorage.setItem('hide_3dcheck_bot', (!nextState).toString());
+    localStorage.setItem(`hide_bot_${user.id}`, (!nextState).toString());
     if (nextState) {
       const randomIndex = Math.floor(Math.random() * BOT_PHRASES.length);
       setBotPhrase(BOT_PHRASES[randomIndex]);
@@ -354,13 +349,15 @@ export default function Dashboard() {
   };
 
   const handleHideBot = () => {
+    if (!user) return;
     setShowBot(false);
-    localStorage.setItem('hide_3dcheck_bot', 'true');
+    localStorage.setItem(`hide_bot_${user.id}`, 'true');
   };
 
   const handleDismissOnboarding = () => {
+    if (!user) return;
     setShowOnboarding(false);
-    localStorage.setItem('hide_3dcheck_onboarding', 'true');
+    localStorage.setItem(`hide_onboard_${user.id}`, 'true');
   };
 
   const handleInstallClick = async () => {
@@ -372,12 +369,12 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || !user) return;
 
     const fetchStatsAndOnboarding = async () => {
       setLoading(true);
       try {
-        // Busca Missões do Onboarding (INDEPENDENTE DO FILTRO DE TEMPO PARA CORRIGIR O BUG)
+        // Busca Missões
         const [clientsRes, productsRes, settingsRes, ordersCheckRes] = await Promise.all([
           supabase.from('clients').select('id').eq('user_id', profile.id).limit(1),
           supabase.from('products').select('id').eq('user_id', profile.id).limit(1),
@@ -389,8 +386,8 @@ export default function Dashboard() {
         const hasProduct = (productsRes.data && productsRes.data.length > 0) as boolean;
         const hasOrder = (ordersCheckRes.data && ordersCheckRes.data.length > 0) as boolean;
         
-        // CORREÇÃO: Configurações Globais dá "check" se ele já salvou OU se apenas clicou no botão!
-        const visitedSettings = localStorage.getItem('3dcheck_visited_settings') === 'true';
+        // Verifica se clicou ou se ja salvou no banco
+        const visitedSettings = localStorage.getItem(`visited_settings_${user.id}`) === 'true';
         const hasSettings = visitedSettings || ((settingsRes.data && settingsRes.data.length > 0) as boolean);
 
         setOnboarding({
@@ -401,7 +398,7 @@ export default function Dashboard() {
           isComplete: hasClient && hasProduct && hasSettings && hasOrder
         });
 
-        // Filtro de Tempo para Estatísticas do Dashboard
+        // Filtro de Tempo
         let startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
         if (timeFilter === 'semana') startDate.setDate(startDate.getDate() - 7);
@@ -417,7 +414,7 @@ export default function Dashboard() {
 
         if (error) throw error;
 
-        // Cálculo das Estatísticas
+        // Calculos
         const dailyData: Record<string, { rev: number, cst: number }> = {};
         const productMap: Record<string, { count: number, revenue: number }> = {};
         
@@ -470,12 +467,11 @@ export default function Dashboard() {
       finally { setLoading(false); }
     };
     fetchStatsAndOnboarding();
-  }, [profile, timeFilter]);
+  }, [profile, user, timeFilter]);
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-10 pb-10">
       
-      {/* #3DCHECK BOT COMPONENT */}
       <AnimatePresence>
         {showBot && (
           <motion.div 
@@ -550,7 +546,6 @@ export default function Dashboard() {
             exit={{ opacity: 0, height: 0, margin: 0, padding: 0 }}
             className="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border-2 border-indigo-500/20 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden"
           >
-            {/* BOTÃO FECHAR ONBOARDING */}
             <button 
               onClick={handleDismissOnboarding}
               className="absolute top-4 right-4 p-2 z-20 rounded-full bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all"
@@ -573,11 +568,10 @@ export default function Dashboard() {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-[65%] shrink-0">
-                {/* Missão 1 - CORRIGIDA COM O LOCALSTORAGE */}
                 <div 
                   onClick={() => {
-                    if (!onboarding.hasSettings) {
-                      localStorage.setItem('3dcheck_visited_settings', 'true');
+                    if (!onboarding.hasSettings && user) {
+                      localStorage.setItem(`visited_settings_${user.id}`, 'true');
                       navigate('/app/settings');
                     }
                   }}
@@ -597,7 +591,6 @@ export default function Dashboard() {
                   {!onboarding.hasSettings && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
                 </div>
 
-                {/* Missão 2 */}
                 <div 
                   onClick={() => !onboarding.hasClient && navigate('/app/clients')}
                   className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
@@ -616,7 +609,6 @@ export default function Dashboard() {
                   {!onboarding.hasClient && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
                 </div>
 
-                {/* Missão 3 */}
                 <div 
                   onClick={() => !onboarding.hasProduct && navigate('/app/products')}
                   className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
@@ -635,7 +627,6 @@ export default function Dashboard() {
                   {!onboarding.hasProduct && <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white absolute right-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
                 </div>
 
-                {/* Missão 4 */}
                 <div 
                   onClick={() => !onboarding.hasOrder && navigate('/app/orders')}
                   className={`relative p-4 rounded-2xl flex items-center gap-4 transition-all ${
@@ -659,7 +650,6 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* MENSAGEM DE VITÓRIA SE COMPLETAR TUDO */}
       <AnimatePresence>
         {!loading && onboarding.isComplete && showOnboarding && (
           <motion.div 
@@ -668,7 +658,6 @@ export default function Dashboard() {
             exit={{ opacity: 0, height: 0, margin: 0, padding: 0 }}
             className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-2 border-emerald-500/30 p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6"
           >
-             {/* BOTÃO FECHAR MENSAGEM DE VITÓRIA */}
              <button 
                 onClick={handleDismissOnboarding}
                 className="absolute top-4 right-4 p-2 z-20 rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all"
@@ -700,7 +689,6 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-[0.2em]">
               <LayoutDashboard className="w-4 h-4" />Visão Geral
             </div>
-            {/* BOTÃO DE CONTROLE LIGA/DESLIGA NO DASHBOARD */}
             <Button 
               variant="ghost" 
               size="sm" 
@@ -724,7 +712,6 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* FINANCEIRO */}
       <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
         {[
           { id: 'rev', label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', textClass: 'text-blue-500' },
@@ -750,7 +737,6 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
-      {/* TOP PRODUTOS */}
       {stats.topProducts.length > 0 && (
         <motion.div variants={itemVariants} className="space-y-4">
            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
@@ -780,7 +766,6 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* AÇÕES RÁPIDAS COM REDIRECIONAMENTO POR STATUS */}
       {(stats.newOrders > 0 || stats.ready > 0) && (
         <motion.div variants={itemVariants} className="space-y-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 flex items-center gap-2">
@@ -815,7 +800,6 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* FLUXO DE PRODUÇÃO COM REDIRECIONAMENTO POR STATUS */}
       <motion.div variants={itemVariants} className="space-y-6">
         <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
           Fluxo de Produção <div className="h-[1px] flex-1 bg-border" />
