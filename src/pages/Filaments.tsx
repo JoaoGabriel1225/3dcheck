@@ -32,6 +32,24 @@ export default function Filaments() {
 
   useEffect(() => {
     fetchFilaments();
+
+    // ADICIONADO: Motor Realtime para escutar descontos automáticos
+    if (!user) return;
+    const subscription = supabase
+      .channel('filaments_realtime')
+      .on('postgres_changes', {
+        event: '*', // Ouve qualquer mudança (Insert, Update, Delete)
+        schema: 'public',
+        table: 'filaments',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        fetchFilaments(); // Recarrega os dados silenciosamente assim que notar uma mudança
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, [user]);
 
   const fetchFilaments = async () => {
@@ -182,7 +200,7 @@ export default function Filaments() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider mb-1 flex items-center gap-1"><Scale className="w-3 h-3"/> Peso</span>
-                    <span className="font-medium text-foreground">{f.weight_g}g</span>
+                    <span className="font-medium text-foreground">{f.weight_g.toFixed(0)}g</span>
                   </div>
                 </div>
 
