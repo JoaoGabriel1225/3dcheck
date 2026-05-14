@@ -19,6 +19,7 @@ import Settings from './pages/Settings';
 import Billing from './pages/Billing';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import Filaments from './pages/Filaments'; // <-- ADICIONADO: Importação dos Filamentos
 import Marketplace from './pages/Marketplace';
 import Orders from './pages/Orders';
 import StorefrontSettings from './pages/StorefrontSettings';
@@ -67,6 +68,7 @@ function AppContent() {
             <Route path="clients" element={<Clients />} />
             <Route path="orders" element={<Orders />} />
             <Route path="products" element={<Products />} />
+            <Route path="filaments" element={<Filaments />} /> {/* <-- ADICIONADO: Rota da Estante de Filamentos */}
             <Route path="marketplace" element={<Marketplace />} />
             <Route path="storefront-settings" element={<StorefrontSettings />} />
             <Route path="settings" element={<Settings />} />
