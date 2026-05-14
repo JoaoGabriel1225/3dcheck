@@ -20,7 +20,8 @@ import {
   ShoppingBag,
   MessageSquare,
   Share2,
-  Sparkles
+  Sparkles,
+  Layers // ADICIONADO PARA OS FILAMENTOS
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -165,6 +166,12 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               <NavLink to="/app/products" onClick={onClose} className={navLinkClass}>
                 <PackageSearch className="h-5 w-5 transition-transform group-hover:scale-110" />
                 Produtos
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/app/filaments" onClick={onClose} className={navLinkClass}>
+                <Layers className="h-5 w-5 transition-transform group-hover:scale-110" />
+                Meus Filamentos
               </NavLink>
             </li>
             <li>
