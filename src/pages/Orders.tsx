@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { 
   MessageCircle, Plus, Search, Trash2, ShoppingBag, Filter, 
   Calendar, User, Tag, Package, Activity, Clock, CheckCircle2,
-  Info, DollarSign, TrendingUp, MapPin, Copy // Adicionado MapPin e Copy
+  Info, DollarSign, TrendingUp, MapPin, Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -69,7 +69,7 @@ export default function Orders() {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
-  const [newClientAddress, setNewClientAddress] = useState(''); // Novo estado de endereço
+  const [newClientAddress, setNewClientAddress] = useState(''); 
   const [selectedProductId, setSelectedProductId] = useState('custom');
   const [orderDescription, setOrderDescription] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
@@ -82,12 +82,30 @@ export default function Orders() {
     }
   }, [searchParams]);
 
+  // NOVO: Verifica se há algum filamento acabando ao abrir a tela
+  const checkLowFilaments = async () => {
+    if (!profile) return;
+    try {
+      const { data, error } = await supabase
+        .from('filaments')
+        .select('brand, color, weight_g')
+        .eq('user_id', profile.id)
+        .lte('weight_g', 200); // Aviso para 200g ou menos
+        
+      if (data && data.length > 0) {
+        data.forEach(f => {
+           toast.warning(`⚠️ Reposição Necessária: Filamento ${f.brand} ${f.color} está baixo (${f.weight_g.toFixed(0)}g).`);
+        });
+      }
+    } catch (err) { console.error('Erro ao checar filamentos', err); }
+  };
+
   const fetchOrders = async () => {
     if (!profile) return;
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select(`id, description, status, final_price, cost_total, created_at, clients(name, phone, address), products(name)`) // Incluído address
+        .select(`id, description, status, final_price, cost_total, created_at, clients(name, phone, address), products(name)`)
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -107,7 +125,63 @@ export default function Orders() {
     } catch (err: any) { console.error('Error fetching options', err); }
   };
 
-  useEffect(() => { fetchOrders(); fetchOptions(); }, [profile]);
+  useEffect(() => { 
+    fetchOrders(); 
+    fetchOptions(); 
+    checkLowFilaments(); 
+  }, [profile]);
+
+  // NOVO: Desconta o filamento automaticamente no banco sem travar a tela
+  const checkAndDeductFilament = async (productId: string) => {
+    if (!profile || productId === 'custom') return;
+    try {
+      const { data: product } = await supabase
+        .from('products')
+        .select('filament_id, weight_g, is_multicolor')
+        .eq('id', productId)
+        .single();
+
+      if (product && product.filament_id && product.weight_g > 0) {
+        const { data: filament } = await supabase
+          .from('filaments')
+          .select('id, weight_g, brand, color')
+          .eq('id', product.filament_id)
+          .single();
+
+        if (filament) {
+          let wastePct = 15;
+          if (product.is_multicolor) {
+            const { data: settings } = await supabase
+              .from('store_settings')
+              .select('multicolor_waste_pct')
+              .eq('user_id', profile.id)
+              .single();
+            if (settings && settings.multicolor_waste_pct) {
+              wastePct = settings.multicolor_waste_pct;
+            }
+          }
+
+          const multiplier = product.is_multicolor ? (1 + (wastePct / 100)) : 1;
+          const totalGramsUsed = product.weight_g * multiplier;
+          const newWeight = filament.weight_g - totalGramsUsed;
+
+          await supabase
+            .from('filaments')
+            .update({ weight_g: newWeight })
+            .eq('id', filament.id);
+
+          if (newWeight <= 200) {
+            toast.warning(
+              `⚠️ Estoque Baixo após pedido: O filamento ${filament.brand} ${filament.color} agora tem apenas ${newWeight.toFixed(0)}g!`,
+              { duration: 8000 }
+            );
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erro silencioso ao descontar filamento:", err);
+    }
+  };
 
   const totalCount = orders.length;
   const aguardandoCount = orders.filter(o => ['Aguardando contato', 'Confirmado'].includes(o.status)).length;
@@ -181,7 +255,7 @@ export default function Orders() {
           user_id: profile.id, 
           name: newClientName || clientSearchText, 
           phone: fullPhone,
-          address: newClientAddress || null // Adicionado salvamento de endereço
+          address: newClientAddress || null
         }).select().single();
         if (clientErr) throw clientErr;
         finalClientId = newClient.id;
@@ -196,7 +270,12 @@ export default function Orders() {
         final_price: parseFloat(orderPrice.toString().replace(',', '.')) || 0,
         cost_total: parseFloat(orderCost.toString().replace(',', '.')) || 0
       });
+      
       if (orderErr) throw orderErr;
+      
+      // DESCONTO AUTOMÁTICO DE FILAMENTO E NOTIFICAÇÃO
+      await checkAndDeductFilament(selectedProductId);
+
       toast.success('Pedido criado!');
       setIsNewOrderDialogOpen(false);
       resetOrderForm();
@@ -211,7 +290,7 @@ export default function Orders() {
     let p = client.phone || '';
     if (p.startsWith('55') && p.length > 11) p = p.substring(2);
     setNewClientPhone(p);
-    setNewClientAddress(client.address || ''); // Carrega endereço se já existir
+    setNewClientAddress(client.address || ''); 
     setClientSearchText(client.name);
     setShowClientDropdown(false);
   };
