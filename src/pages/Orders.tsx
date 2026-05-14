@@ -107,7 +107,7 @@ export default function Orders() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        -- ADICIONADO QUANTITY NO SELECT PARA A TABELA (SE A COLUNA EXISTIR)
+        // ADICIONADO QUANTITY NO SELECT PARA A TABELA (SE A COLUNA EXISTIR)
         .select(`id, description, status, final_price, cost_total, quantity, created_at, clients(name, phone, address), products(name)`)
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
