@@ -46,7 +46,7 @@ export default function Products() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [stock, setStock] = useState('0');
+  // REMOVIDO: const [stock, setStock] = useState('0');
   const [file, setFile] = useState<File | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [discount, setDiscount] = useState('');
@@ -65,8 +65,8 @@ export default function Products() {
   // ---> NOVOS ESTADOS (Integração Filamentos e Custos Extras) <---
   const [filamentsList, setFilamentsList] = useState<any[]>([]);
   const [selectedFilamentId, setSelectedFilamentId] = useState('');
-  const [packagingCost, setPackagingCost] = useState('');
-  const [hardwareCost, setHardwareCost] = useState('');
+  // UNIFICADO: Custos Extras (Embalagem + Ferragens)
+  const [extraCosts, setExtraCosts] = useState('');
 
   // Estado da PESQUISA DO FILAMENTO
   const [isFilamentSearchOpen, setIsFilamentSearchOpen] = useState(false);
@@ -126,6 +126,9 @@ export default function Products() {
       setSetupFee(globalSettings.setup_fee?.toString() || '5.00');
       setFailureBuffer(globalSettings.failure_buffer_pct?.toString() || '10');
       
+      // Aplicando o novo valor global para Custos Extras
+      setExtraCosts(globalSettings.extra_costs?.toString() || '0.00');
+
       if (globalSettings.tax_ml) setTaxML(globalSettings.tax_ml.toString());
       if (globalSettings.tax_shopee) setTaxShopee(globalSettings.tax_shopee.toString());
       if (globalSettings.machine_power_watts) setPowerWatts(globalSettings.machine_power_watts.toString());
@@ -187,8 +190,9 @@ export default function Products() {
     const tML = parseFloat(taxML) || 0;
     const tShopee = parseFloat(taxShopee) || 0;
     const wastePct = parseFloat(multicolorWaste) || 0;
-    const packCost = parseFloat(packagingCost) || 0;
-    const hardCost = parseFloat(hardwareCost) || 0;
+    
+    // NOVO: Custos Extras Unificados
+    const totalExtraCosts = parseFloat(extraCosts) || 0;
 
     // Lógica Multi-Cor Dinâmica
     const multicolorMultiplier = isMultiColor ? (1 + (wastePct / 100)) : 1; 
@@ -200,8 +204,8 @@ export default function Products() {
     const depreciationCost = dep * pTime;
     const laborCost = (lRate / 60) * postProc; // Mão de obra do acabamento
     
-    // Somando todos os custos extras
-    const cTotal = materialCost + energyCost + depreciationCost + sFee + laborCost + packCost + hardCost;
+    // Somando todos os custos (Plástico + Energia + Mão de Obra + Extras)
+    const cTotal = materialCost + energyCost + depreciationCost + sFee + laborCost + totalExtraCosts;
     
     setCalculatedCost(cTotal);
     const calcPrice = cTotal * (1 + margin / 100);
@@ -214,7 +218,7 @@ export default function Products() {
     setSuggestedPriceML(isFinite(priceML) ? priceML.toFixed(2) : '0.00');
     setSuggestedPriceShopee(isFinite(priceShopee) ? priceShopee.toFixed(2) : '0.00');
 
-  }, [selectedFilamentId, filamentsList, filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste, packagingCost, hardwareCost]);
+  }, [selectedFilamentId, filamentsList, filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste, extraCosts]);
 
   const handleOpenNewProduct = () => {
     resetForm();
@@ -241,16 +245,16 @@ export default function Products() {
         cost_total: costTotalNum,
         profit_margin: profitMarginNum,
         discount: discountNum,
-        stock_quantity: parseInt(stock, 10) || 0,
+        // ESTOQUE FIXADO EM 999 JÁ QUE FOI REMOVIDO DO FORMULÁRIO
+        stock_quantity: 999, 
         is_public: isPublic,
-        // Salvando os novos dados
         post_processing_min: parseFloat(postProcessingMin) || 0,
         is_multicolor: isMultiColor,
         suggested_price_ml: parseFloat(suggestedPriceML) || 0,
         suggested_price_shopee: parseFloat(suggestedPriceShopee) || 0,
         filament_id: selectedFilamentId || null,
-        packaging_cost: parseFloat(packagingCost) || 0,
-        hardware_cost: parseFloat(hardwareCost) || 0
+        // SALVANDO O CUSTO UNIFICADO
+        extra_costs: parseFloat(extraCosts) || 0,
       };
 
       let productData;
@@ -336,7 +340,7 @@ export default function Products() {
     setName(product.name || '');
     setDescription(product.description || '');
     setPrice(product.final_price?.toString() || '');
-    setStock(product.stock_quantity?.toString() || '0');
+    // REMOVIDO: setStock(product.stock_quantity?.toString() || '0');
     setIsPublic(product.is_public ?? true);
     setDiscount(product.discount?.toString() || '');
     setProfitMargin(product.profit_margin?.toString() || '');
@@ -346,8 +350,8 @@ export default function Products() {
     setIsMultiColor(product.is_multicolor || false);
     setPostProcessingMin(product.post_processing_min?.toString() || '0');
     setSelectedFilamentId(product.filament_id || '');
-    setPackagingCost(product.packaging_cost?.toString() || '');
-    setHardwareCost(product.hardware_cost?.toString() || '');
+    // CARREGA O CUSTO UNIFICADO
+    setExtraCosts(product.extra_costs?.toString() || '');
 
     if (globalSettings) {
         setKwhPrice(globalSettings.kwh_price?.toString());
@@ -385,7 +389,7 @@ export default function Products() {
     setName('');
     setDescription('');
     setPrice('');
-    setStock('0');
+    // REMOVIDO: setStock('0');
     setFile(null);
     setIsPublic(true);
     setDiscount('');
@@ -404,8 +408,7 @@ export default function Products() {
     setIsMultiColor(false);
     setPostProcessingMin('0');
     setSelectedFilamentId('');
-    setPackagingCost('');
-    setHardwareCost('');
+    setExtraCosts('');
     setIsFilamentSearchOpen(false);
     setFilamentSearch('');
 
@@ -569,7 +572,7 @@ export default function Products() {
                     </div>
                   </div>
 
-                  {/* CAIXA DE CUSTOS: 2 Colunas cravadas para manter o máximo respiro no PC */}
+                  {/* CAIXA DE CUSTOS: Mantida em 2 colunas para excelente visualização no PC */}
                   <div className="grid grid-cols-2 gap-6 p-6 bg-background/50 rounded-3xl border border-dashed border-border/50">
                     <div className="space-y-1.5">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
@@ -595,13 +598,11 @@ export default function Products() {
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
                       <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-10 text-sm rounded-xl" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Embalagem (R$)</Label>
-                      <Input type="number" step="0.01" value={packagingCost} onChange={(e) => setPackagingCost(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="2.00" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Ferragens (R$)</Label>
-                      <Input type="number" step="0.01" value={hardwareCost} onChange={(e) => setHardwareCost(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="1.50" />
+                    
+                    {/* NOVO CAMPO UNIFICADO: Custos Extras */}
+                    <div className="space-y-1.5 col-span-2">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Custos Extras (Embalagem, Ferragens, etc) (R$)</Label>
+                      <Input type="number" step="0.01" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="Ex: 2.50" />
                     </div>
                   </div>
 
@@ -671,11 +672,8 @@ export default function Products() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-                <div className="space-y-2">
-                  <Label htmlFor="stock" className="text-[10px] font-black uppercase text-muted-foreground">Estoque Inicial</Label>
-                  <Input id="stock" type="number" value={stock} onChange={(e) => setStock(e.target.value)} required className="h-12 rounded-2xl border-border bg-muted/30" />
-                </div>
+              {/* REMOVIDO: Campo de Estoque */}
+              <div className="pt-4 border-t border-border">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground">Foto do Produto</Label>
                   <div className="relative h-12">
@@ -750,10 +748,8 @@ export default function Products() {
                               R$ {hasDiscount ? finalPriceWithDiscount.toFixed(2) : product.final_price?.toFixed(2)}
                             </span>
                           </div>
-                          <div className="text-right">
-                            <span className="block text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Estoque</span>
-                            <span className="text-xs font-black bg-blue-500/10 text-blue-600 px-3 py-1 rounded-full border border-blue-500/10">{product.stock_quantity} un</span>
-                          </div>
+                          
+                          {/* REMOVIDO DA VITRINE: Tag de Estoque */}
                         </div>
 
                         <div className="grid grid-cols-3 gap-3">
