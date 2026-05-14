@@ -69,7 +69,6 @@ export default function StorefrontSettings() {
     fetchSettings();
   }, [profile]);
 
-  // Handler para Preview de Logo
   const onLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -78,7 +77,6 @@ export default function StorefrontSettings() {
     }
   };
 
-  // Handler para Preview de Banner
   const onBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -120,18 +118,33 @@ export default function StorefrontSettings() {
       let logoUrl = currentLogo;
       let bannerUrl = currentBanner;
 
-      // Upload otimizado com UPSERT (sobrescreve o antigo para não lotar o storage)
+      // Upload otimizado e seguro com cache buster timestamp
       if (logoFile) {
-        const filePath = `${profile.id}/logo-fixed`; 
+        const fileExt = logoFile.name.split('.').pop();
+        const filePath = `${profile.id}/logo-${Date.now()}.${fileExt}`; 
         const { error } = await supabase.storage.from('store-assets').upload(filePath, logoFile, { upsert: true });
-        if (!error) logoUrl = `${supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl}?t=${Date.now()}`;
+        if (!error) {
+           logoUrl = supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl;
+        } else {
+            console.error("Erro upload logo:", error);
+            throw new Error("Falha no upload da logo. O arquivo pode ser muito grande.");
+        }
       }
 
       if (bannerFile) {
-        const filePath = `${profile.id}/banner-fixed`;
+        const fileExt = bannerFile.name.split('.').pop();
+        const filePath = `${profile.id}/banner-${Date.now()}.${fileExt}`;
         const { error } = await supabase.storage.from('store-assets').upload(filePath, bannerFile, { upsert: true });
-        if (!error) bannerUrl = `${supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl}?t=${Date.now()}`;
+        if (!error) {
+            bannerUrl = supabase.storage.from('store-assets').getPublicUrl(filePath).data.publicUrl;
+        } else {
+            console.error("Erro upload banner:", error);
+            throw new Error("Falha no upload do banner. O arquivo pode ser muito grande.");
+        }
       }
+
+      const cleanInsta = instagram ? instagram.replace('@', '') : '';
+      const cleanWpp = whatsapp ? whatsapp.replace(/\D/g, '') : '';
 
       const { error } = await supabase.from('store_settings').upsert({
         user_id: profile.id,
@@ -139,8 +152,8 @@ export default function StorefrontSettings() {
         description,
         primary_color: primaryColor,
         theme_style: themeStyle,
-        instagram_handle: instagram.replace('@', ''), // Limpeza automática
-        whatsapp_number: whatsapp.replace(/\D/g, ''), // Limpeza automática
+        instagram_handle: cleanInsta, 
+        whatsapp_number: cleanWpp, 
         logo_url: logoUrl,
         banner_url: bannerUrl,
         updated_at: new Date().toISOString()
@@ -152,7 +165,11 @@ export default function StorefrontSettings() {
       setCurrentBanner(bannerUrl);
       setLogoFile(null);
       setBannerFile(null);
-    } catch (err) { toast.error('Erro ao salvar as configurações.'); } finally { setLoading(false); }
+    } catch (err: any) { 
+        toast.error(err.message || 'Erro ao salvar as configurações.'); 
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   if (fetching) return (
