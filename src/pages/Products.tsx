@@ -677,3 +677,105 @@ export default function Products() {
                   <Input id="stock" type="number" value={stock} onChange={(e) => setStock(e.target.value)} required className="h-12 rounded-2xl border-border bg-muted/30" />
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Foto do Produto</Label>
+                  <div className="relative h-12">
+                    <Input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <div className="h-full border-2 border-dashed border-border rounded-2xl flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                      <ImageIcon className="w-4 h-4 mr-2" /> SELECIONAR IMAGEM
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button type="submit" className="w-full h-14 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-500/20 text-lg transition-all active:scale-[0.98]">
+                  {editingProductId ? 'SALVAR ALTERAÇÕES' : 'CADASTRAR NA VITRINE'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </motion.div>
+
+      <motion.div 
+        variants={containerVariants}
+        className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      >
+        {loading ? (
+          <p className="font-black text-muted-foreground animate-pulse tracking-[0.3em] py-20 col-span-full text-center uppercase">Sincronizando Catálogo...</p>
+        ) : products.length === 0 ? (
+          <div className="col-span-full py-20 text-center bg-muted/20 rounded-[3rem] border-2 border-dashed border-border flex flex-col items-center gap-4">
+             <PackageSearch className="w-12 h-12 text-muted-foreground/30" />
+             <p className="text-muted-foreground font-bold">Sua vitrine está vazia. Comece a lucrar agora!</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {products.map((product) => {
+                const hasDiscount = product.discount > 0;
+                const finalPriceWithDiscount = product.final_price - (product.discount || 0);
+
+                return (
+                 <motion.div
+                   layout
+                   key={product.id}
+                   variants={itemVariants}
+                   whileHover={{ y: -5 }} 
+                   transition={{ duration: 0.2 }}
+                 >
+                   <Card className="overflow-hidden h-full flex flex-col group rounded-[2.5rem] border-border bg-card/40 backdrop-blur-sm hover:border-blue-500/30 hover:shadow-2xl transition-all duration-500">
+                      <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden">
+                        {product.main_image_url || (product.product_images && product.product_images[0]) ? (
+                          <img src={product.main_image_url || product.product_images[0].url} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        ) : (
+                          <ImageIcon className="h-16 w-16 text-muted-foreground/20" />
+                        )}
+                        
+                        <div className="absolute top-4 left-4">
+                            <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm backdrop-blur-md ${product.is_public ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'}`}>
+                              {product.is_public ? 'Ativo' : 'Pausado'}
+                            </div>
+                        </div>
+                      </div>
+                      
+                      <CardContent className="p-8 flex-1 flex flex-col">
+                        <h3 className="font-black text-xl text-foreground tracking-tight line-clamp-1 mb-2 italic uppercase tracking-tighter">{product.name}</h3>
+                        <p className="text-muted-foreground text-sm font-medium line-clamp-2 leading-relaxed mb-6 flex-1">{product.description}</p>
+                        
+                        <div className="flex items-center justify-between mb-8 pt-6 border-t border-border">
+                          <div className="flex flex-col">
+                            {hasDiscount && (
+                              <span className="text-[10px] font-bold text-muted-foreground line-through decoration-red-500/50 tracking-tighter">R$ {product.final_price?.toFixed(2)}</span>
+                            )}
+                            <span className={`text-2xl font-black tracking-tighter italic ${hasDiscount ? 'text-emerald-500' : 'text-foreground'}`}>
+                              R$ {hasDiscount ? finalPriceWithDiscount.toFixed(2) : product.final_price?.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="block text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Estoque</span>
+                            <span className="text-xs font-black bg-blue-500/10 text-blue-600 px-3 py-1 rounded-full border border-blue-500/10">{product.stock_quantity} un</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                          <Button variant="outline" size="sm" onClick={(e) => toggleVisibility(product, e)} className="h-10 rounded-2xl border-border bg-muted/20 text-muted-foreground hover:text-foreground text-[10px] font-black uppercase tracking-tighter">
+                            {product.is_public ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                            {product.is_public ? 'Ocultar' : 'Exibir'}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={(e) => handleEditClick(product, e)} className="h-10 rounded-2xl border-border bg-muted/20 text-muted-foreground hover:text-blue-500 text-[10px] font-black uppercase tracking-tighter">
+                            <Edit2 className="h-4 w-4 mr-1" /> Editar
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={(e) => deleteProduct(product.id, e)} className="h-10 rounded-2xl text-muted-foreground hover:text-red-500 hover:bg-red-500/5 text-[10px] font-black uppercase tracking-tighter">
+                            <Trash2 className="h-4 w-4 mr-1" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                 </motion.div>
+                );
+            })}
+          </AnimatePresence>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
