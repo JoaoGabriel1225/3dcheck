@@ -3,11 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'; // CORREÇÃO: react-router-dom para o roteamento funcionar
-import { AuthProvider } from '@/lib/AuthContext';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ThemeProvider } from './components/ThemeProvider';
 import { ProtectedLayout, AdminLayout } from './components/layouts/ProtectedLayout';
 import { Toaster } from '@/components/ui/sonner';
+import { AnimatePresence } from 'framer-motion';
+import SplashScreen from './components/SplashScreen';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -27,50 +30,75 @@ import Support from './pages/Support';
 import Community from './pages/app/Community'; 
 import Landing from './pages/Landing'; // NOVA IMPORTAÇÃO DA LANDING PAGE
 
+function AppContent() {
+  const { loading } = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    if (!loading) {
+      // Pequeno delay para garantir a fluidez e a exibição da logo
+      const timer = setTimeout(() => setShowSplash(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  return (
+    <>
+      <AnimatePresence mode="wait">
+        {showSplash && <SplashScreen key="splash" />}
+      </AnimatePresence>
+
+      {!showSplash && (
+        <Routes>
+          {/* ROTA PÚBLICA DA LANDING PAGE */}
+          <Route path="/maker" element={<Landing />} />
+
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          
+          {/* TODAS AS PÁGINAS COM SIDEBAR FICAM AQUI DENTRO */}
+          <Route path="/app" element={<ProtectedLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="clients" element={<Clients />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="products" element={<Products />} />
+            <Route path="marketplace" element={<Marketplace />} />
+            <Route path="storefront-settings" element={<StorefrontSettings />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="support" element={<Support />} />
+            
+            {/* ROTA DA COMUNIDADE CORRIGIDA (AGORA TEM SIDEBAR) */}
+            <Route path="community" element={<Community />} />
+          </Route>
+          
+          <Route element={<ProtectedLayout />}>
+            <Route path="/billing" element={<Billing />} />
+          </Route>
+          
+          <Route path="/admin" element={<AdminLayout />}>
+             <Route index element={<AdminDashboard />} />
+          </Route>
+          
+          {/* Rota técnica original (mantida para compatibilidade) */}
+          <Route path="/storefront/:id" element={<Storefront />} />
+
+          {/* NOVA ROTA AMIGÁVEL: É aqui que o link da Bio vai "morar" */}
+          <Route path="/catalogo/:storeSlug" element={<Storefront />} />
+          
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      )}
+    </>
+  );
+}
+
 export default function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* ROTA PÚBLICA DA LANDING PAGE */}
-            <Route path="/maker" element={<Landing />} />
-
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            
-            {/* TODAS AS PÁGINAS COM SIDEBAR FICAM AQUI DENTRO */}
-            <Route path="/app" element={<ProtectedLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="clients" element={<Clients />} />
-              <Route path="orders" element={<Orders />} />
-              <Route path="products" element={<Products />} />
-              <Route path="marketplace" element={<Marketplace />} />
-              <Route path="storefront-settings" element={<StorefrontSettings />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="support" element={<Support />} />
-              
-              {/* ROTA DA COMUNIDADE CORRIGIDA (AGORA TEM SIDEBAR) */}
-              <Route path="community" element={<Community />} />
-            </Route>
-            
-            <Route element={<ProtectedLayout />}>
-              <Route path="/billing" element={<Billing />} />
-            </Route>
-            
-            <Route path="/admin" element={<AdminLayout />}>
-               <Route index element={<AdminDashboard />} />
-            </Route>
-            
-            {/* Rota técnica original (mantida para compatibilidade) */}
-            <Route path="/storefront/:id" element={<Storefront />} />
-
-            {/* NOVA ROTA AMIGÁVEL: É aqui que o link da Bio vai "morar" */}
-            <Route path="/catalogo/:storeSlug" element={<Storefront />} />
-            
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
+          <AppContent />
           <Toaster position="top-right" />
         </AuthProvider>
       </BrowserRouter>
