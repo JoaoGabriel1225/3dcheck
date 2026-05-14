@@ -46,7 +46,6 @@ export default function Products() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  // REMOVIDO: const [stock, setStock] = useState('0');
   const [file, setFile] = useState<File | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [discount, setDiscount] = useState('');
@@ -65,7 +64,6 @@ export default function Products() {
   // ---> NOVOS ESTADOS (Integração Filamentos e Custos Extras) <---
   const [filamentsList, setFilamentsList] = useState<any[]>([]);
   const [selectedFilamentId, setSelectedFilamentId] = useState('');
-  // UNIFICADO: Custos Extras (Embalagem + Ferragens)
   const [extraCosts, setExtraCosts] = useState('');
 
   // Estado da PESQUISA DO FILAMENTO
@@ -126,7 +124,6 @@ export default function Products() {
       setSetupFee(globalSettings.setup_fee?.toString() || '5.00');
       setFailureBuffer(globalSettings.failure_buffer_pct?.toString() || '10');
       
-      // Aplicando o novo valor global para Custos Extras
       setExtraCosts(globalSettings.extra_costs?.toString() || '0.00');
 
       if (globalSettings.tax_ml) setTaxML(globalSettings.tax_ml.toString());
@@ -204,7 +201,7 @@ export default function Products() {
     const depreciationCost = dep * pTime;
     const laborCost = (lRate / 60) * postProc; // Mão de obra do acabamento
     
-    // Somando todos os custos (Plástico + Energia + Mão de Obra + Extras)
+    // Somando todos os custos extras
     const cTotal = materialCost + energyCost + depreciationCost + sFee + laborCost + totalExtraCosts;
     
     setCalculatedCost(cTotal);
@@ -245,16 +242,16 @@ export default function Products() {
         cost_total: costTotalNum,
         profit_margin: profitMarginNum,
         discount: discountNum,
-        // ESTOQUE FIXADO EM 999 JÁ QUE FOI REMOVIDO DO FORMULÁRIO
-        stock_quantity: 999, 
         is_public: isPublic,
         post_processing_min: parseFloat(postProcessingMin) || 0,
         is_multicolor: isMultiColor,
         suggested_price_ml: parseFloat(suggestedPriceML) || 0,
         suggested_price_shopee: parseFloat(suggestedPriceShopee) || 0,
         filament_id: selectedFilamentId || null,
-        // SALVANDO O CUSTO UNIFICADO
         extra_costs: parseFloat(extraCosts) || 0,
+        // CORREÇÃO: Enviando o Peso e o Tempo para o Banco de Dados!
+        weight_g: parseFloat(gramsUsed) || 0,
+        print_time_hours: parseFloat(printTime) || 0
       };
 
       let productData;
@@ -340,18 +337,19 @@ export default function Products() {
     setName(product.name || '');
     setDescription(product.description || '');
     setPrice(product.final_price?.toString() || '');
-    // REMOVIDO: setStock(product.stock_quantity?.toString() || '0');
     setIsPublic(product.is_public ?? true);
     setDiscount(product.discount?.toString() || '');
     setProfitMargin(product.profit_margin?.toString() || '');
     setCalculatedCost(product.cost_total || 0);
     
-    // Carrega os novos dados salvos
     setIsMultiColor(product.is_multicolor || false);
     setPostProcessingMin(product.post_processing_min?.toString() || '0');
     setSelectedFilamentId(product.filament_id || '');
-    // CARREGA O CUSTO UNIFICADO
     setExtraCosts(product.extra_costs?.toString() || '');
+    
+    // CORREÇÃO: Carregando o Peso e o Tempo salvos
+    setGramsUsed(product.weight_g?.toString() || '');
+    setPrintTime(product.print_time_hours?.toString() || '');
 
     if (globalSettings) {
         setKwhPrice(globalSettings.kwh_price?.toString());
@@ -389,7 +387,6 @@ export default function Products() {
     setName('');
     setDescription('');
     setPrice('');
-    // REMOVIDO: setStock('0');
     setFile(null);
     setIsPublic(true);
     setDiscount('');
@@ -404,7 +401,6 @@ export default function Products() {
     setCalculatedCost(0);
     setSuggestedPrice('0.00');
     
-    // Limpa novos campos
     setIsMultiColor(false);
     setPostProcessingMin('0');
     setSelectedFilamentId('');
@@ -572,7 +568,7 @@ export default function Products() {
                     </div>
                   </div>
 
-                  {/* CAIXA DE CUSTOS: Mantida em 2 colunas para excelente visualização no PC */}
+                  {/* CAIXA DE CUSTOS */}
                   <div className="grid grid-cols-2 gap-6 p-6 bg-background/50 rounded-3xl border border-dashed border-border/50">
                     <div className="space-y-1.5">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
@@ -599,7 +595,7 @@ export default function Products() {
                       <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-10 text-sm rounded-xl" />
                     </div>
                     
-                    {/* NOVO CAMPO UNIFICADO: Custos Extras */}
+                    {/* CAMPO UNIFICADO: Custos Extras */}
                     <div className="space-y-1.5 col-span-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Custos Extras (Embalagem, Ferragens, etc) (R$)</Label>
                       <Input type="number" step="0.01" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="Ex: 2.50" />
@@ -672,7 +668,6 @@ export default function Products() {
                 </div>
               </div>
 
-              {/* REMOVIDO: Campo de Estoque */}
               <div className="pt-4 border-t border-border">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground">Foto do Produto</Label>
@@ -748,8 +743,6 @@ export default function Products() {
                               R$ {hasDiscount ? finalPriceWithDiscount.toFixed(2) : product.final_price?.toFixed(2)}
                             </span>
                           </div>
-                          
-                          {/* REMOVIDO DA VITRINE: Tag de Estoque */}
                         </div>
 
                         <div className="grid grid-cols-3 gap-3">
