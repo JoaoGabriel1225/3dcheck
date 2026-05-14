@@ -437,7 +437,6 @@ export default function Products() {
             <Plus className="w-5 h-5" /> Novo Produto
           </Button>
 
-          {/* MUDANÇA 1: max-w-4xl para alargar o Modal no PC */}
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border-border bg-card shadow-2xl p-0">
             <DialogHeader className="p-8 pb-0">
               <DialogTitle className="text-2xl font-black flex items-center gap-2">
@@ -496,7 +495,7 @@ export default function Products() {
                 <div className="bg-muted/30 p-6 rounded-[2rem] space-y-6 border border-border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     
-                    {/* DROP DOWN DE FILAMENTO COM PESQUISA */}
+                    {/* DROP DOWN DE FILAMENTO COM PESQUISA (NOVO) */}
                     <div className="space-y-2 relative">
                       <Label className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex justify-between">
                         Filamento Usado
@@ -570,39 +569,39 @@ export default function Products() {
                     </div>
                   </div>
 
-                  {/* MUDANÇA 2: md:grid-cols-4 para alinhar 4 campos perfeitos em telas largas */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 p-6 bg-background/50 rounded-3xl border border-dashed border-border/50">
-                    <div className="space-y-1.5">
+                  {/* CAIXA DE CUSTOS CORRIGIDA */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-background/50 rounded-3xl border border-dashed border-border/50">
+                    <div className="space-y-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
-                      <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-10 text-sm rounded-xl" />
+                      <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-11 text-sm rounded-xl" />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Potência (W)</Label>
-                      <Input type="number" value={powerWatts} onChange={(e) => setPowerWatts(e.target.value)} className="h-10 text-sm rounded-xl bg-yellow-500/10 text-yellow-700 font-bold border-yellow-500/30" />
+                      <Input type="number" value={powerWatts} onChange={(e) => setPowerWatts(e.target.value)} className="h-11 text-sm rounded-xl bg-yellow-500/10 text-yellow-700 font-bold border-yellow-500/30" />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Depreciação (R$/h)</Label>
-                      <Input type="number" value={depreciation} onChange={(e) => setDepreciation(e.target.value)} className="h-10 text-sm rounded-xl" />
+                      <Input type="number" value={depreciation} onChange={(e) => setDepreciation(e.target.value)} className="h-11 text-sm rounded-xl" />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Acabamento (min)</Label>
-                      <Input type="number" value={postProcessingMin} onChange={(e) => setPostProcessingMin(e.target.value)} className="h-10 text-sm rounded-xl bg-blue-500/10 text-blue-700 font-bold border-blue-500/30" placeholder="Ex: 15" />
+                      <Input type="number" value={postProcessingMin} onChange={(e) => setPostProcessingMin(e.target.value)} className="h-11 text-sm rounded-xl bg-blue-500/10 text-blue-700 font-bold border-blue-500/30" placeholder="Ex: 15" />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Sua Hora (R$/h)</Label>
-                      <Input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="h-10 text-sm rounded-xl" />
+                      <Input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="h-11 text-sm rounded-xl" />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
-                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-10 text-sm rounded-xl" />
+                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-11 text-sm rounded-xl" />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Embalagem (R$)</Label>
-                      <Input type="number" step="0.01" value={packagingCost} onChange={(e) => setPackagingCost(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="2.00" />
+                      <Input type="number" step="0.01" value={packagingCost} onChange={(e) => setPackagingCost(e.target.value)} className="h-11 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="2.00" />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Ferragens (R$)</Label>
-                      <Input type="number" step="0.01" value={hardwareCost} onChange={(e) => setHardwareCost(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="1.50" />
+                      <Input type="number" step="0.01" value={hardwareCost} onChange={(e) => setHardwareCost(e.target.value)} className="h-11 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="1.50" />
                     </div>
                   </div>
 
