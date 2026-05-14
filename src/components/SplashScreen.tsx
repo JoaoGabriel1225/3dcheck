@@ -14,9 +14,12 @@ const LOADING_PHRASES = [
 ];
 
 export default function SplashScreen() {
-  const [phraseIndex, setPhraseIndex] = useState(0);
+  // A MÁGICA AQUI: Já sorteia uma frase aleatória no instante que a tela carrega
+  const [phraseIndex, setPhraseIndex] = useState(() => 
+    Math.floor(Math.random() * LOADING_PHRASES.length)
+  );
 
-  // Efeito para sortear frases aleatórias a cada 2.2 segundos
+  // Efeito para continuar sorteando frases aleatórias a cada 2.2 segundos (caso a net esteja lenta)
   useEffect(() => {
     const interval = setInterval(() => {
       setPhraseIndex((prev) => {
