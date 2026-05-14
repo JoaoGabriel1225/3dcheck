@@ -74,6 +74,9 @@ export default function Orders() {
   const [orderDescription, setOrderDescription] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
   const [orderCost, setOrderCost] = useState('');
+  
+  // NOVO ESTADO: Quantidade de itens no pedido
+  const [orderQuantity, setOrderQuantity] = useState('1');
 
   useEffect(() => {
     const statusParam = searchParams.get('status');
@@ -82,7 +85,6 @@ export default function Orders() {
     }
   }, [searchParams]);
 
-  // NOVO: Verifica se há algum filamento acabando ao abrir a tela
   const checkLowFilaments = async () => {
     if (!profile) return;
     try {
@@ -90,7 +92,7 @@ export default function Orders() {
         .from('filaments')
         .select('brand, color, weight_g')
         .eq('user_id', profile.id)
-        .lte('weight_g', 200); // Aviso para 200g ou menos
+        .lte('weight_g', 200); 
         
       if (data && data.length > 0) {
         data.forEach(f => {
@@ -105,7 +107,8 @@ export default function Orders() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select(`id, description, status, final_price, cost_total, created_at, clients(name, phone, address), products(name)`)
+        -- ADICIONADO QUANTITY NO SELECT PARA A TABELA (SE A COLUNA EXISTIR)
+        .select(`id, description, status, final_price, cost_total, quantity, created_at, clients(name, phone, address), products(name)`)
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -181,13 +184,36 @@ export default function Orders() {
     }
   };
 
+  // MUDANÇA: Quando seleciona um produto, o preço/custo vira unitário e nós multiplicamos pela quantidade atual na tela
   const selectProduct = (product: any) => {
+    const qty = parseInt(orderQuantity) || 1;
     setSelectedProductId(product.id);
     setProductSearchText(product.name);
     setOrderDescription(product.description || '');
-    setOrderPrice(product.final_price?.toString() || '');
-    setOrderCost(product.cost_total?.toString() || '0');
+    
+    // Multiplica o preço unitário do produto pela quantidade que está na caixinha
+    const finalPrice = product.final_price ? product.final_price * qty : 0;
+    const finalCost = product.cost_total ? product.cost_total * qty : 0;
+    
+    setOrderPrice(finalPrice.toFixed(2));
+    setOrderCost(finalCost.toFixed(2));
     setShowProductDropdown(false);
+  };
+
+  // MUDANÇA: Quando o usuário digita uma quantidade diferente, refaz o cálculo se houver produto selecionado
+  const handleQuantityChange = (newQtyStr: string) => {
+      setOrderQuantity(newQtyStr);
+      const qty = parseInt(newQtyStr) || 1;
+      
+      if (selectedProductId !== 'custom') {
+          const product = productsOptions.find(p => p.id === selectedProductId);
+          if (product) {
+              const finalPrice = product.final_price ? product.final_price * qty : 0;
+              const finalCost = product.cost_total ? product.cost_total * qty : 0;
+              setOrderPrice(finalPrice.toFixed(2));
+              setOrderCost(finalCost.toFixed(2));
+          }
+      }
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -209,6 +235,9 @@ export default function Orders() {
         finalClientId = newClient.id;
       }
       if (!finalClientId) return;
+
+      const qty = parseInt(orderQuantity) || 1;
+
       const { error: orderErr } = await supabase.from('orders').insert({
         user_id: profile.id,
         client_id: finalClientId,
@@ -216,11 +245,13 @@ export default function Orders() {
         status: 'Aguardando contato',
         description: orderDescription,
         final_price: parseFloat(orderPrice.toString().replace(',', '.')) || 0,
-        cost_total: parseFloat(orderCost.toString().replace(',', '.')) || 0
+        cost_total: parseFloat(orderCost.toString().replace(',', '.')) || 0,
+        // INSERE A QUANTIDADE NO BANCO
+        quantity: qty 
       });
       if (orderErr) throw orderErr;
       
-      toast.success('Pedido criado!');
+      toast.success('Pedido criado com sucesso!');
       setIsNewOrderDialogOpen(false);
       resetOrderForm();
       fetchOptions();
@@ -244,6 +275,7 @@ export default function Orders() {
     setProductSearchText(''); setShowProductDropdown(false);
     setNewClientName(''); setNewClientPhone(''); setNewClientAddress(''); setSelectedProductId('custom');
     setOrderDescription(''); setOrderPrice(''); setOrderCost('');
+    setOrderQuantity('1'); // Reseta a quantidade para 1
   };
 
   const copyToClipboard = (text: string) => {
@@ -368,36 +400,52 @@ export default function Orders() {
                 <Label className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em] flex items-center gap-2">
                   <Package className="w-3 h-3" /> Peça e Especificações
                 </Label>
-                <div className="relative">
-                    <Input 
-                        placeholder="Pesquisar produto ou item personalizado..." 
-                        value={productSearchText}
-                        onChange={(e) => {
-                            setProductSearchText(e.target.value);
-                            setOrderDescription(e.target.value);
-                            setSelectedProductId('custom');
-                            setShowProductDropdown(true);
-                        }}
-                        onFocus={() => setShowProductDropdown(true)}
-                        className="h-12 rounded-xl pr-10"
-                    />
-                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
-                    
-                    {showProductDropdown && filteredProducts.length > 0 && (
-                        <div className="absolute z-[60] w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-40 overflow-y-auto">
-                            {filteredProducts.map(p => (
-                                <div 
-                                    key={p.id} 
-                                    onClick={() => selectProduct(p)}
-                                    className="p-3 hover:bg-accent cursor-pointer flex flex-col transition-colors border-b border-border last:border-0"
-                                >
-                                    <span className="font-bold text-sm">{p.name}</span>
-                                    <span className="text-[10px] opacity-50">Preço Sugerido: R$ {p.final_price?.toFixed(2)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                
+                {/* MUDANÇA NO LAYOUT: Divide o espaço da pesquisa de Produto com o espaço da Quantidade */}
+                <div className="grid grid-cols-4 gap-4">
+                    <div className="relative col-span-3">
+                        <Input 
+                            placeholder="Pesquisar produto ou item personalizado..." 
+                            value={productSearchText}
+                            onChange={(e) => {
+                                setProductSearchText(e.target.value);
+                                setOrderDescription(e.target.value);
+                                setSelectedProductId('custom');
+                                setShowProductDropdown(true);
+                            }}
+                            onFocus={() => setShowProductDropdown(true)}
+                            className="h-12 rounded-xl pr-10"
+                        />
+                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
+                        
+                        {showProductDropdown && filteredProducts.length > 0 && (
+                            <div className="absolute z-[60] w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                                {filteredProducts.map(p => (
+                                    <div 
+                                        key={p.id} 
+                                        onClick={() => selectProduct(p)}
+                                        className="p-3 hover:bg-accent cursor-pointer flex flex-col transition-colors border-b border-border last:border-0"
+                                    >
+                                        <span className="font-bold text-sm">{p.name}</span>
+                                        <span className="text-[10px] opacity-50">Preço Unitário: R$ {p.final_price?.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {/* NOVO CAMPO: Quantidade */}
+                    <div className="col-span-1">
+                        <Input 
+                            type="number"
+                            min="1"
+                            placeholder="Qtd" 
+                            value={orderQuantity}
+                            onChange={(e) => handleQuantityChange(e.target.value)}
+                            className="h-12 rounded-xl text-center font-black text-lg bg-blue-500/5 border-blue-500/20 text-blue-600"
+                        />
+                    </div>
                 </div>
+
                 <Textarea 
                     placeholder="Detalhes adicionais do pedido (cor, escala, material...)" 
                     value={orderDescription}
@@ -567,7 +615,11 @@ export default function Orders() {
                   <div className="bg-muted/30 p-3 rounded-2xl flex items-center gap-3">
                     <Package className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs font-bold text-foreground leading-none">{order.products?.name || 'Personalizado'}</p>
+                      {/* ADICIONADO: Exibição visual de quantidade se for maior que 1 */}
+                      <p className="text-xs font-bold text-foreground leading-none">
+                          {order.quantity && order.quantity > 1 && <span className="text-blue-500 mr-1">{order.quantity}x</span>}
+                          {order.products?.name || 'Personalizado'}
+                      </p>
                       <p className="text-[10px] text-muted-foreground mt-1 italic line-clamp-1">{order.description || 'Sem obs.'}</p>
                     </div>
                   </div>
@@ -621,7 +673,11 @@ export default function Orders() {
                         )}
                       </TableCell>
                       <TableCell className="px-4 py-4">
-                        <div className="font-bold text-sm text-foreground truncate">{order.products?.name || 'Personalizado'}</div>
+                        <div className="font-bold text-sm text-foreground truncate flex items-center gap-2">
+                           {/* ADICIONADO: Exibição visual de quantidade no PC se for maior que 1 */}
+                           {order.quantity && order.quantity > 1 && <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded text-[10px] font-black">{order.quantity}x</span>}
+                           {order.products?.name || 'Personalizado'}
+                        </div>
                         <div className="mt-1 text-xs font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</div>
                       </TableCell>
                       <TableCell className="px-4 py-4">
