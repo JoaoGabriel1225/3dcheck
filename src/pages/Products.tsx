@@ -51,7 +51,7 @@ export default function Products() {
   const [discount, setDiscount] = useState('');
   
   // Variáveis Base
-  const [filamentPrice, setFilamentPrice] = useState('');
+  const [filamentPrice, setFilamentPrice] = useState(''); // Mantido como fallback
   const [gramsUsed, setGramsUsed] = useState('');
   const [printTime, setPrintTime] = useState('');
   const [profitMargin, setProfitMargin] = useState('');
@@ -61,14 +61,19 @@ export default function Products() {
   const [setupFee, setSetupFee] = useState('');
   const [failureBuffer, setFailureBuffer] = useState('');
 
-  // ---> NOVOS ESTADOS (Sprint de Melhorias) <---
+  // ---> NOVOS ESTADOS (Integração Filamentos e Custos Extras) <---
+  const [filamentsList, setFilamentsList] = useState<any[]>([]);
+  const [selectedFilamentId, setSelectedFilamentId] = useState('');
+  const [packagingCost, setPackagingCost] = useState('');
+  const [hardwareCost, setHardwareCost] = useState('');
+
   const [isMultiColor, setIsMultiColor] = useState(false);
   const [powerWatts, setPowerWatts] = useState('300');
   const [postProcessingMin, setPostProcessingMin] = useState('0');
-  const [laborRate, setLaborRate] = useState('35'); // Valor da hora do Maker
+  const [laborRate, setLaborRate] = useState('35');
   const [taxML, setTaxML] = useState('18');
   const [taxShopee, setTaxShopee] = useState('20');
-  const [multicolorWaste, setMulticolorWaste] = useState('15'); // Estado da Purga
+  const [multicolorWaste, setMulticolorWaste] = useState('15'); 
   const [suggestedPriceML, setSuggestedPriceML] = useState('0.00');
   const [suggestedPriceShopee, setSuggestedPriceShopee] = useState('0.00');
 
@@ -90,6 +95,16 @@ export default function Products() {
       if (data.labor_rate_hour) setLaborRate(data.labor_rate_hour.toString());
       if (data.multicolor_waste_pct) setMulticolorWaste(data.multicolor_waste_pct.toString());
     }
+  };
+
+  const fetchFilaments = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('filaments')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('brand', { ascending: true });
+    if (data) setFilamentsList(data);
   };
 
   const applyGlobalDefaults = () => {
@@ -132,11 +147,21 @@ export default function Products() {
   useEffect(() => {
     fetchProducts();
     fetchGlobalSettings();
+    fetchFilaments(); // Busca os filamentos ao carregar a página
   }, [profile]);
 
   // ---> NOVO MOTOR DE CÁLCULO <---
   useEffect(() => {
-    const fPrice = parseFloat(filamentPrice) || 0;
+    // Lógica para pegar o custo do filamento selecionado
+    let costPerGram = 0;
+    const selectedFilamentData = filamentsList.find(f => f.id === selectedFilamentId);
+    
+    if (selectedFilamentData) {
+      costPerGram = selectedFilamentData.price / selectedFilamentData.weight_g;
+    } else {
+      costPerGram = (parseFloat(filamentPrice) || 0) / 1000; // Fallback se não tiver filamento selecionado
+    }
+
     const gUsed = parseFloat(gramsUsed) || 0;
     const pTime = parseFloat(printTime) || 0;
     const margin = parseFloat(profitMargin) || 0;
@@ -152,16 +177,21 @@ export default function Products() {
     const tML = parseFloat(taxML) || 0;
     const tShopee = parseFloat(taxShopee) || 0;
     const wastePct = parseFloat(multicolorWaste) || 0;
+    const packCost = parseFloat(packagingCost) || 0;
+    const hardCost = parseFloat(hardwareCost) || 0;
 
     // Lógica Multi-Cor Dinâmica
     const multicolorMultiplier = isMultiColor ? (1 + (wastePct / 100)) : 1; 
 
-    const materialCost = ((fPrice / 1000) * (gUsed * multicolorMultiplier)) * buff;
+    // Cálculo exato do Plástico
+    const materialCost = (costPerGram * (gUsed * multicolorMultiplier)) * buff;
+    
     const energyCost = ((watts / 1000) * kwh) * pTime; 
     const depreciationCost = dep * pTime;
     const laborCost = (lRate / 60) * postProc; // Mão de obra do acabamento
     
-    const cTotal = materialCost + energyCost + depreciationCost + sFee + laborCost;
+    // Somando todos os custos extras
+    const cTotal = materialCost + energyCost + depreciationCost + sFee + laborCost + packCost + hardCost;
     
     setCalculatedCost(cTotal);
     const calcPrice = cTotal * (1 + margin / 100);
@@ -174,7 +204,7 @@ export default function Products() {
     setSuggestedPriceML(isFinite(priceML) ? priceML.toFixed(2) : '0.00');
     setSuggestedPriceShopee(isFinite(priceShopee) ? priceShopee.toFixed(2) : '0.00');
 
-  }, [filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste]);
+  }, [selectedFilamentId, filamentsList, filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste, packagingCost, hardwareCost]);
 
   const handleOpenNewProduct = () => {
     resetForm();
@@ -207,7 +237,10 @@ export default function Products() {
         post_processing_min: parseFloat(postProcessingMin) || 0,
         is_multicolor: isMultiColor,
         suggested_price_ml: parseFloat(suggestedPriceML) || 0,
-        suggested_price_shopee: parseFloat(suggestedPriceShopee) || 0
+        suggested_price_shopee: parseFloat(suggestedPriceShopee) || 0,
+        filament_id: selectedFilamentId || null,
+        packaging_cost: parseFloat(packagingCost) || 0,
+        hardware_cost: parseFloat(hardwareCost) || 0
       };
 
       let productData;
@@ -302,6 +335,9 @@ export default function Products() {
     // Carrega os novos dados salvos
     setIsMultiColor(product.is_multicolor || false);
     setPostProcessingMin(product.post_processing_min?.toString() || '0');
+    setSelectedFilamentId(product.filament_id || '');
+    setPackagingCost(product.packaging_cost?.toString() || '');
+    setHardwareCost(product.hardware_cost?.toString() || '');
 
     if (globalSettings) {
         setKwhPrice(globalSettings.kwh_price?.toString());
@@ -357,6 +393,9 @@ export default function Products() {
     // Limpa novos campos
     setIsMultiColor(false);
     setPostProcessingMin('0');
+    setSelectedFilamentId('');
+    setPackagingCost('');
+    setHardwareCost('');
     setPowerWatts(globalSettings?.machine_power_watts?.toString() || '300');
     setLaborRate(globalSettings?.labor_rate_hour?.toString() || '35');
     setMulticolorWaste(globalSettings?.multicolor_waste_pct?.toString() || '15');
@@ -442,17 +481,39 @@ export default function Products() {
 
                 <div className="bg-muted/30 p-6 rounded-[2rem] space-y-5 border border-border">
                   <div className="grid grid-cols-2 gap-4">
+                    
+                    {/* DROP DOWN DE FILAMENTO - O CORAÇÃO DA ATUALIZAÇÃO */}
                     <div className="space-y-2">
-                      <Label htmlFor="filPrice" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider">Filamento (R$ / KG)</Label>
-                      <Input id="filPrice" type="number" step="0.01" value={filamentPrice} onChange={(e) => setFilamentPrice(e.target.value)} required className="h-11 bg-background rounded-xl border-border" />
+                      <Label htmlFor="filament" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex justify-between">
+                        Filamento Usado
+                        {selectedFilamentId && filamentsList.find(f => f.id === selectedFilamentId) && (
+                          <span className="text-blue-500 font-bold">
+                            (R$ {(filamentsList.find(f => f.id === selectedFilamentId).price / filamentsList.find(f => f.id === selectedFilamentId).weight_g).toFixed(4)}/g)
+                          </span>
+                        )}
+                      </Label>
+                      <select 
+                        id="filament" 
+                        value={selectedFilamentId} 
+                        onChange={(e) => setSelectedFilamentId(e.target.value)} 
+                        className="w-full h-11 px-3 bg-background rounded-xl border border-border text-sm focus:outline-none focus:border-blue-500 text-foreground"
+                      >
+                        <option value="">Selecione do Estoque...</option>
+                        {filamentsList.map(f => (
+                          <option key={f.id} value={f.id}>
+                            {f.brand} - {f.material} {f.color}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="gUsed" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider">Peso da Peça (g)</Label>
                       <Input id="gUsed" type="number" step="0.1" value={gramsUsed} onChange={(e) => setGramsUsed(e.target.value)} required className="h-11 bg-background rounded-xl border-border" placeholder="Ex: 150" />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-background/50 rounded-2xl border border-dashed border-border/50">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-background/50 rounded-2xl border border-dashed border-border/50">
                     <div className="space-y-1">
                       <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
                       <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-8 text-xs rounded-lg" />
@@ -477,6 +538,15 @@ export default function Products() {
                       <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
                       <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-8 text-xs rounded-lg" />
                     </div>
+                    {/* NOVOS CAMPOS DE CUSTO EXTRA */}
+                    <div className="space-y-1">
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Embalagem (R$)</Label>
+                      <Input type="number" step="0.01" value={packagingCost} onChange={(e) => setPackagingCost(e.target.value)} className="h-8 text-xs rounded-lg bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="2.00" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Extras/Ferragens (R$)</Label>
+                      <Input type="number" step="0.01" value={hardwareCost} onChange={(e) => setHardwareCost(e.target.value)} className="h-8 text-xs rounded-lg bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="1.50" />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -495,7 +565,7 @@ export default function Products() {
                   <div className="pt-4 border-t border-border/50 flex flex-col gap-4">
                     <div className="flex justify-between items-center">
                         <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-muted-foreground uppercase">Custo de Fabricação</span>
+                        <span className="text-[10px] font-black text-muted-foreground uppercase">Custo de Fabricação Total</span>
                         <span className="text-xl font-black text-foreground tracking-tighter">R$ {calculatedCost.toFixed(2)}</span>
                         </div>
                         <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl text-right">
