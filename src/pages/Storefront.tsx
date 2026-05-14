@@ -56,6 +56,9 @@ export default function Storefront() {
   const [phone, setPhone] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // NOVO ESTADO: Quantidade para a vitrine
+  const [quantity, setQuantity] = useState('1');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -133,7 +136,11 @@ export default function Storefront() {
         throw new Error("Erro de permissão no banco. Certifique-se de liberar inserção anônima em 'clients'.");
       }
       
-      const finalOrderPrice = selectedProduct.final_price - (selectedProduct.discount || 0);
+      // Multiplica o valor unitário pela quantidade escolhida pelo cliente
+      const qty = parseInt(quantity) || 1;
+      const unitPrice = selectedProduct.final_price - (selectedProduct.discount || 0);
+      const finalOrderPrice = unitPrice * qty;
+      const finalCost = (selectedProduct.cost_total || 0) * qty;
       
       // 2. Criar o Pedido (Atrelado ao dono da loja)
       const { error: orderErr } = await supabase.from('orders').insert([{
@@ -143,7 +150,8 @@ export default function Storefront() {
         description: description || "Sem observações", 
         status: 'Aguardando contato', 
         final_price: finalOrderPrice, 
-        cost_total: selectedProduct.cost_total || 0,
+        cost_total: finalCost,
+        quantity: qty // INSERE A QUANTIDADE NO BANCO
       }]);
       
       if (orderErr) {
@@ -153,7 +161,7 @@ export default function Storefront() {
       
       toast.success('Pedido enviado com sucesso!');
       setSelectedProduct(null);
-      setName(''); setPhone(''); setDescription('');
+      setName(''); setPhone(''); setDescription(''); setQuantity('1');
     } catch (err: any) { 
       toast.error(err.message); 
     } finally { 
@@ -302,12 +310,17 @@ export default function Storefront() {
       </div>
 
       {/* MODAL DE PEDIDO - DESIGNER CLEAN */}
-      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => {
+          if(!open) {
+              setSelectedProduct(null);
+              setQuantity('1'); // Reseta a quantidade ao fechar
+          }
+      }}>
         <DialogContent className="max-w-[95vw] md:max-w-xl rounded-[3rem] bg-[#16161a] border-white/5 p-0 overflow-hidden text-zinc-100 shadow-2xl">
           <div className="overflow-y-auto max-h-[90vh]">
             <div className="relative aspect-video w-full bg-zinc-900">
               <img src={selectedProduct?.main_image_url} className="w-full h-full object-cover" />
-              <Button onClick={() => setSelectedProduct(null)} className="absolute top-6 right-6 h-12 w-12 rounded-full bg-black/60 backdrop-blur-xl border-white/10 hover:bg-black/80 z-50">
+              <Button onClick={() => { setSelectedProduct(null); setQuantity('1'); }} className="absolute top-6 right-6 h-12 w-12 rounded-full bg-black/60 backdrop-blur-xl border-white/10 hover:bg-black/80 z-50">
                   <X className="w-6 h-6 text-white" />
               </Button>
             </div>
@@ -317,20 +330,33 @@ export default function Storefront() {
                   <h2 className="text-3xl font-black tracking-tighter uppercase italic leading-none">{selectedProduct?.name}</h2>
                   <p className="text-zinc-400 text-sm leading-relaxed">{selectedProduct?.description}</p>
                   
-                  <div className="flex items-center gap-3 pt-4">
-                    <p className="text-4xl font-black text-emerald-400 tracking-tighter">
-                      R$ {(selectedProduct?.final_price - (selectedProduct?.discount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                    {selectedProduct?.discount > 0 && (
-                      <span className="text-sm text-zinc-500 line-through font-bold">R$ {selectedProduct?.final_price?.toFixed(2)}</span>
-                    )}
+                  {/* CÁLCULO E EXIBIÇÃO EM TEMPO REAL DA QUANTIDADE */}
+                  <div className="flex items-center justify-between pt-6">
+                    <div className="flex flex-col">
+                      <p className="text-4xl font-black text-emerald-400 tracking-tighter">
+                        R$ {((selectedProduct?.final_price - (selectedProduct?.discount || 0)) * (parseInt(quantity) || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                      {selectedProduct?.discount > 0 && (
+                        <span className="text-sm text-zinc-500 line-through font-bold">R$ {(selectedProduct?.final_price * (parseInt(quantity) || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end space-y-1">
+                       <Label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Quantidade</Label>
+                       <Input 
+                          type="number" 
+                          min="1" 
+                          value={quantity} 
+                          onChange={(e) => setQuantity(e.target.value)} 
+                          className="h-12 w-24 rounded-2xl bg-zinc-900/50 border-white/10 focus:ring-blue-500 text-center font-black text-xl text-white" 
+                       />
+                    </div>
                   </div>
               </div>
 
               <div className="space-y-5 pt-6 border-t border-white/5">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest flex items-center gap-2"><User className="w-3 h-3"/> Nome Completo</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} required className="h-14 rounded-2xl bg-zinc-900/50 border-white/10 focus:ring-blue-500" />
+                  <Input value={name} onChange={(e) => setName(e.target.value)} required className="h-14 rounded-2xl bg-zinc-900/50 border-white/10 focus:ring-blue-500 text-white" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest flex items-center gap-2"><Phone className="w-3 h-3"/> WhatsApp (Com DDD)</Label>
@@ -341,14 +367,14 @@ export default function Storefront() {
                       onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} 
                       required 
                       placeholder="11 99999-8888" 
-                      className="h-14 pl-14 rounded-2xl bg-zinc-900/50 border-white/10" 
+                      className="h-14 pl-14 rounded-2xl bg-zinc-900/50 border-white/10 text-white" 
                       maxLength={15} 
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest flex items-center gap-2"><FileText className="w-3 h-3"/> Preferências</Label>
-                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex: Cor preta, tamanho grande..." className="rounded-2xl bg-zinc-900/50 border-white/10 min-h-[100px]" />
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex: Cor preta, tamanho grande..." className="rounded-2xl bg-zinc-900/50 border-white/10 min-h-[100px] text-white" />
                 </div>
               </div>
 
