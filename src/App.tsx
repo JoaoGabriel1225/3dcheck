@@ -31,16 +31,20 @@ import Community from './pages/app/Community';
 import Landing from './pages/Landing'; // NOVA IMPORTAÇÃO DA LANDING PAGE
 
 function AppContent() {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    // Só entra aqui se o Supabase já terminou de checar a sessão
     if (!loading) {
-      // Pequeno delay para garantir a fluidez e a exibição da logo
-      const timer = setTimeout(() => setShowSplash(false), 1500);
+      // Se NÃO tem usuário logado (ex: vai pra Landing ou tela de Login), mostra por 800ms pra dar o efeito visual.
+      // Se JÁ TEM usuário (entrou direto no Dashboard), remove a splash quase na mesma hora (300ms).
+      const delay = user ? 300 : 800; 
+      
+      const timer = setTimeout(() => setShowSplash(false), delay);
       return () => clearTimeout(timer);
     }
-  }, [loading]);
+  }, [loading, user]);
 
   return (
     <>
