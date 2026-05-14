@@ -131,58 +131,6 @@ export default function Orders() {
     checkLowFilaments(); 
   }, [profile]);
 
-  // NOVO: Desconta o filamento automaticamente no banco sem travar a tela
-  const checkAndDeductFilament = async (productId: string) => {
-    if (!profile || productId === 'custom') return;
-    try {
-      const { data: product } = await supabase
-        .from('products')
-        .select('filament_id, weight_g, is_multicolor')
-        .eq('id', productId)
-        .single();
-
-      if (product && product.filament_id && product.weight_g > 0) {
-        const { data: filament } = await supabase
-          .from('filaments')
-          .select('id, weight_g, brand, color')
-          .eq('id', product.filament_id)
-          .single();
-
-        if (filament) {
-          let wastePct = 15;
-          if (product.is_multicolor) {
-            const { data: settings } = await supabase
-              .from('store_settings')
-              .select('multicolor_waste_pct')
-              .eq('user_id', profile.id)
-              .single();
-            if (settings && settings.multicolor_waste_pct) {
-              wastePct = settings.multicolor_waste_pct;
-            }
-          }
-
-          const multiplier = product.is_multicolor ? (1 + (wastePct / 100)) : 1;
-          const totalGramsUsed = product.weight_g * multiplier;
-          const newWeight = filament.weight_g - totalGramsUsed;
-
-          await supabase
-            .from('filaments')
-            .update({ weight_g: newWeight })
-            .eq('id', filament.id);
-
-          if (newWeight <= 200) {
-            toast.warning(
-              `⚠️ Estoque Baixo após pedido: O filamento ${filament.brand} ${filament.color} agora tem apenas ${newWeight.toFixed(0)}g!`,
-              { duration: 8000 }
-            );
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Erro silencioso ao descontar filamento:", err);
-    }
-  };
-
   const totalCount = orders.length;
   const aguardandoCount = orders.filter(o => ['Aguardando contato', 'Confirmado'].includes(o.status)).length;
   const emProducaoCount = orders.filter(o => o.status === 'Preparação').length;
@@ -270,12 +218,8 @@ export default function Orders() {
         final_price: parseFloat(orderPrice.toString().replace(',', '.')) || 0,
         cost_total: parseFloat(orderCost.toString().replace(',', '.')) || 0
       });
-      
       if (orderErr) throw orderErr;
       
-      // DESCONTO AUTOMÁTICO DE FILAMENTO E NOTIFICAÇÃO
-      await checkAndDeductFilament(selectedProductId);
-
       toast.success('Pedido criado!');
       setIsNewOrderDialogOpen(false);
       resetOrderForm();
@@ -409,7 +353,6 @@ export default function Orders() {
                         />
                     </div>
                 </div>
-                {/* Campo de Endereço Opcional no Cadastro */}
                 <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase opacity-60 ml-1">Endereço de Entrega (Opcional)</Label>
                     <Input 
