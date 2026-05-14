@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate } from 'react-router-dom'; // CORREÇÃO: react-router-dom
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -121,33 +121,41 @@ export default function Storefront() {
     }
 
     try {
-      const { data: clientData, error: clientErr } = await supabase.from('clients').insert({ 
-        user_id: store.user_id, 
-        name, 
+      // 1. Criar o Cliente (Atrelado ao dono da loja)
+      const { data: clientData, error: clientErr } = await supabase.from('clients').insert([{ 
+        user_id: store.user_id, // FORÇA PARA O DONO DA LOJA DA URL
+        name: name, 
         phone: cleanPhone 
-      }).select().single();
+      }]).select().single();
       
-      if (clientErr) throw clientErr;
+      if (clientErr) {
+        console.error("Erro Cliente:", clientErr);
+        throw new Error("Erro de permissão no banco. Certifique-se de liberar inserção anônima em 'clients'.");
+      }
       
       const finalOrderPrice = selectedProduct.final_price - (selectedProduct.discount || 0);
       
-      const { error: orderErr } = await supabase.from('orders').insert({
-        user_id: store.user_id, 
+      // 2. Criar o Pedido (Atrelado ao dono da loja)
+      const { error: orderErr } = await supabase.from('orders').insert([{
+        user_id: store.user_id, // FORÇA PARA O DONO DA LOJA DA URL
         client_id: clientData.id, 
         product_id: selectedProduct.id, 
         description: description || "Sem observações", 
         status: 'Aguardando contato', 
         final_price: finalOrderPrice, 
         cost_total: selectedProduct.cost_total || 0,
-      });
+      }]);
       
-      if (orderErr) throw orderErr;
+      if (orderErr) {
+         console.error("Erro Pedido:", orderErr);
+         throw new Error("Erro de permissão no banco. Certifique-se de liberar inserção anônima em 'orders'.");
+      }
       
       toast.success('Pedido enviado com sucesso!');
       setSelectedProduct(null);
       setName(''); setPhone(''); setDescription('');
     } catch (err: any) { 
-      toast.error(`Erro ao enviar pedido: ${err.message}`); 
+      toast.error(err.message); 
     } finally { 
       setIsSubmitting(false); 
     }
@@ -334,7 +342,7 @@ export default function Storefront() {
                       required 
                       placeholder="11 99999-8888" 
                       className="h-14 pl-14 rounded-2xl bg-zinc-900/50 border-white/10" 
-                      maxLength={15} // Aumentado para suportar colagem de números formatados
+                      maxLength={15} 
                     />
                   </div>
                 </div>
