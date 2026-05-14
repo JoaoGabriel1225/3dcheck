@@ -16,7 +16,8 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { 
   PackageSearch, Plus, Image as ImageIcon, Trash2, Eye, EyeOff, 
-  Edit2, Wand2, Calculator, Zap, Clock, RotateCcw, ShieldAlert, Store
+  Edit2, Wand2, Calculator, Zap, Clock, RotateCcw, ShieldAlert, Store,
+  ChevronDown, Search, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -51,7 +52,7 @@ export default function Products() {
   const [discount, setDiscount] = useState('');
   
   // Variáveis Base
-  const [filamentPrice, setFilamentPrice] = useState(''); // Mantido como fallback
+  const [filamentPrice, setFilamentPrice] = useState('');
   const [gramsUsed, setGramsUsed] = useState('');
   const [printTime, setPrintTime] = useState('');
   const [profitMargin, setProfitMargin] = useState('');
@@ -67,18 +68,27 @@ export default function Products() {
   const [packagingCost, setPackagingCost] = useState('');
   const [hardwareCost, setHardwareCost] = useState('');
 
+  // Estado da PESQUISA DO FILAMENTO
+  const [isFilamentSearchOpen, setIsFilamentSearchOpen] = useState(false);
+  const [filamentSearch, setFilamentSearch] = useState('');
+
   const [isMultiColor, setIsMultiColor] = useState(false);
   const [powerWatts, setPowerWatts] = useState('300');
   const [postProcessingMin, setPostProcessingMin] = useState('0');
-  const [laborRate, setLaborRate] = useState('35');
+  const [laborRate, setLaborRate] = useState('35'); // Valor da hora do Maker
   const [taxML, setTaxML] = useState('18');
   const [taxShopee, setTaxShopee] = useState('20');
-  const [multicolorWaste, setMulticolorWaste] = useState('15'); 
+  const [multicolorWaste, setMulticolorWaste] = useState('15'); // Estado da Purga
   const [suggestedPriceML, setSuggestedPriceML] = useState('0.00');
   const [suggestedPriceShopee, setSuggestedPriceShopee] = useState('0.00');
 
   const [calculatedCost, setCalculatedCost] = useState(0);
   const [suggestedPrice, setSuggestedPrice] = useState('0.00');
+
+  // Filtro inteligente do filamento
+  const filteredFilaments = filamentsList.filter(f => 
+    `${f.brand} ${f.material} ${f.color}`.toLowerCase().includes(filamentSearch.toLowerCase())
+  );
 
   const fetchGlobalSettings = async () => {
     if (!user) return;
@@ -396,6 +406,9 @@ export default function Products() {
     setSelectedFilamentId('');
     setPackagingCost('');
     setHardwareCost('');
+    setIsFilamentSearchOpen(false);
+    setFilamentSearch('');
+
     setPowerWatts(globalSettings?.machine_power_watts?.toString() || '300');
     setLaborRate(globalSettings?.labor_rate_hour?.toString() || '35');
     setMulticolorWaste(globalSettings?.multicolor_waste_pct?.toString() || '15');
@@ -475,16 +488,16 @@ export default function Products() {
                 <div className="bg-blue-500/5 border border-blue-500/10 p-4 rounded-2xl flex items-start gap-3">
                     <ShieldAlert className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
                     <p className="text-[10px] font-bold text-blue-700/80 leading-relaxed italic">
-                        Os valores abaixo refletem suas <strong className="underline">Configurações Globais</strong>. Altere manualmente para este produto ou ajuste os padrões no menu de configurações para todo o catálogo.
+                        Os valores abaixo refletem suas <strong className="underline">Configurações Globais</strong>. Altere manualmente ou ajuste os padrões no menu de configurações.
                     </p>
                 </div>
 
-                <div className="bg-muted/30 p-6 rounded-[2rem] space-y-5 border border-border">
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted/30 p-6 rounded-[2rem] space-y-6 border border-border">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     
-                    {/* DROP DOWN DE FILAMENTO - O CORAÇÃO DA ATUALIZAÇÃO */}
-                    <div className="space-y-2">
-                      <Label htmlFor="filament" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex justify-between">
+                    {/* DROP DOWN DE FILAMENTO COM PESQUISA (NOVO) */}
+                    <div className="space-y-2 relative">
+                      <Label className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex justify-between">
                         Filamento Usado
                         {selectedFilamentId && filamentsList.find(f => f.id === selectedFilamentId) && (
                           <span className="text-blue-500 font-bold">
@@ -492,19 +505,62 @@ export default function Products() {
                           </span>
                         )}
                       </Label>
-                      <select 
-                        id="filament" 
-                        value={selectedFilamentId} 
-                        onChange={(e) => setSelectedFilamentId(e.target.value)} 
-                        className="w-full h-11 px-3 bg-background rounded-xl border border-border text-sm focus:outline-none focus:border-blue-500 text-foreground"
+                      
+                      <div 
+                        className="w-full h-11 px-3 bg-background rounded-xl border border-border text-sm flex items-center justify-between cursor-pointer hover:border-blue-500/50 transition-colors"
+                        onClick={() => setIsFilamentSearchOpen(!isFilamentSearchOpen)}
                       >
-                        <option value="">Selecione do Estoque...</option>
-                        {filamentsList.map(f => (
-                          <option key={f.id} value={f.id}>
-                            {f.brand} - {f.material} {f.color}
-                          </option>
-                        ))}
-                      </select>
+                        <span className="truncate">
+                          {selectedFilamentId && filamentsList.find(f => f.id === selectedFilamentId)
+                            ? `${filamentsList.find(f => f.id === selectedFilamentId).brand} - ${filamentsList.find(f => f.id === selectedFilamentId).material} ${filamentsList.find(f => f.id === selectedFilamentId).color}`
+                            : <span className="text-muted-foreground">Selecionar filamento...</span>
+                          }
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground ml-2 shrink-0" />
+                      </div>
+
+                      {/* Modal de Pesquisa Absolute */}
+                      <AnimatePresence>
+                        {isFilamentSearchOpen && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                            className="absolute z-50 top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col"
+                          >
+                            <div className="p-2 border-b border-border bg-muted/30 relative">
+                              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                              <input 
+                                autoFocus
+                                type="text" 
+                                placeholder="Pesquisar marca ou cor..." 
+                                value={filamentSearch}
+                                onChange={(e) => setFilamentSearch(e.target.value)}
+                                className="w-full h-9 pl-9 pr-3 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                              <div 
+                                className="px-3 py-2 text-xs text-red-500 font-bold cursor-pointer hover:bg-red-500/10 rounded-lg flex items-center gap-2"
+                                onClick={() => { setSelectedFilamentId(''); setIsFilamentSearchOpen(false); }}
+                              >
+                                <X className="w-3 h-3" /> Limpar Seleção
+                              </div>
+                              {filteredFilaments.map(f => (
+                                <div 
+                                  key={f.id} 
+                                  className="px-3 py-2.5 text-xs text-foreground font-medium cursor-pointer hover:bg-blue-500/10 hover:text-blue-500 rounded-lg flex items-center gap-2 transition-colors"
+                                  onClick={() => { setSelectedFilamentId(f.id); setIsFilamentSearchOpen(false); setFilamentSearch(''); }}
+                                >
+                                  <div className="w-3 h-3 rounded-full border shadow-sm shrink-0" style={{backgroundColor: f.color_hex || '#000'}} />
+                                  <span className="truncate">{f.brand} - {f.material} {f.color}</span>
+                                </div>
+                              ))}
+                              {filteredFilaments.length === 0 && (
+                                <div className="p-3 text-xs text-muted-foreground text-center">Nenhum filamento encontrado.</div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     <div className="space-y-2">
@@ -513,39 +569,39 @@ export default function Products() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-background/50 rounded-2xl border border-dashed border-border/50">
-                    <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
-                      <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-8 text-xs rounded-lg" />
+                  {/* CAIXA DE CUSTOS DESCOMPACTADA (3 colunas com mais espaço) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 p-6 bg-background/50 rounded-3xl border border-dashed border-border/50">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
+                      <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-10 text-sm rounded-xl" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Potência (W)</Label>
-                      <Input type="number" value={powerWatts} onChange={(e) => setPowerWatts(e.target.value)} className="h-8 text-xs rounded-lg bg-yellow-500/10 text-yellow-700 font-bold border-yellow-500/30" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Potência (W)</Label>
+                      <Input type="number" value={powerWatts} onChange={(e) => setPowerWatts(e.target.value)} className="h-10 text-sm rounded-xl bg-yellow-500/10 text-yellow-700 font-bold border-yellow-500/30" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Depreciação (R$/h)</Label>
-                      <Input type="number" value={depreciation} onChange={(e) => setDepreciation(e.target.value)} className="h-8 text-xs rounded-lg" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Depreciação (R$/h)</Label>
+                      <Input type="number" value={depreciation} onChange={(e) => setDepreciation(e.target.value)} className="h-10 text-sm rounded-xl" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Acabamento (min)</Label>
-                      <Input type="number" value={postProcessingMin} onChange={(e) => setPostProcessingMin(e.target.value)} className="h-8 text-xs rounded-lg bg-blue-500/10 text-blue-700 font-bold border-blue-500/30" placeholder="Ex: 15" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Acabamento (min)</Label>
+                      <Input type="number" value={postProcessingMin} onChange={(e) => setPostProcessingMin(e.target.value)} className="h-10 text-sm rounded-xl bg-blue-500/10 text-blue-700 font-bold border-blue-500/30" placeholder="Ex: 15" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Sua Hora (R$/h)</Label>
-                      <Input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="h-8 text-xs rounded-lg" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Sua Hora (R$/h)</Label>
+                      <Input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="h-10 text-sm rounded-xl" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
-                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-8 text-xs rounded-lg" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
+                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-10 text-sm rounded-xl" />
                     </div>
-                    {/* NOVOS CAMPOS DE CUSTO EXTRA */}
-                    <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Embalagem (R$)</Label>
-                      <Input type="number" step="0.01" value={packagingCost} onChange={(e) => setPackagingCost(e.target.value)} className="h-8 text-xs rounded-lg bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="2.00" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Embalagem (R$)</Label>
+                      <Input type="number" step="0.01" value={packagingCost} onChange={(e) => setPackagingCost(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="2.00" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Extras/Ferragens (R$)</Label>
-                      <Input type="number" step="0.01" value={hardwareCost} onChange={(e) => setHardwareCost(e.target.value)} className="h-8 text-xs rounded-lg bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="1.50" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Ferragens (R$)</Label>
+                      <Input type="number" step="0.01" value={hardwareCost} onChange={(e) => setHardwareCost(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="1.50" />
                     </div>
                   </div>
 
@@ -583,7 +639,6 @@ export default function Products() {
                         </div>
                     </div>
 
-                    {/* CARDS MARKETPLACE */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
                         <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-2xl relative group">
                             <Store className="w-8 h-8 absolute right-2 bottom-2 opacity-10 text-yellow-600" />
@@ -618,109 +673,7 @@ export default function Products() {
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
                 <div className="space-y-2">
-                  <Label htmlFor="stock" className="text-[10px] font-black uppercase text-muted-foreground">Estoque</Label>
+                  <Label htmlFor="stock" className="text-[10px] font-black uppercase text-muted-foreground">Estoque Inicial</Label>
                   <Input id="stock" type="number" value={stock} onChange={(e) => setStock(e.target.value)} required className="h-12 rounded-2xl border-border bg-muted/30" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Foto do Produto</Label>
-                  <div className="relative h-12">
-                    <Input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                    <div className="h-full border-2 border-dashed border-border rounded-2xl flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                      <ImageIcon className="w-4 h-4 mr-2" /> SELECIONAR IMAGEM
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <Button type="submit" className="w-full h-14 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-500/20 text-lg transition-all active:scale-[0.98]">
-                  {editingProductId ? 'SALVAR ALTERAÇÕES' : 'CADASTRAR NA VITRINE'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </motion.div>
-
-      <motion.div 
-        variants={containerVariants}
-        className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-      >
-        {loading ? (
-          <p className="font-black text-muted-foreground animate-pulse tracking-[0.3em] py-20 col-span-full text-center uppercase">Sincronizando Catálogo...</p>
-        ) : products.length === 0 ? (
-          <div className="col-span-full py-20 text-center bg-muted/20 rounded-[3rem] border-2 border-dashed border-border flex flex-col items-center gap-4">
-             <PackageSearch className="w-12 h-12 text-muted-foreground/30" />
-             <p className="text-muted-foreground font-bold">Sua vitrine está vazia. Comece a lucrar agora!</p>
-          </div>
-        ) : (
-          <AnimatePresence>
-            {products.map((product) => {
-                const hasDiscount = product.discount > 0;
-                const finalPriceWithDiscount = product.final_price - (product.discount || 0);
-
-                return (
-                 <motion.div
-                   layout
-                   key={product.id}
-                   variants={itemVariants}
-                   whileHover={{ y: -5 }} 
-                   transition={{ duration: 0.2 }}
-                 >
-                   <Card className="overflow-hidden h-full flex flex-col group rounded-[2.5rem] border-border bg-card/40 backdrop-blur-sm hover:border-blue-500/30 hover:shadow-2xl transition-all duration-500">
-                      <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden">
-                        {product.main_image_url || (product.product_images && product.product_images[0]) ? (
-                          <img src={product.main_image_url || product.product_images[0].url} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                        ) : (
-                          <ImageIcon className="h-16 w-16 text-muted-foreground/20" />
-                        )}
-                        
-                        <div className="absolute top-4 left-4">
-                            <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm backdrop-blur-md ${product.is_public ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'}`}>
-                              {product.is_public ? 'Ativo' : 'Pausado'}
-                            </div>
-                        </div>
-                      </div>
-                      
-                      <CardContent className="p-8 flex-1 flex flex-col">
-                        <h3 className="font-black text-xl text-foreground tracking-tight line-clamp-1 mb-2 italic uppercase tracking-tighter">{product.name}</h3>
-                        <p className="text-muted-foreground text-sm font-medium line-clamp-2 leading-relaxed mb-6 flex-1">{product.description}</p>
-                        
-                        <div className="flex items-center justify-between mb-8 pt-6 border-t border-border">
-                          <div className="flex flex-col">
-                            {hasDiscount && (
-                              <span className="text-[10px] font-bold text-muted-foreground line-through decoration-red-500/50 tracking-tighter">R$ {product.final_price?.toFixed(2)}</span>
-                            )}
-                            <span className={`text-2xl font-black tracking-tighter italic ${hasDiscount ? 'text-emerald-500' : 'text-foreground'}`}>
-                              R$ {hasDiscount ? finalPriceWithDiscount.toFixed(2) : product.final_price?.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="block text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Estoque</span>
-                            <span className="text-xs font-black bg-blue-500/10 text-blue-600 px-3 py-1 rounded-full border border-blue-500/10">{product.stock_quantity} un</span>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
-                          <Button variant="outline" size="sm" onClick={(e) => toggleVisibility(product, e)} className="h-10 rounded-2xl border-border bg-muted/20 text-muted-foreground hover:text-foreground text-[10px] font-black uppercase tracking-tighter">
-                            {product.is_public ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
-                            {product.is_public ? 'Ocultar' : 'Exibir'}
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={(e) => handleEditClick(product, e)} className="h-10 rounded-2xl border-border bg-muted/20 text-muted-foreground hover:text-blue-500 text-[10px] font-black uppercase tracking-tighter">
-                            <Edit2 className="h-4 w-4 mr-1" /> Editar
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={(e) => deleteProduct(product.id, e)} className="h-10 rounded-2xl text-muted-foreground hover:text-red-500 hover:bg-red-500/5 text-[10px] font-black uppercase tracking-tighter">
-                            <Trash2 className="h-4 w-4 mr-1" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                 </motion.div>
-                );
-            })}
-          </AnimatePresence>
-        )}
-      </motion.div>
-    </motion.div>
-  );
-}
