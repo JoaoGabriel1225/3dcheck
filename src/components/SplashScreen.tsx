@@ -14,12 +14,12 @@ const LOADING_PHRASES = [
 ];
 
 export default function SplashScreen() {
-  // A MÁGICA AQUI: Já sorteia uma frase aleatória no instante que a tela carrega
+  // Já sorteia uma frase aleatória no instante que a tela carrega
   const [phraseIndex, setPhraseIndex] = useState(() => 
     Math.floor(Math.random() * LOADING_PHRASES.length)
   );
 
-  // Efeito para continuar sorteando frases aleatórias a cada 2.2 segundos (caso a net esteja lenta)
+  // Efeito para sortear frases aleatórias a cada 2.2 segundos
   useEffect(() => {
     const interval = setInterval(() => {
       setPhraseIndex((prev) => {
@@ -43,17 +43,19 @@ export default function SplashScreen() {
       {/* Fundo Vivo 1: Grid Tecnológico Sutil */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#3b82f610_1px,transparent_1px),linear-gradient(to_bottom,#3b82f610_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 
-      {/* Fundo Vivo 2: Glows Dinâmicos que se movem */}
+      {/* Fundo Vivo 2: Glows Dinâmicos Otimizados para Mobile (Sem Rotação) */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <motion.div 
-          animate={{ opacity: [0.1, 0.3, 0.1], scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+          animate={{ opacity: [0.1, 0.25, 0.1], scale: [1, 1.1, 1] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute w-[400px] h-[400px] md:w-[600px] md:h-[600px] bg-blue-600/20 rounded-full blur-[120px]"
+          className="absolute w-[350px] h-[350px] md:w-[600px] md:h-[600px] bg-blue-600/20 rounded-full blur-[100px]"
+          style={{ willChange: "transform, opacity" }}
         />
         <motion.div 
-          animate={{ opacity: [0.05, 0.15, 0.05], scale: [1.2, 1, 1.2], rotate: [0, -90, 0] }}
+          animate={{ opacity: [0.05, 0.15, 0.05], scale: [1.1, 1, 1.1] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-indigo-500/10 rounded-full blur-[100px]"
+          className="absolute w-[250px] h-[250px] md:w-[500px] md:h-[500px] bg-indigo-500/10 rounded-full blur-[80px]"
+          style={{ willChange: "transform, opacity" }}
         />
       </div>
 
@@ -61,23 +63,26 @@ export default function SplashScreen() {
       <div className="relative mb-14 z-10">
         <motion.div
           animate={{ 
-            y: [0, -15, 0], 
-            rotateZ: [-1, 1, -1] // Leve inclinação para dar sensação de peso real
+            y: [0, -10, 0], 
+            rotateZ: [-1, 1, -1] 
           }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
           className="relative rounded-[2rem] overflow-hidden"
+          style={{ willChange: "transform" }}
         >
           <img 
             src="/icon-512.png" 
             alt="3DCheck Logo" 
-            className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-[0_0_25px_rgba(59,130,246,0.6)]"
+            className="w-40 h-40 md:w-56 md:h-56 object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]"
           />
           
-          {/* Feixe de luz passando pela logo (Efeito Scanner 3D) */}
+          {/* Feixe de luz passando pela logo otimizado (Usando Y em vez de Top) */}
           <motion.div 
-            animate={{ top: ['-20%', '120%'] }}
+            initial={{ y: "-50%" }}
+            animate={{ y: "1000%" }}
             transition={{ duration: 2.5, repeat: Infinity, ease: "linear", repeatDelay: 0.5 }}
-            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-300 to-transparent blur-[1px] opacity-60"
+            className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-transparent via-blue-300 to-transparent opacity-50"
+            style={{ willChange: "transform" }}
           />
         </motion.div>
       </div>
@@ -85,16 +90,16 @@ export default function SplashScreen() {
       {/* Texto Dinâmico e Barra Funcional */}
       <div className="flex flex-col items-center gap-6 z-10 w-full px-6">
         
-        {/* Container do Texto com efeito Blur */}
+        {/* Container do Texto Otimizado (Sem Blur para não travar no celular) */}
         <div className="h-6 flex items-center justify-center overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.span 
               key={phraseIndex}
-              initial={{ opacity: 0, filter: "blur(4px)", scale: 0.95 }}
-              animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
-              exit={{ opacity: 0, filter: "blur(4px)", scale: 1.05 }}
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 1.02 }}
               transition={{ duration: 0.3 }}
-              className="text-blue-400 font-black tracking-[0.4em] uppercase text-[10px] md:text-xs text-center drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]"
+              className="text-blue-400 font-black tracking-[0.4em] uppercase text-[10px] md:text-xs text-center drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]"
             >
               {LOADING_PHRASES[phraseIndex]}
             </motion.span>
@@ -111,6 +116,7 @@ export default function SplashScreen() {
               ease: "easeInOut" 
             }}
             className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full shadow-[0_0_10px_#3b82f6]"
+            style={{ willChange: "transform" }}
           />
         </div>
       </div>
