@@ -900,4 +900,23 @@ export default function Orders() {
         </Card>
       </div>
 
-      <Dialog open={whatsappModalOpen} onOpenChange
+      <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
+          <DialogHeader><DialogTitle className="font-black text-xl flex items-center gap-3"><div className="p-2 bg-emerald-500 rounded-lg text-white"><MessageCircle className="w-5 h-5" /></div>Notificar Cliente?</DialogTitle></DialogHeader>
+          <div className="py-6 space-y-4">
+            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ajuste Rápido antes de enviar</Label>
+            <Textarea 
+              value={pendingWhatsappMessage} 
+              onChange={(e) => setPendingWhatsappMessage(e.target.value)}
+              className="min-h-[120px] rounded-2xl bg-background border border-border text-sm p-4 resize-none shadow-inner"
+            />
+          </div>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button variant="ghost" className="font-bold text-muted-foreground" onClick={() => setWhatsappModalOpen(false)}>Depois</Button>
+            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 rounded-xl" onClick={() => { openWhatsapp(pendingWhatsappPhone, pendingWhatsappMessage); setWhatsappModalOpen(false); }}>Enviar WhatsApp</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
+}
