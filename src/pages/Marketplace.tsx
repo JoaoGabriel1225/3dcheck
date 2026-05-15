@@ -18,14 +18,15 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// MUDANÇA NAS ANIMAÇÕES: Efeito elástico (Spring) com escala e fade
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } }
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+  hidden: { opacity: 0, scale: 0.8, y: 40 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
 export default function Marketplace() {
