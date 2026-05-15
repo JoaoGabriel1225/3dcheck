@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
-import { Plus, Trash2, Edit, Save, X, Palette, Scale, DollarSign, Box, AlertTriangle, RefreshCw, Search } from 'lucide-react';
+import { Plus, Trash2, Edit, X, Palette, Box, AlertTriangle, RefreshCw, Search, Layers, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -17,16 +17,12 @@ interface Filament {
   color_hex: string;
   price: number;
   weight_g: number;
-  original_weight_g?: number; // Adicionado para manter a barra de progresso
+  original_weight_g?: number; 
 }
 
-// Animações em cascata
 const containerVariants = {
   hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
 const itemVariants = {
@@ -37,11 +33,11 @@ const itemVariants = {
 export default function Filaments() {
   const { user } = useAuth();
   const [filaments, setFilaments] = useState<Filament[]>([]);
+  const [productCounts, setProductCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Form State
   const [brand, setBrand] = useState('');
   const [material, setMaterial] = useState('PLA');
   const [colorName, setColorName] = useState('');
@@ -51,10 +47,8 @@ export default function Filaments() {
   const [originalWeight, setOriginalWeight] = useState('1000'); 
   const [quantity, setQuantity] = useState('1');
 
-  // NOVO: Estado para a barra de pesquisa
   const [searchTerm, setSearchTerm] = useState('');
 
-  // NOVO: Estados para o Modal Bonito de Reposição
   const [isRefillModalOpen, setIsRefillModalOpen] = useState(false);
   const [refillFilament, setRefillFilament] = useState<Filament | null>(null);
   const [refillAmount, setRefillAmount] = useState('1000');
@@ -63,23 +57,15 @@ export default function Filaments() {
   useEffect(() => {
     fetchFilaments();
 
-    // Motor Realtime para escutar descontos automáticos
     if (!user) return;
     const subscription = supabase
       .channel('filaments_realtime')
-      .on('postgres_changes', {
-        event: '*', 
-        schema: 'public',
-        table: 'filaments',
-        filter: `user_id=eq.${user.id}`
-      }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'filaments', filter: `user_id=eq.${user.id}` }, () => {
         fetchFilaments(); 
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(subscription);
-    };
+    return () => { supabase.removeChannel(subscription); };
   }, [user]);
 
   const fetchFilaments = async () => {
@@ -93,6 +79,19 @@ export default function Filaments() {
 
       if (error) throw error;
       setFilaments(data || []);
+
+      // Busca inteligente para saber quantos produtos usam cada filamento
+      try {
+        const { data: pData } = await supabase.from('products').select('filament_id').eq('user_id', user.id);
+        if (pData) {
+            const counts: Record<string, number> = {};
+            pData.forEach(p => {
+                if (p.filament_id) counts[p.filament_id] = (counts[p.filament_id] || 0) + 1;
+            });
+            setProductCounts(counts);
+        }
+      } catch (err) {}
+
     } catch (error) {
       toast.error('Erro ao carregar filamentos.');
     } finally {
@@ -108,8 +107,10 @@ export default function Filaments() {
       setColorName(filament.color);
       setColorHex(filament.color_hex || '#000000');
       setPrice(filament.price.toString());
-      setWeight(filament.weight_g.toString());
-      setOriginalWeight((filament.original_weight_g || filament.weight_g).toString());
+      // Quando edita, o peso volta a ser a unidade de referência
+      const safeUnit = (filament.original_weight_g && filament.original_weight_g > 3000) ? 1000 : (filament.original_weight_g || 1000);
+      setWeight(safeUnit.toString());
+      setOriginalWeight(safeUnit.toString());
       setQuantity('1');
     } else {
       setEditingId(null);
@@ -129,19 +130,13 @@ export default function Filaments() {
     e.preventDefault();
     if (!user) return;
 
-    // CORREÇÃO DA LÓGICA DE MULTIPLICADOR: 
-    // O custo base e o original_weight devem se referir a 1 ÚNICO rolo.
-    // Apenas o estoque total (weight_g) e o preço total (price) são multiplicados na hora de guardar no banco para representar o volume geral.
+    // MATEMÁTICA CORRIGIDA: O Banco sempre vai guardar o peso de 1 ÚNICO rolo como referência
     const qty = editingId ? 1 : (parseInt(quantity) || 1);
     const unitWeight = parseFloat(weight);
     const unitPrice = parseFloat(price);
 
     const totalWeight = unitWeight * qty;
     const totalPrice = unitPrice * qty;
-    
-    // O original weight agora é a soma de TUDO o que foi comprado (para a barra de progresso ficar certa)
-    const currentOrigWeight = editingId ? parseFloat(originalWeight) : totalWeight;
-    const finalOrigWeight = Math.max(currentOrigWeight, totalWeight);
 
     const payload = {
       user_id: user.id,
@@ -149,14 +144,15 @@ export default function Filaments() {
       material,
       color: colorName,
       color_hex: colorHex,
-      price: editingId ? unitPrice : totalPrice, // Se edita, não multiplica. Se cria, multiplica.
-      weight_g: totalWeight,
-      original_weight_g: finalOrigWeight,
+      price: editingId ? unitPrice : totalPrice, 
+      weight_g: editingId ? parseFloat(weight) : totalWeight, // Edição ajusta só o total
+      original_weight_g: unitWeight, // Salva o tamanho do rolo real (Ex: 1000g)
     };
 
     try {
       if (editingId) {
-        const { error } = await supabase.from('filaments').update(payload).eq('id', editingId);
+        // Na edição, se o usuário alterar o peso, entendemos que ele está ajustando o estoque atual
+        const { error } = await supabase.from('filaments').update({ ...payload, weight_g: parseFloat(weight) }).eq('id', editingId);
         if (error) throw error;
         toast.success('Filamento atualizado!');
       } else {
@@ -172,8 +168,7 @@ export default function Filaments() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este filamento? Ele não estará mais disponível para novos produtos.')) return;
-    
+    if (!window.confirm('Excluir este filamento? Ele sumirá das opções dos produtos cadastrados.')) return;
     try {
       const { error } = await supabase.from('filaments').delete().eq('id', id);
       if (error) throw error;
@@ -184,17 +179,27 @@ export default function Filaments() {
     }
   };
 
-  // NOVO: Abre o modal bonitão de Reposição
+  // Botão Mágico: Joga o restinho no lixo e abre o próximo rolo
+  const handleDiscardRemainder = async (f: Filament, remainder: number) => {
+    if (!window.confirm(`Jogar fora as ${remainder.toFixed(0)}g de sobra e abrir o rolo novo?`)) return;
+    const newWeight = f.weight_g - remainder;
+    try {
+        const { error } = await supabase.from('filaments').update({ weight_g: newWeight }).eq('id', f.id);
+        if (error) throw error;
+        toast.success('Sobra descartada! Rolo trocado com sucesso.');
+        fetchFilaments();
+    } catch (e) { toast.error('Erro ao trocar rolo.'); }
+  };
+
   const openRefillModal = (f: Filament) => {
     setRefillFilament(f);
-    setRefillAmount('1000');
-    // Calcula o preço sugerido baseado no custo por grama antigo
-    const baseCostPerGram = f.price / (f.original_weight_g || 1);
-    setRefillPrice((1000 * baseCostPerGram).toFixed(2));
+    const unitW = (f.original_weight_g && f.original_weight_g > 3000) ? 1000 : (f.original_weight_g || 1000);
+    setRefillAmount(unitW.toString());
+    const baseCostPerGram = f.price / (f.weight_g || 1); // Custo médio atual
+    setRefillPrice((unitW * baseCostPerGram).toFixed(2));
     setIsRefillModalOpen(true);
   };
 
-  // NOVO: Lógica de reposição que puxa do Modal
   const submitRefill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!refillFilament) return;
@@ -203,18 +208,16 @@ export default function Filaments() {
     const addedPrice = parseFloat(refillPrice.replace(',', '.'));
 
     if (isNaN(amount) || amount <= 0 || isNaN(addedPrice) || addedPrice < 0) {
-        toast.error("Valores inválidos");
-        return;
+        toast.error("Valores inválidos"); return;
     }
 
     const newWeight = refillFilament.weight_g + amount;
-    const newOrigWeight = Math.max((refillFilament.original_weight_g || refillFilament.weight_g), refillFilament.weight_g) + amount;
     const newPrice = refillFilament.price + addedPrice;
 
     try {
+        // Reposição NÃO mexe no original_weight_g (que é a base da barra), apenas no estoque e custo
         const { error } = await supabase.from('filaments').update({
             weight_g: newWeight,
-            original_weight_g: newOrigWeight,
             price: newPrice
         }).eq('id', refillFilament.id);
         
@@ -222,37 +225,24 @@ export default function Filaments() {
         toast.success(`+${amount}g adicionadas ao estoque com sucesso!`);
         setIsRefillModalOpen(false);
         fetchFilaments();
-    } catch(e) {
-        toast.error('Erro ao repor estoque.');
-    }
+    } catch(e) { toast.error('Erro ao repor estoque.'); }
   };
 
-  // MUDANÇA: Lógica de recalculo automático do preço sugerido no modal de reposição
   const handleRefillAmountChange = (val: string) => {
       setRefillAmount(val);
       const amount = parseFloat(val) || 0;
       if (refillFilament) {
-          const baseCostPerGram = refillFilament.price / (refillFilament.original_weight_g || 1);
+          const baseCostPerGram = refillFilament.price / (refillFilament.weight_g || 1);
           setRefillPrice((amount * baseCostPerGram).toFixed(2));
       }
   };
 
-  // Ajuda visual para a barra de progresso
-  const getProgressColor = (percentage: number, weightLeft: number) => {
-    if (percentage <= 20 || weightLeft <= 200) return 'from-red-500 to-orange-500';
+  const getProgressColor = (percentage: number) => {
+    if (percentage <= 20) return 'from-red-500 to-orange-500';
     if (percentage <= 40) return 'from-amber-400 to-yellow-500';
     return 'from-emerald-400 to-emerald-600';
   };
 
-  // NOVO: "Tradutor" Visual de Gramas para Rolos
-  const formatRolls = (w: number) => {
-    if (w >= 1000 && w % 1000 === 0) return `${w / 1000}x 1000g`;
-    if (w >= 500 && w % 500 === 0 && w % 1000 !== 0) return `${w / 500}x 500g`;
-    if (w >= 250 && w % 250 === 0 && w % 500 !== 0) return `${w / 250}x 250g`;
-    return `${w % 1 !== 0 ? w.toFixed(1) : w}g`;
-  };
-
-  // NOVO: Filtrar Filamentos pela Barra de Pesquisa
   const filteredFilaments = filaments.filter(f => 
     `${f.brand} ${f.material} ${f.color}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -262,7 +252,6 @@ export default function Filaments() {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="p-6 md:p-8 max-w-6xl mx-auto space-y-8">
       
-      {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
@@ -280,7 +269,6 @@ export default function Filaments() {
         </button>
       </div>
 
-      {/* NOVO: Barra de Pesquisa Elegante */}
       {filaments.length > 0 && (
         <div className="relative max-w-md group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-blue-500 transition-colors" />
@@ -293,7 +281,6 @@ export default function Filaments() {
         </div>
       )}
 
-      {/* Grid de Filamentos */}
       {filaments.length === 0 ? (
         <div className="bg-card border border-dashed border-border rounded-2xl p-12 text-center flex flex-col items-center">
           <Palette className="w-12 h-12 text-muted-foreground/30 mb-4" />
@@ -306,31 +293,36 @@ export default function Filaments() {
       ) : (
         <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredFilaments.map((f) => {
-            const originalWeight = f.original_weight_g || 1000; 
-            const displayOrigWeight = Math.max(originalWeight, f.weight_g);
+            // Inteligência para dados antigos: Se o original for gigantesco, assume 1000g de base para não bugar a barra
+            const safeUnitW = (f.original_weight_g && f.original_weight_g > 3000) ? 1000 : (f.original_weight_g || 1000);
             
-            // O custo por grama é calculado dividindo o dinheiro total gasto pelo peso total que isso gerou
-            const costPerGram = (f.price / originalWeight).toFixed(4); 
+            const totalW = f.weight_g;
+            const fullRolls = Math.floor(totalW / safeUnitW);
+            const remainder = totalW % safeUnitW;
             
-            let percentage = (f.weight_g / displayOrigWeight) * 100;
-            if (percentage < 0) percentage = 0; 
-            if (percentage > 100) percentage = 100;
+            // Constrói o array visual de rolos para renderizar as barras múltiplas
+            let barsToRender: number[] = [];
+            if (remainder > 0) barsToRender.push(remainder); // O rolo aberto vai primeiro
+            for(let i=0; i<fullRolls; i++) barsToRender.push(safeUnitW); // Depois os rolos fechados
+            if (barsToRender.length === 0) barsToRender.push(0); // Se acabou tudo, mostra barra vazia
 
-            const isLow = percentage <= 20 || f.weight_g <= 200;
+            const costPerGram = totalW > 0 ? (f.price / totalW).toFixed(4) : "0.0000"; 
+            const isLow = totalW <= 200;
+            const activeIsLow = remainder > 0 && remainder < 200; // Rolo atual tá nas últimas
 
             return (
               <motion.div 
                 key={f.id} 
                 variants={itemVariants}
                 layoutId={f.id}
-                className={`relative bg-card border rounded-3xl p-6 shadow-sm transition-all overflow-hidden ${isLow ? 'border-red-500/30' : 'border-border'}`}
+                className={`relative bg-card border rounded-3xl p-6 shadow-sm transition-all overflow-hidden flex flex-col justify-between ${isLow ? 'border-red-500/30' : 'border-border'}`}
               >
                 {isLow && <div className="absolute inset-0 bg-red-500/5 pointer-events-none" />}
 
-                <div className="flex items-start justify-between mb-6 relative z-10">
+                <div className="flex items-start justify-between mb-5 relative z-10">
                   <div className="flex items-center gap-4">
                     <div 
-                      className="w-12 h-12 rounded-full border-4 border-background shadow-md shrink-0 flex items-center justify-center" 
+                      className="w-12 h-12 rounded-full border-4 border-background shadow-md shrink-0 flex items-center justify-center relative" 
                       style={{ backgroundColor: f.color_hex || '#000' }} 
                     >
                         {isLow && <AlertTriangle className="w-4 h-4 text-white drop-shadow-md" />}
@@ -340,45 +332,79 @@ export default function Filaments() {
                       <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{f.material} • {f.color}</span>
                     </div>
                   </div>
-                  {/* MUDANÇA: Botões sempre visíveis em telas menores, e no PC aparecem no hover ou deixamos fixos (Optei por fixo por usabilidade) */}
                   <div className="flex gap-1">
-                    <button title="Repor Estoque" onClick={() => openRefillModal(f)} className="p-2 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors"><RefreshCw className="w-4 h-4" /></button>
-                    <button title="Editar Detalhes" onClick={() => openModal(f)} className="p-2 text-blue-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
-                    <button title="Excluir" onClick={() => handleDelete(f.id)} className="p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    <button title="Repor Estoque" onClick={() => openRefillModal(f)} className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-colors"><RefreshCw className="w-4 h-4" /></button>
+                    <button title="Editar Detalhes" onClick={() => openModal(f)} className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
+                    <button title="Excluir" onClick={() => handleDelete(f.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
 
-                <div className="space-y-4 relative z-10">
-                    <div className="space-y-2">
+                {/* NOVO: Tag mostrando os produtos vinculados */}
+                <div className="flex items-center gap-1.5 mb-6 opacity-60">
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">{productCounts[f.id] || 0} PRODUTOS VINCULADOS</span>
+                </div>
+
+                <div className="space-y-4 relative z-10 flex-1">
+                    <div className="space-y-3">
                         <div className="flex justify-between items-end">
-                            <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Estoque Restante</span>
-                            <div className="flex items-baseline gap-1">
-                                {/* NOVO: Tradutor visual aplicado nas gramas */}
-                                <span className={`text-lg font-black leading-none ${isLow ? 'text-red-500' : 'text-foreground'}`}>
-                                    {formatRolls(f.weight_g)}
-                                </span>
-                                <span className="text-xs font-bold text-muted-foreground">/ {formatRolls(displayOrigWeight)}</span>
-                            </div>
+                            <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-1">
+                                <Layers className="w-3.5 h-3.5" /> Situação dos Rolos
+                            </span>
+                            <span className={`text-lg font-black leading-none ${isLow ? 'text-red-500' : 'text-foreground'}`}>
+                                {totalW.toFixed(0)}g
+                            </span>
                         </div>
-                        <div className="h-2.5 w-full bg-muted/50 rounded-full overflow-hidden border border-border/50">
-                            <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${percentage}%` }}
-                                transition={{ duration: 1, ease: "easeOut" }}
-                                className={`h-full rounded-full bg-gradient-to-r ${getProgressColor(percentage, f.weight_g)}`}
-                            />
+                        
+                        {/* RENDERIZADOR MÚLTIPLO DE BARRAS DE VIDA */}
+                        <div className="space-y-1.5">
+                            {barsToRender.slice(0, 4).map((barW, idx) => {
+                                const pct = (barW / safeUnitW) * 100;
+                                const isActive = idx === 0 && remainder > 0; // Se tem sobra, a primeira barra é o rolo aberto
+                                
+                                return (
+                                    <div key={idx} className="flex items-center gap-3">
+                                        <div className="h-2.5 flex-1 bg-muted/50 rounded-full overflow-hidden border border-border/50 relative">
+                                            <motion.div 
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${pct}%` }}
+                                                transition={{ duration: 1, ease: "easeOut" }}
+                                                className={`h-full rounded-full bg-gradient-to-r ${getProgressColor(pct)} ${!isActive && pct === 100 ? 'opacity-40' : ''}`}
+                                            />
+                                        </div>
+                                        <span className={`text-[9px] font-black w-8 text-right ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                            {barW.toFixed(0)}g
+                                        </span>
+                                        {/* Botão mágico de Descartar Sobra e Trocar Rolo */}
+                                        {isActive && activeIsLow && (
+                                            <button 
+                                                title="Descartar este resto e abrir o próximo rolo"
+                                                onClick={() => handleDiscardRemainder(f, remainder)}
+                                                className="absolute right-0 -mt-7 bg-red-500 text-white text-[8px] px-2 py-0.5 rounded-full font-bold shadow-md hover:scale-105 transition-transform"
+                                            >
+                                                TROCAR ROLO
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                            {barsToRender.length > 4 && (
+                                <div className="text-[10px] font-black text-muted-foreground text-center mt-2 opacity-50 uppercase tracking-widest">
+                                    + {barsToRender.length - 4} rolos fechados
+                                </div>
+                            )}
                         </div>
                     </div>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/50">
-                        <div className="flex flex-col">
-                            <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-widest mb-1">Total Investido</span>
-                            <span className="font-bold text-foreground text-sm">R$ {f.price.toFixed(2)}</span>
-                        </div>
-                        <div className="flex flex-col bg-blue-500/5 p-2 rounded-xl border border-blue-500/10 items-end justify-center">
-                            <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest leading-none mb-1">Custo / Grama</span>
-                            <span className="font-black text-blue-600 text-base leading-none">R$ {costPerGram}</span>
-                        </div>
+                <div className="grid grid-cols-2 gap-3 pt-5 border-t border-border/50 mt-6 relative z-10">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-widest mb-1">Total Investido</span>
+                        <span className="font-bold text-foreground text-sm">R$ {f.price.toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col bg-blue-500/5 p-2 rounded-xl border border-blue-500/10 items-end justify-center">
+                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest leading-none mb-1">Custo / Grama</span>
+                        <span className="font-black text-blue-600 text-base leading-none">R$ {costPerGram}</span>
                     </div>
                 </div>
               </motion.div>
@@ -456,9 +482,9 @@ export default function Filaments() {
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
                     {editingId ? <Edit className="w-5 h-5 text-blue-500" /> : <Plus className="w-5 h-5 text-blue-500" />}
-                    {editingId ? 'Editar Rolo' : 'Cadastrar Rolo'}
+                    {editingId ? 'Editar Detalhes' : 'Cadastrar Rolo'}
                 </h2>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 bg-muted/50 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="p-2 bg-muted/50 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><X className="w-4 h-4" /></button>
               </div>
 
               <form onSubmit={handleSave} className="space-y-5">
@@ -492,12 +518,12 @@ export default function Filaments() {
 
                 <div className={`grid ${editingId ? 'grid-cols-2' : 'grid-cols-3'} gap-3 pt-2`}>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black tracking-widest text-muted-foreground uppercase">Preço Unit. (R$)</label>
+                    <label className="text-[10px] font-black tracking-widest text-muted-foreground uppercase">{editingId ? 'Custo (R$)' : 'Preço Unit. (R$)'}</label>
                     <input required type="number" step="0.01" min="0" value={price} onChange={e => setPrice(e.target.value)} placeholder="120.00" className="w-full bg-background border border-blue-500/30 rounded-xl px-3 py-3 text-sm font-bold focus:outline-none focus:border-blue-500 transition-colors text-blue-600" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black tracking-widest text-muted-foreground uppercase">
-                        Peso Unit. (g)
+                        {editingId ? 'Ajustar Total (g)' : 'Peso Unit. (g)'}
                     </label>
                     <input required type="number" step="1" min="0" value={weight} onChange={e => setWeight(e.target.value)} placeholder="1000" className="w-full bg-background border border-emerald-500/30 rounded-xl px-3 py-3 text-sm font-bold focus:outline-none focus:border-emerald-500 transition-colors text-emerald-600" />
                   </div>
@@ -509,7 +535,7 @@ export default function Filaments() {
                   )}
                 </div>
 
-                {price && weight && (
+                {price && weight && !editingId && (
                   <div className="mt-2 bg-blue-500/5 rounded-xl p-4 text-center border border-blue-500/10 flex justify-between items-center px-6">
                     <span className="text-[10px] uppercase font-bold text-muted-foreground">Cálculo de Custo / Grama base</span>
                     <strong className="text-xl font-black text-blue-600 tracking-tighter">R$ {(parseFloat(price) / parseFloat(weight)).toFixed(4)}</strong>
@@ -517,7 +543,7 @@ export default function Filaments() {
                 )}
 
                 <button type="submit" className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black mt-8 shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all">
-                  {editingId ? 'ATUALIZAR ESTOQUE' : 'CADASTRAR ROLO'}
+                  {editingId ? 'SALVAR AJUSTES' : 'CADASTRAR ROLO'}
                 </button>
               </form>
             </motion.div>
