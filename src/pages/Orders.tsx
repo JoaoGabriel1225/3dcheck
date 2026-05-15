@@ -185,14 +185,12 @@ export default function Orders() {
     }
   };
 
-  // MUDANÇA: Quando seleciona um produto, o preço/custo vira unitário e nós multiplicamos pela quantidade atual na tela
   const selectProduct = (product: any) => {
     const qty = parseInt(orderQuantity) || 1;
     setSelectedProductId(product.id);
     setProductSearchText(product.name);
     setOrderDescription(product.description || '');
     
-    // Multiplica o preço unitário do produto pela quantidade que está na caixinha
     const finalPrice = product.final_price ? product.final_price * qty : 0;
     const finalCost = product.cost_total ? product.cost_total * qty : 0;
     
@@ -201,7 +199,6 @@ export default function Orders() {
     setShowProductDropdown(false);
   };
 
-  // MUDANÇA: Quando o usuário digita uma quantidade diferente, refaz o cálculo se houver produto selecionado
   const handleQuantityChange = (newQtyStr: string) => {
       setOrderQuantity(newQtyStr);
       const qty = parseInt(newQtyStr) || 1;
@@ -247,7 +244,6 @@ export default function Orders() {
         description: orderDescription,
         final_price: parseFloat(orderPrice.toString().replace(',', '.')) || 0,
         cost_total: parseFloat(orderCost.toString().replace(',', '.')) || 0,
-        // INSERE A QUANTIDADE NO BANCO
         quantity: qty 
       });
       if (orderErr) throw orderErr;
@@ -276,7 +272,7 @@ export default function Orders() {
     setProductSearchText(''); setShowProductDropdown(false);
     setNewClientName(''); setNewClientPhone(''); setNewClientAddress(''); setSelectedProductId('custom');
     setOrderDescription(''); setOrderPrice(''); setOrderCost('');
-    setOrderQuantity('1'); // Reseta a quantidade para 1
+    setOrderQuantity('1'); 
   };
 
   const copyToClipboard = (text: string) => {
@@ -402,7 +398,6 @@ export default function Orders() {
                   <Package className="w-3 h-3" /> Peça e Especificações
                 </Label>
                 
-                {/* MUDANÇA NO LAYOUT: Divide o espaço da pesquisa de Produto com o espaço da Quantidade */}
                 <div className="grid grid-cols-4 gap-4">
                     <div className="relative col-span-3">
                         <Input 
@@ -434,7 +429,6 @@ export default function Orders() {
                             </div>
                         )}
                     </div>
-                    {/* NOVO CAMPO: Quantidade */}
                     <div className="col-span-1">
                         <Input 
                             type="number"
@@ -609,14 +603,20 @@ export default function Orders() {
                         </div>
                       )}
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </div>
+                    
+                    <Select defaultValue={order.status} onValueChange={(val) => updateStatus(order, val)}>
+                      <SelectTrigger className={`h-8 w-auto min-w-[110px] px-3 rounded-full text-[9px] font-black uppercase border transition-all focus:ring-0 focus:ring-offset-0 ${getStatusColor(order.status)}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-none">
+                        {STATUS_OPTIONS.filter(s => s !== 'Todos').map(s => <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+
                   </div>
                   <div className="bg-muted/30 p-3 rounded-2xl flex items-center gap-3">
                     <Package className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      {/* ADICIONADO: Exibição visual de quantidade se for maior que 1 */}
                       <p className="text-xs font-bold text-foreground leading-none">
                           {order.quantity && order.quantity > 1 && <span className="text-blue-500 mr-1">{order.quantity}x</span>}
                           {order.products?.name || 'Personalizado'}
@@ -664,7 +664,6 @@ export default function Orders() {
                       <TableCell className="px-4 py-4">
                         <div className="font-black text-sm text-foreground uppercase truncate">{order.clients?.name}</div>
                         <div className="text-[10px] text-muted-foreground font-medium truncate">{order.clients?.phone}</div>
-                        {/* Endereço no Desktop com botão copiar */}
                         {order.clients?.address && (
                           <div className="flex items-center gap-1.5 mt-1">
                             <MapPin className="w-3 h-3 text-blue-500" />
@@ -675,7 +674,6 @@ export default function Orders() {
                       </TableCell>
                       <TableCell className="px-4 py-4">
                         <div className="font-bold text-sm text-foreground truncate flex items-center gap-2">
-                           {/* ADICIONADO: Exibição visual de quantidade no PC se for maior que 1 */}
                            {order.quantity && order.quantity > 1 && <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded text-[10px] font-black">{order.quantity}x</span>}
                            {order.products?.name || 'Personalizado'}
                         </div>
@@ -686,7 +684,7 @@ export default function Orders() {
                           <SelectTrigger className={`h-8 w-full text-[9px] font-black uppercase border transition-all ${getStatusColor(order.status)}`}>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-none">
                             {STATUS_OPTIONS.filter(s => s !== 'Todos').map(s => <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>)}
                           </SelectContent>
                         </Select>
