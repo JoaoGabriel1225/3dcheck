@@ -54,6 +54,10 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('todos'); 
+  
+  // NOVOS ESTADOS: Filtros de Pagamento
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('Todos');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('Todos');
 
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const [pendingWhatsappMessage, setPendingWhatsappMessage] = useState('');
@@ -88,7 +92,6 @@ export default function Orders() {
     }
   }, [searchParams]);
 
-  // CORREÇÃO: Sistema inteligente de notificação única de estoque via localStorage
   const checkLowFilaments = async () => {
     if (!profile) return;
     try {
@@ -103,13 +106,11 @@ export default function Orders() {
 
         data.forEach(f => {
            if (f.weight_g <= 200) {
-             // Só avisa se ainda não estiver na lista de notificados
              if (!notified.includes(f.id)) {
                toast.warning(`⚠️ Reposição Necessária: Filamento ${f.brand} ${f.color} está baixo (${f.weight_g.toFixed(0)}g).`);
                newNotified.push(f.id);
              }
            } else {
-             // Se o rolo foi reabastecido (> 200g), remove da lista para avisar de novo no futuro
              newNotified = newNotified.filter((id: string) => id !== f.id);
            }
         });
@@ -350,8 +351,16 @@ export default function Orders() {
     toast.success('Endereço copiado!');
   };
 
+  // MUDANÇA: Lógica de Multi-Filtragem aprimorada
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = statusFilter === 'Todos' || order.status === statusFilter;
+    
+    const matchesPaymentStatus = paymentStatusFilter === 'Todos' ||
+        (paymentStatusFilter === 'Pago' ? order.is_paid : !order.is_paid);
+        
+    const matchesPaymentMethod = paymentMethodFilter === 'Todos' ||
+        (order.payment_method || 'Não definido') === paymentMethodFilter;
+
     const orderDate = new Date(order.created_at);
     const now = new Date();
     let matchesTime = true;
@@ -361,9 +370,9 @@ export default function Orders() {
       matchesTime = orderDate >= weekAgo;
     } else if (timeFilter === 'mes') matchesTime = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
 
-    if (!searchTerm) return matchesStatus && matchesTime;
+    if (!searchTerm) return matchesStatus && matchesPaymentStatus && matchesPaymentMethod && matchesTime;
     const term = searchTerm.toLowerCase();
-    return matchesStatus && matchesTime && (
+    return matchesStatus && matchesPaymentStatus && matchesPaymentMethod && matchesTime && (
       (order.clients?.name || '').toLowerCase().includes(term) ||
       (order.products?.name || '').toLowerCase().includes(term) ||
       (order.description || '').toLowerCase().includes(term) ||
@@ -679,6 +688,39 @@ export default function Orders() {
              </Button>
           ))}
         </div>
+
+        {/* MUDANÇA: NOVOS FILTROS DE PAGAMENTO ADICIONADOS NA BARRA DE FILTROS */}
+        <div className="flex flex-wrap gap-3 pt-3 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Status do Pgto:</span>
+            <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+              <SelectTrigger className="h-8 w-[120px] text-[10px] font-bold rounded-xl border-border bg-muted/30">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos" className="text-[10px] font-bold">Todos</SelectItem>
+                <SelectItem value="Pago" className="text-[10px] font-bold">Pago</SelectItem>
+                <SelectItem value="Pendente" className="text-[10px] font-bold">Pendente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Forma de Pgto:</span>
+            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+              <SelectTrigger className="h-8 w-[130px] text-[10px] font-bold rounded-xl border-border bg-muted/30">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos" className="text-[10px] font-bold">Todas as Formas</SelectItem>
+                {PAYMENT_METHODS.map(m => (
+                  <SelectItem key={m} value={m} className="text-[10px] font-bold">{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
       </Card>
 
       {/* VIEW SECTION */}
@@ -858,23 +900,4 @@ export default function Orders() {
         </Card>
       </div>
 
-      <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
-          <DialogHeader><DialogTitle className="font-black text-xl flex items-center gap-3"><div className="p-2 bg-emerald-500 rounded-lg text-white"><MessageCircle className="w-5 h-5" /></div>Notificar Cliente?</DialogTitle></DialogHeader>
-          <div className="py-6 space-y-4">
-            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ajuste Rápido antes de enviar</Label>
-            <Textarea 
-              value={pendingWhatsappMessage} 
-              onChange={(e) => setPendingWhatsappMessage(e.target.value)}
-              className="min-h-[120px] rounded-2xl bg-background border border-border text-sm p-4 resize-none shadow-inner"
-            />
-          </div>
-          <DialogFooter className="flex gap-2 sm:justify-end">
-            <Button variant="ghost" className="font-bold text-muted-foreground" onClick={() => setWhatsappModalOpen(false)}>Depois</Button>
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 rounded-xl" onClick={() => { openWhatsapp(pendingWhatsappPhone, pendingWhatsappMessage); setWhatsappModalOpen(false); }}>Enviar WhatsApp</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </motion.div>
-  );
-}
+      <Dialog open={whatsappModalOpen} onOpenChange
