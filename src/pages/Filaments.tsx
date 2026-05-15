@@ -244,6 +244,14 @@ export default function Filaments() {
     return 'from-emerald-400 to-emerald-600';
   };
 
+  // NOVO: "Tradutor" Visual de Gramas para Rolos
+  const formatRolls = (w: number) => {
+    if (w >= 1000 && w % 1000 === 0) return `${w / 1000}x 1000g`;
+    if (w >= 500 && w % 500 === 0 && w % 1000 !== 0) return `${w / 500}x 500g`;
+    if (w >= 250 && w % 250 === 0 && w % 500 !== 0) return `${w / 250}x 250g`;
+    return `${w % 1 !== 0 ? w.toFixed(1) : w}g`;
+  };
+
   // NOVO: Filtrar Filamentos pela Barra de Pesquisa
   const filteredFilaments = filaments.filter(f => 
     `${f.brand} ${f.material} ${f.color}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -345,10 +353,11 @@ export default function Filaments() {
                         <div className="flex justify-between items-end">
                             <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Estoque Restante</span>
                             <div className="flex items-baseline gap-1">
+                                {/* NOVO: Tradutor visual aplicado nas gramas */}
                                 <span className={`text-lg font-black leading-none ${isLow ? 'text-red-500' : 'text-foreground'}`}>
-                                    {f.weight_g.toFixed(1)}g
+                                    {formatRolls(f.weight_g)}
                                 </span>
-                                <span className="text-xs font-bold text-muted-foreground">/ {displayOrigWeight}g</span>
+                                <span className="text-xs font-bold text-muted-foreground">/ {formatRolls(displayOrigWeight)}</span>
                             </div>
                         </div>
                         <div className="h-2.5 w-full bg-muted/50 rounded-full overflow-hidden border border-border/50">
