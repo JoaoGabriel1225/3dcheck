@@ -18,15 +18,15 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// MUDANÇA NAS ANIMAÇÕES: Efeito elástico (Spring) com escala e fade
+// MUDANÇA NAS ANIMAÇÕES: Efeito suave e elegante (Fade-up com curva bezier)
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, scale: 0.8, y: 40 },
-  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } }
 };
 
 export default function Marketplace() {
@@ -58,8 +58,9 @@ export default function Marketplace() {
   };
 
   const autoCalculateDiscount = (currentPrice: string, oldPrice: string) => {
-    const p = parseFloat(String(currentPrice || "0").replace(/[^\d.,]/g, '').replace(',', '.'));
-    const op = parseFloat(String(oldPrice || "0").replace(/[^\d.,]/g, '').replace(',', '.'));
+    if (!currentPrice || !oldPrice) return '';
+    const p = parseFloat(String(currentPrice).replace(/[^\d.,]/g, '').replace(',', '.'));
+    const op = parseFloat(String(oldPrice).replace(/[^\d.,]/g, '').replace(',', '.'));
     if (p && op && op > p) {
       const discountPercent = Math.round(((op - p) / op) * 100);
       return `${discountPercent}% OFF`;
@@ -79,7 +80,6 @@ export default function Marketplace() {
     }
   }
 
-  // FUNÇÃO DE UPLOAD PARA O BUCKET marketplace.manual
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -120,12 +120,16 @@ export default function Marketplace() {
       const cleanedPrice = parseFloat(String(importingProduct.price || "0").replace(/[^\d.,]/g, '').replace(',', '.'));
       const cleanedOriginalPrice = parseFloat(String(importingProduct.original_price || importingProduct.originalPrice || "0").replace(/[^\d.,]/g, '').replace(',', '.'));
 
+      const isDiscountValid = !isNaN(cleanedOriginalPrice) && cleanedOriginalPrice > cleanedPrice;
+      const finalOriginalPrice = isDiscountValid ? cleanedOriginalPrice : null;
+      const finalDiscount = isDiscountValid ? autoCalculateDiscount(String(cleanedPrice), String(finalOriginalPrice)) : "";
+
       const productData = {
         title: importingProduct.title || "Produto sem título",
         description: importingProduct.description || "",
         price: isNaN(cleanedPrice) ? 0 : cleanedPrice,
-        original_price: isNaN(cleanedOriginalPrice) ? (isNaN(cleanedPrice) ? 0 : cleanedPrice) : cleanedOriginalPrice,
-        discount: importingProduct.discount || "",
+        original_price: finalOriginalPrice,
+        discount: finalDiscount,
         image: importingProduct.image || "",
         url: importingProduct.url || "",
         category: importingProduct.category || 'Todos',
@@ -340,13 +344,13 @@ export default function Marketplace() {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-blue-600 ml-1">Preço Atual (R$)</Label>
                     <Input 
-                      value={importingProduct.price} 
+                      value={importingProduct.price || ''} 
                       onChange={(e) => {
                         const newP = e.target.value;
                         setImportingProduct({
                           ...importingProduct, 
                           price: newP,
-                          discount: autoCalculateDiscount(newP, importingProduct.original_price || importingProduct.price)
+                          discount: autoCalculateDiscount(newP, importingProduct.original_price)
                         });
                       }} 
                       className="font-black h-12 rounded-xl border-blue-500/20" 
@@ -356,7 +360,7 @@ export default function Marketplace() {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase ml-1">Preço Original (R$)</Label>
                     <Input 
-                      value={importingProduct.original_price} 
+                      value={importingProduct.original_price || ''} 
                       onChange={(e) => {
                         const newOp = e.target.value;
                         setImportingProduct({
@@ -372,7 +376,7 @@ export default function Marketplace() {
                   <div className="space-y-2 md:col-span-2">
                     <Label className="text-[10px] font-black uppercase ml-1">URL do Produto / Afiliado</Label>
                     <Input 
-                      value={importingProduct.url} 
+                      value={importingProduct.url || ''} 
                       onChange={(e) => setImportingProduct({...importingProduct, url: e.target.value})}
                       placeholder="https://..."
                       className="h-12 rounded-xl"
@@ -390,7 +394,7 @@ export default function Marketplace() {
                       </span>
                     </Label>
                     <Input 
-                      value={importingProduct.image} 
+                      value={importingProduct.image || ''} 
                       onChange={(e) => setImportingProduct({...importingProduct, image: e.target.value})}
                       placeholder="https://.../imagem.jpg"
                       className="h-12 rounded-xl"
@@ -447,7 +451,7 @@ export default function Marketplace() {
                 </div>
                 <div className="pt-4 border-t border-border/50">
                   <div className="flex flex-col">
-                    {item.original_price && item.original_price !== item.price && (
+                    {item.original_price && item.original_price > item.price && (
                       <span className="text-[10px] line-through text-muted-foreground/50 font-bold tracking-tighter">R$ {item.original_price}</span>
                     )}
                     <div className="flex items-center justify-between">
