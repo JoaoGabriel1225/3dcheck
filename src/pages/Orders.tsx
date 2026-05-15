@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Cancelado'];
+const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Concluído', 'Cancelado'];
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
 const containerVariants = {
@@ -146,7 +146,7 @@ export default function Orders() {
       toast.success('Status atualizado!');
       fetchOrders();
       const phone = order.clients?.phone;
-      if (phone && !['Cancelado', 'Enviado'].includes(newStatus)) {
+      if (phone && !['Cancelado', 'Enviado', 'Concluído'].includes(newStatus)) {
         const msg = `Olá ${order.clients?.name || ''}, seu pedido de ${order.products?.name || 'impressão 3D'} está agora em: *${newStatus}*.`;
         const cleanPhone = phone.replace(/\D/g, '');
         const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
@@ -179,6 +179,7 @@ export default function Orders() {
       case 'Preparação': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
       case 'Pronto': return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
       case 'Enviado': return 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20';
+      case 'Concluído': return 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20';
       case 'Cancelado': return 'bg-red-500/10 text-red-600 border-red-500/20';
       default: return 'bg-slate-500/10 text-slate-600 border-slate-500/20';
     }
