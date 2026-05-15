@@ -18,15 +18,15 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// MUDANÇA NAS ANIMAÇÕES: Efeito suave e elegante (Fade-up com curva bezier)
+// MUDANÇA NAS ANIMAÇÕES: Efeito minimalista, premium e rápido.
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } }
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } }
 };
 
 export default function Marketplace() {
@@ -429,7 +429,7 @@ export default function Marketplace() {
               variants={itemVariants}
               initial="hidden"
               animate="visible"
-              exit={{ opacity: 0, scale: 0.8 }}
+              exit={{ opacity: 0 }}
               onClick={() => handleProductClick(item)}
               className={`group bg-card border-2 rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col cursor-pointer relative ${
                 item.is_featured ? 'border-blue-500/40 shadow-blue-500/5 ring-1 ring-blue-500/20' : 'border-border'
