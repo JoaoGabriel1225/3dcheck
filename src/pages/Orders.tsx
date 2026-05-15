@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { 
   MessageCircle, Plus, Search, Trash2, ShoppingBag, Filter, 
   Calendar, User, Tag, Package, Activity, Clock, CheckCircle2,
-  Info, DollarSign, TrendingUp, MapPin, Copy
+  Info, DollarSign, TrendingUp, MapPin, Copy, Settings2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -75,8 +75,11 @@ export default function Orders() {
   const [orderPrice, setOrderPrice] = useState('');
   const [orderCost, setOrderCost] = useState('');
   
-  // NOVO ESTADO: Quantidade de itens no pedido
   const [orderQuantity, setOrderQuantity] = useState('1');
+
+  // NOVO ESTADO: Template de Mensagem Customizável
+  const [whatsappTemplate, setWhatsappTemplate] = useState('Olá {cliente}, seu pedido de {produto} está agora em: *{status}*.');
+  const [showTemplateCard, setShowTemplateCard] = useState(false);
 
   useEffect(() => {
     const statusParam = searchParams.get('status');
@@ -102,12 +105,27 @@ export default function Orders() {
     } catch (err) { console.error('Erro ao checar filamentos', err); }
   };
 
+  // NOVO: Busca o template salvo no banco de dados
+  const fetchSettings = async () => {
+    if (!profile) return;
+    try {
+      const { data } = await supabase
+        .from('store_settings')
+        .select('whatsapp_template')
+        .eq('user_id', profile.id)
+        .single();
+      
+      if (data && data.whatsapp_template) {
+        setWhatsappTemplate(data.whatsapp_template);
+      }
+    } catch (err) { console.error('Erro ao buscar template', err); }
+  };
+
   const fetchOrders = async () => {
     if (!profile) return;
     try {
       const { data, error } = await supabase
         .from('orders')
-        // ADICIONADO QUANTITY NO SELECT PARA A TABELA (SE A COLUNA EXISTIR)
         .select(`id, description, status, final_price, cost_total, quantity, created_at, clients(name, phone, address), products(name)`)
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
@@ -132,7 +150,23 @@ export default function Orders() {
     fetchOrders(); 
     fetchOptions(); 
     checkLowFilaments(); 
+    fetchSettings();
   }, [profile]);
+
+  // NOVO: Salva o template automaticamente (OnBlur)
+  const saveTemplateAuto = async (newVal: string) => {
+    if (!profile) return;
+    try {
+      await supabase.from('store_settings').upsert({ 
+        user_id: profile.id, 
+        whatsapp_template: newVal, 
+        updated_at: new Date().toISOString() 
+      });
+      toast.success('Template de mensagem salvo!');
+    } catch (err) {
+      console.error('Erro ao salvar template', err);
+    }
+  };
 
   const totalCount = orders.length;
   const aguardandoCount = orders.filter(o => ['Aguardando contato', 'Confirmado'].includes(o.status)).length;
@@ -146,10 +180,13 @@ export default function Orders() {
       toast.success('Status atualizado!');
       fetchOrders();
       const phone = order.clients?.phone;
-      
-      // MUDANÇA: Removida a trava de status. Agora TODOS os status oferecem a notificação de WhatsApp
       if (phone) {
-        const msg = `Olá ${order.clients?.name || ''}, seu pedido de ${order.products?.name || 'impressão 3D'} está agora em: *${newStatus}*.`;
+        // MUDANÇA: Construindo a mensagem baseada no seu Template Personalizado!
+        const msg = whatsappTemplate
+          .replace(/{cliente}/g, order.clients?.name || 'Cliente')
+          .replace(/{produto}/g, order.products?.name || 'Personalizado')
+          .replace(/{status}/g, newStatus);
+
         const cleanPhone = phone.replace(/\D/g, '');
         const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
         setPendingWhatsappPhone(finalPhone);
@@ -529,7 +566,7 @@ export default function Orders() {
           </motion.div>
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTER BAR & TEMPLATE SETTINGS */}
       <Card className="p-4 border-border bg-card/50 backdrop-blur-md shadow-sm space-y-4 rounded-2xl mx-1 md:mx-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md group">
@@ -541,18 +578,60 @@ export default function Orders() {
                 className="pl-10 h-11 bg-background/50 border-border rounded-xl w-full"
             />
           </div>
-          <div className="flex items-center bg-muted/30 p-1 rounded-xl border border-border self-start">
-            {(['hoje', 'semana', 'mes', 'todos'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTimeFilter(t)}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase transition-all rounded-lg ${timeFilter === t ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                {t === 'todos' ? 'Total' : t}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center bg-muted/30 p-1 rounded-xl border border-border">
+              {(['hoje', 'semana', 'mes', 'todos'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTimeFilter(t)}
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase transition-all rounded-lg ${timeFilter === t ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  {t === 'todos' ? 'Total' : t}
+                </button>
+              ))}
+            </div>
+            
+            {/* BOTÃO PARA ABRIR O CARD DO TEMPLATE */}
+            <Button 
+              variant="outline" 
+              className={`h-10 rounded-xl px-4 text-[10px] font-black uppercase tracking-wider transition-all ${showTemplateCard ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' : 'text-muted-foreground'}`}
+              onClick={() => setShowTemplateCard(!showTemplateCard)}
+            >
+              <Settings2 className="w-4 h-4 mr-2" /> Template WhatsApp
+            </Button>
           </div>
         </div>
+
+        {/* MUDANÇA: O Card Editável na Tela para Configurar a Mensagem */}
+        <AnimatePresence>
+          {showTemplateCard && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }} 
+              animate={{ height: 'auto', opacity: 1 }} 
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 bg-muted/20 border border-border rounded-xl space-y-3 mt-2">
+                <div className="flex justify-between items-center">
+                  <Label className="text-[10px] font-black uppercase text-foreground tracking-widest">
+                    Mensagem Automática Padrão
+                  </Label>
+                  <span className="text-[9px] font-bold text-muted-foreground">Salva automaticamente ao digitar</span>
+                </div>
+                <Textarea 
+                  value={whatsappTemplate}
+                  onChange={(e) => setWhatsappTemplate(e.target.value)}
+                  onBlur={(e) => saveTemplateAuto(e.target.value)}
+                  placeholder="Olá {cliente}, seu pedido está {status}."
+                  className="bg-background border-border rounded-xl text-sm p-3 min-h-[80px]"
+                />
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  Use as variáveis: <strong className="text-blue-500">{'{cliente}'}</strong>, <strong className="text-blue-500">{'{produto}'}</strong> e <strong className="text-blue-500">{'{status}'}</strong> para personalizar.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50 overflow-x-auto no-scrollbar">
           {STATUS_OPTIONS.map(status => (
@@ -711,11 +790,12 @@ export default function Orders() {
         <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
           <DialogHeader><DialogTitle className="font-black text-xl flex items-center gap-3"><div className="p-2 bg-emerald-500 rounded-lg text-white"><MessageCircle className="w-5 h-5" /></div>Notificar Cliente?</DialogTitle></DialogHeader>
           <div className="py-6 space-y-4">
-            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Personalizar Mensagem</Label>
+            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ajuste Rápido antes de enviar</Label>
+            {/* MUDANÇA: Background limpo e visual clean */}
             <Textarea 
               value={pendingWhatsappMessage} 
               onChange={(e) => setPendingWhatsappMessage(e.target.value)}
-              className="min-h-[120px] rounded-2xl bg-accent/50 border-border text-sm p-4 resize-none"
+              className="min-h-[120px] rounded-2xl bg-background border border-border text-sm p-4 resize-none shadow-inner"
             />
           </div>
           <DialogFooter className="flex gap-2 sm:justify-end">
