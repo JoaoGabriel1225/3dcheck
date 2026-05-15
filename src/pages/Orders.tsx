@@ -146,7 +146,9 @@ export default function Orders() {
       toast.success('Status atualizado!');
       fetchOrders();
       const phone = order.clients?.phone;
-      if (phone && !['Cancelado', 'Enviado', 'Concluído'].includes(newStatus)) {
+      
+      // MUDANÇA: Removida a trava de status. Agora TODOS os status oferecem a notificação de WhatsApp
+      if (phone) {
         const msg = `Olá ${order.clients?.name || ''}, seu pedido de ${order.products?.name || 'impressão 3D'} está agora em: *${newStatus}*.`;
         const cleanPhone = phone.replace(/\D/g, '');
         const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
@@ -664,6 +666,7 @@ export default function Orders() {
                       <TableCell className="px-4 py-4">
                         <div className="font-black text-sm text-foreground uppercase truncate">{order.clients?.name}</div>
                         <div className="text-[10px] text-muted-foreground font-medium truncate">{order.clients?.phone}</div>
+                        {/* Endereço no Desktop com botão copiar */}
                         {order.clients?.address && (
                           <div className="flex items-center gap-1.5 mt-1">
                             <MapPin className="w-3 h-3 text-blue-500" />
@@ -707,8 +710,18 @@ export default function Orders() {
       <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
         <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
           <DialogHeader><DialogTitle className="font-black text-xl flex items-center gap-3"><div className="p-2 bg-emerald-500 rounded-lg text-white"><MessageCircle className="w-5 h-5" /></div>Notificar Cliente?</DialogTitle></DialogHeader>
-          <div className="py-6 space-y-4"><div className="p-4 bg-accent/50 rounded-xl border border-border italic text-xs text-foreground/80 leading-relaxed">"{pendingWhatsappMessage}"</div></div>
-          <DialogFooter className="flex gap-2 sm:justify-end"><Button variant="ghost" className="font-bold text-muted-foreground" onClick={() => setWhatsappModalOpen(false)}>Depois</Button><Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 rounded-xl" onClick={() => { openWhatsapp(pendingWhatsappPhone, pendingWhatsappMessage); setWhatsappModalOpen(false); }}>Enviar WhatsApp</Button></DialogFooter>
+          <div className="py-6 space-y-4">
+            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Personalizar Mensagem</Label>
+            <Textarea 
+              value={pendingWhatsappMessage} 
+              onChange={(e) => setPendingWhatsappMessage(e.target.value)}
+              className="min-h-[120px] rounded-2xl bg-accent/50 border-border text-sm p-4 resize-none"
+            />
+          </div>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button variant="ghost" className="font-bold text-muted-foreground" onClick={() => setWhatsappModalOpen(false)}>Depois</Button>
+            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 rounded-xl" onClick={() => { openWhatsapp(pendingWhatsappPhone, pendingWhatsappMessage); setWhatsappModalOpen(false); }}>Enviar WhatsApp</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </motion.div>
