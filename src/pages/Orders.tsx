@@ -32,6 +32,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_OPTIONS = ['Todos', 'Aguardando contato', 'Confirmado', 'Preparação', 'Pronto', 'Enviado', 'Concluído', 'Cancelado'];
+const PAYMENT_METHODS = ['Não definido', 'Pix', 'Cartão Crédito', 'Cartão Débito', 'Dinheiro', 'Link Pagamento'];
 type TimeFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 
 const containerVariants = {
@@ -138,7 +139,7 @@ export default function Orders() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select(`id, description, status, final_price, cost_total, quantity, created_at, clients(name, phone, address), products(name)`)
+        .select(`id, description, status, final_price, cost_total, quantity, created_at, is_paid, payment_method, clients(name, phone, address), products(name)`)
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -205,6 +206,25 @@ export default function Orders() {
         setWhatsappModalOpen(true);
       }
     } catch (err: any) { toast.error('Erro ao atualizar status: ' + err.message); }
+  };
+
+  const togglePaymentStatus = async (order: any) => {
+    const newStatus = !order.is_paid;
+    try {
+        const { error } = await supabase.from('orders').update({ is_paid: newStatus }).eq('id', order.id);
+        if (error) throw error;
+        toast.success(newStatus ? 'Marcado como PAGO!' : 'Marcado como PENDENTE.');
+        fetchOrders();
+    } catch (err: any) { toast.error('Erro ao atualizar pagamento: ' + err.message); }
+  };
+
+  const updatePaymentMethod = async (id: string, method: string) => {
+    try {
+        const { error } = await supabase.from('orders').update({ payment_method: method }).eq('id', id);
+        if (error) throw error;
+        toast.success('Forma de pagamento salva!');
+        fetchOrders();
+    } catch (err: any) { toast.error('Erro ao atualizar forma de pagamento: ' + err.message); }
   };
 
   const deleteOrder = async (id: string) => {
@@ -684,7 +704,6 @@ export default function Orders() {
                     <div>
                       <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
                       <h4 className="font-black text-foreground uppercase text-sm">{order.clients?.name}</h4>
-                      {/* Endereço no Mobile com botão copiar */}
                       {order.clients?.address && (
                         <div className="flex items-center gap-2 mt-1">
                           <MapPin className="w-3 h-3 text-blue-500" />
@@ -702,8 +721,8 @@ export default function Orders() {
                         {STATUS_OPTIONS.filter(s => s !== 'Todos').map(s => <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
-
                   </div>
+                  
                   <div className="bg-muted/30 p-3 rounded-2xl flex items-center gap-3">
                     <Package className="w-4 h-4 text-muted-foreground" />
                     <div>
@@ -714,8 +733,30 @@ export default function Orders() {
                       <p className="text-[10px] text-muted-foreground mt-1 italic line-clamp-1">{order.description || 'Sem obs.'}</p>
                     </div>
                   </div>
+                  
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-lg font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</span>
+                    <div className="flex flex-col gap-1.5">
+                        <span className="text-lg font-black text-emerald-500 leading-none">R$ {order.final_price?.toFixed(2)}</span>
+                        <div className="flex gap-1.5">
+                           <button 
+                             onClick={() => togglePaymentStatus(order)} 
+                             className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border transition-colors ${order.is_paid ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}
+                           >
+                              {order.is_paid ? 'Pago' : 'Pendente'}
+                           </button>
+                           <Select defaultValue={order.payment_method || 'Não definido'} onValueChange={(val) => updatePaymentMethod(order.id, val)}>
+                                <SelectTrigger className="h-5 px-1.5 w-[85px] text-[8px] font-bold border-border bg-muted/30">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {PAYMENT_METHODS.map(m => (
+                                      <SelectItem key={m} value={m} className="text-[10px]">{m}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                           </Select>
+                        </div>
+                    </div>
+                    
                     <div className="flex gap-2">
                       <Button size="icon" variant="ghost" className="h-10 w-10 rounded-2xl bg-emerald-500/10 text-emerald-500" onClick={() => openWhatsapp(order.clients?.phone, `Olá, seu pedido está em status: ${order.status}`)}><MessageCircle className="w-5 h-5" /></Button>
                       <Button size="icon" variant="ghost" className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-500" onClick={() => deleteOrder(order.id)}><Trash2 className="w-5 h-5" /></Button>
@@ -735,7 +776,7 @@ export default function Orders() {
                 <TableHead className="w-[12%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Data</TableHead>
                 <TableHead className="w-[20%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Cliente</TableHead>
                 <TableHead className="w-[30%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Pedido</TableHead>
-                <TableHead className="w-[23%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Status</TableHead>
+                <TableHead className="w-[23%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Status & Pgto</TableHead>
                 <TableHead className="w-[15%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -754,7 +795,6 @@ export default function Orders() {
                       <TableCell className="px-4 py-4">
                         <div className="font-black text-sm text-foreground uppercase truncate">{order.clients?.name}</div>
                         <div className="text-[10px] text-muted-foreground font-medium truncate">{order.clients?.phone}</div>
-                        {/* Endereço no Desktop com botão copiar */}
                         {order.clients?.address && (
                           <div className="flex items-center gap-1.5 mt-1">
                             <MapPin className="w-3 h-3 text-blue-500" />
@@ -768,17 +808,40 @@ export default function Orders() {
                            {order.quantity && order.quantity > 1 && <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded text-[10px] font-black">{order.quantity}x</span>}
                            {order.products?.name || 'Personalizado'}
                         </div>
-                        <div className="mt-1 text-xs font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</div>
+                        <p className="text-[10px] text-muted-foreground mt-1 italic line-clamp-2 pr-4">{order.description || 'Sem obs.'}</p>
+                        <div className="mt-2 text-xs font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</div>
                       </TableCell>
                       <TableCell className="px-4 py-4">
-                        <Select defaultValue={order.status} onValueChange={(val) => updateStatus(order, val)}>
-                          <SelectTrigger className={`h-8 w-full text-[9px] font-black uppercase border transition-all ${getStatusColor(order.status)}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-none">
-                            {STATUS_OPTIONS.filter(s => s !== 'Todos').map(s => <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <div className="space-y-2">
+                          <Select defaultValue={order.status} onValueChange={(val) => updateStatus(order, val)}>
+                            <SelectTrigger className={`h-8 w-full text-[9px] font-black uppercase border transition-all ${getStatusColor(order.status)}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-none">
+                              {STATUS_OPTIONS.filter(s => s !== 'Todos').map(s => <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          
+                          <div className="flex gap-2">
+                             <button 
+                               onClick={() => togglePaymentStatus(order)}
+                               className={`h-7 px-2 rounded-md text-[9px] font-black uppercase transition-colors flex-1 border ${order.is_paid ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/20'}`}
+                             >
+                               {order.is_paid ? 'Pago' : 'Pendente'}
+                             </button>
+                             
+                             <Select defaultValue={order.payment_method || 'Não definido'} onValueChange={(val) => updatePaymentMethod(order.id, val)}>
+                                <SelectTrigger className="h-7 w-[100px] text-[9px] font-bold border-border bg-muted/30 focus:ring-0">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {PAYMENT_METHODS.map(m => (
+                                      <SelectItem key={m} value={m} className="text-[10px]">{m}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                             </Select>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
