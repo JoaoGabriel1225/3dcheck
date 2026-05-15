@@ -31,7 +31,9 @@ export default function Settings() {
   const [storeName, setStoreName] = useState('');
   const [fullName, setFullName] = useState('');
   const [kwhPrice, setKwhPrice] = useState('0.95'); // Realidade br
-  const [filamentPrice, setFilamentPrice] = useState('130.00'); // PLA médio
+  // REMOVIDO: filamentPrice (agora gerenciado na aba própria de Filamentos)
+  // ADICIONADO: extraCosts (Padrão para Embalagens e Ferragens)
+  const [extraCosts, setExtraCosts] = useState('0.00'); 
   const [profitMargin, setProfitMargin] = useState('150'); // Margem segura
   const [setupFee, setSetupFee] = useState('5.00');
   const [depreciation, setDepreciation] = useState('1.00');
@@ -59,7 +61,7 @@ export default function Settings() {
         if (data) {
           setStoreName(data.store_name || '');
           setKwhPrice(data.kwh_price?.toString() || '0.95');
-          setFilamentPrice(data.filament_avg_price?.toString() || '130.00');
+          setExtraCosts(data.extra_costs?.toString() || '0.00'); // Carrega Custos Extras
           setProfitMargin(data.profit_margin_pct?.toString() || '150');
           setSetupFee(data.setup_fee?.toString() || '5.00');
           setDepreciation(data.machine_depreciation_hour?.toString() || '1.00');
@@ -137,7 +139,7 @@ export default function Settings() {
         user_id: user.id,
         store_name: storeName,
         kwh_price: parseFloat(kwhPrice),
-        filament_avg_price: parseFloat(filamentPrice),
+        extra_costs: parseFloat(extraCosts), // Salva Custos Extras
         profit_margin_pct: parseInt(profitMargin),
         setup_fee: parseFloat(setupFee),
         machine_depreciation_hour: parseFloat(depreciation),
@@ -146,7 +148,7 @@ export default function Settings() {
         tax_shopee: parseFloat(taxShopee),
         machine_power_watts: parseFloat(powerWatts),
         labor_rate_hour: parseFloat(laborRate),
-        multicolor_waste_pct: parseInt(multicolorWaste), // Salvando purga
+        multicolor_waste_pct: parseInt(multicolorWaste),
         updated_at: new Date().toISOString()
       });
 
@@ -232,9 +234,14 @@ export default function Settings() {
                 </Label>
                 <Input type="number" step="0.0001" min="0" value={kwhPrice} onChange={e => setKwhPrice(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
               </div>
+              
+              {/* CAMPO NOVO SUBSTITUINDO O FILAMENTO */}
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Média do Filamento (R$ / kg)</Label>
-                <Input type="number" step="0.01" min="0" value={filamentPrice} onChange={e => setFilamentPrice(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
+                  Custos Extras Padrão (R$)
+                  <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Valor médio usado para embalagens, ferragens e brindes." />
+                </Label>
+                <Input type="number" step="0.01" min="0" value={extraCosts} onChange={e => setExtraCosts(e.target.value)} className="h-14 rounded-2xl bg-muted/30 font-bold" />
               </div>
               
               <div className="space-y-2">
@@ -297,7 +304,7 @@ export default function Settings() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center justify-between">
-                      <span className="flex items-center gap-2"><Settings2 className="w-3.5 h-3.5" /> Purga (AMS/MMU)</span>
+                      <span className="flex items-center gap-2"><Settings2 className="w-3.5 h-3.5" /> Purga (AMS)</span>
                       <HelpCircle className="w-3.5 h-3.5 opacity-30" title="Porcentagem de desperdício em peças com troca de cor." />
                     </Label>
                     <Input type="number" min="0" max="100" value={multicolorWaste} onChange={e => setMulticolorWaste(e.target.value)} className="h-14 rounded-2xl bg-indigo-500/5 border-indigo-500/20 text-indigo-700 font-black text-lg" />
