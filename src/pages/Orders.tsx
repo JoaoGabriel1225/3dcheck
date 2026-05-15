@@ -77,7 +77,6 @@ export default function Orders() {
   
   const [orderQuantity, setOrderQuantity] = useState('1');
 
-  // NOVO ESTADO: Template de Mensagem Customizável
   const [whatsappTemplate, setWhatsappTemplate] = useState('Olá {cliente}, seu pedido de {produto} está agora em: *{status}*.');
   const [showTemplateCard, setShowTemplateCard] = useState(false);
 
@@ -88,24 +87,37 @@ export default function Orders() {
     }
   }, [searchParams]);
 
+  // CORREÇÃO: Sistema inteligente de notificação única de estoque via localStorage
   const checkLowFilaments = async () => {
     if (!profile) return;
     try {
       const { data, error } = await supabase
         .from('filaments')
-        .select('brand, color, weight_g')
-        .eq('user_id', profile.id)
-        .lte('weight_g', 200); 
+        .select('id, brand, color, weight_g')
+        .eq('user_id', profile.id);
         
       if (data && data.length > 0) {
+        const notified = JSON.parse(localStorage.getItem('notified_filaments') || '[]');
+        let newNotified = [...notified];
+
         data.forEach(f => {
-           toast.warning(`⚠️ Reposição Necessária: Filamento ${f.brand} ${f.color} está baixo (${f.weight_g.toFixed(0)}g).`);
+           if (f.weight_g <= 200) {
+             // Só avisa se ainda não estiver na lista de notificados
+             if (!notified.includes(f.id)) {
+               toast.warning(`⚠️ Reposição Necessária: Filamento ${f.brand} ${f.color} está baixo (${f.weight_g.toFixed(0)}g).`);
+               newNotified.push(f.id);
+             }
+           } else {
+             // Se o rolo foi reabastecido (> 200g), remove da lista para avisar de novo no futuro
+             newNotified = newNotified.filter((id: string) => id !== f.id);
+           }
         });
+
+        localStorage.setItem('notified_filaments', JSON.stringify(newNotified));
       }
     } catch (err) { console.error('Erro ao checar filamentos', err); }
   };
 
-  // NOVO: Busca o template salvo no banco de dados
   const fetchSettings = async () => {
     if (!profile) return;
     try {
@@ -153,7 +165,6 @@ export default function Orders() {
     fetchSettings();
   }, [profile]);
 
-  // NOVO: Salva o template automaticamente (OnBlur)
   const saveTemplateAuto = async (newVal: string) => {
     if (!profile) return;
     try {
@@ -180,8 +191,8 @@ export default function Orders() {
       toast.success('Status atualizado!');
       fetchOrders();
       const phone = order.clients?.phone;
+      
       if (phone) {
-        // MUDANÇA: Construindo a mensagem baseada no seu Template Personalizado!
         const msg = whatsappTemplate
           .replace(/{cliente}/g, order.clients?.name || 'Cliente')
           .replace(/{produto}/g, order.products?.name || 'Personalizado')
@@ -591,7 +602,6 @@ export default function Orders() {
               ))}
             </div>
             
-            {/* BOTÃO PARA ABRIR O CARD DO TEMPLATE */}
             <Button 
               variant="outline" 
               className={`h-10 rounded-xl px-4 text-[10px] font-black uppercase tracking-wider transition-all ${showTemplateCard ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' : 'text-muted-foreground'}`}
@@ -602,7 +612,6 @@ export default function Orders() {
           </div>
         </div>
 
-        {/* MUDANÇA: O Card Editável na Tela para Configurar a Mensagem */}
         <AnimatePresence>
           {showTemplateCard && (
             <motion.div 
@@ -791,7 +800,6 @@ export default function Orders() {
           <DialogHeader><DialogTitle className="font-black text-xl flex items-center gap-3"><div className="p-2 bg-emerald-500 rounded-lg text-white"><MessageCircle className="w-5 h-5" /></div>Notificar Cliente?</DialogTitle></DialogHeader>
           <div className="py-6 space-y-4">
             <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ajuste Rápido antes de enviar</Label>
-            {/* MUDANÇA: Background limpo e visual clean */}
             <Textarea 
               value={pendingWhatsappMessage} 
               onChange={(e) => setPendingWhatsappMessage(e.target.value)}
