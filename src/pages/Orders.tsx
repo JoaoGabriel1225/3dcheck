@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { 
   MessageCircle, Plus, Search, Trash2, ShoppingBag, Filter, 
   Calendar, User, Tag, Package, Activity, Clock, CheckCircle2,
-  Info, DollarSign, TrendingUp, MapPin, Copy, Settings2
+  Info, DollarSign, TrendingUp, MapPin, Copy, Settings2, Wallet, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -55,7 +55,6 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('todos'); 
   
-  // NOVOS ESTADOS: Filtros de Pagamento
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('Todos');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('Todos');
 
@@ -181,10 +180,15 @@ export default function Orders() {
     }
   };
 
+  // CÁLCULOS FINANCEIROS ATUALIZADOS
+  const validOrders = orders.filter(o => o.status !== 'Cancelado');
   const totalCount = orders.length;
   const aguardandoCount = orders.filter(o => ['Aguardando contato', 'Confirmado'].includes(o.status)).length;
   const emProducaoCount = orders.filter(o => o.status === 'Preparação').length;
   const prontosCount = orders.filter(o => o.status === 'Pronto').length;
+
+  const totalRecebido = validOrders.filter(o => o.is_paid).reduce((acc, o) => acc + (o.final_price || 0), 0);
+  const totalAReceber = validOrders.filter(o => !o.is_paid).reduce((acc, o) => acc + (o.final_price || 0), 0);
 
   const updateStatus = async (order: any, newStatus: string) => {
     try {
@@ -351,7 +355,6 @@ export default function Orders() {
     toast.success('Endereço copiado!');
   };
 
-  // MUDANÇA: Lógica de Multi-Filtragem aprimorada
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = statusFilter === 'Todos' || order.status === statusFilter;
     
@@ -392,14 +395,28 @@ export default function Orders() {
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8 pb-10 max-w-full overflow-hidden">
       
       {/* HEADER SECTION */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-1 md:px-0">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-widest">
-            <ShoppingBag className="w-4 h-4" />
-            Produção Operacional
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 px-1 md:px-0">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-widest">
+              <ShoppingBag className="w-4 h-4" />
+              Produção Operacional
+            </div>
+            <h2 className="text-4xl font-black tracking-tight text-foreground">Pedidos</h2>
+            <p className="text-muted-foreground font-medium">Controle o status e a entrega das suas peças.</p>
           </div>
-          <h2 className="text-4xl font-black tracking-tight text-foreground">Pedidos</h2>
-          <p className="text-muted-foreground font-medium">Controle o status e a entrega das suas peças.</p>
+          
+          {/* MUDANÇA: RESUMO FINANCEIRO INTEGRADO */}
+          <div className="flex flex-wrap gap-4 pt-2">
+            <div className="bg-emerald-500/10 text-emerald-600 px-5 py-3 rounded-2xl border border-emerald-500/20 flex flex-col justify-center">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><Wallet className="w-3 h-3" /> Recebido</p>
+              <p className="text-xl font-black tracking-tighter">R$ {totalRecebido.toFixed(2)}</p>
+            </div>
+            <div className="bg-orange-500/10 text-orange-600 px-5 py-3 rounded-2xl border border-orange-500/20 flex flex-col justify-center">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><AlertCircle className="w-3 h-3" /> A Receber</p>
+              <p className="text-xl font-black tracking-tighter">R$ {totalAReceber.toFixed(2)}</p>
+            </div>
+          </div>
         </div>
 
         <Dialog open={isNewOrderDialogOpen} onOpenChange={(open) => { setIsNewOrderDialogOpen(open); if (!open) resetOrderForm(); }}>
@@ -689,7 +706,6 @@ export default function Orders() {
           ))}
         </div>
 
-        {/* MUDANÇA: NOVOS FILTROS DE PAGAMENTO ADICIONADOS NA BARRA DE FILTROS */}
         <div className="flex flex-wrap gap-3 pt-3 border-t border-border/50">
           <div className="flex items-center gap-2">
             <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Status do Pgto:</span>
