@@ -413,7 +413,6 @@ export default function Dashboard() {
         const dailyData: Record<string, { rev: number, cst: number }> = {};
         const productMap: Record<string, { count: number, revenue: number }> = {};
         
-        // MUDANÇA NA LÓGICA DE FATURAMENTO
         const newStats = orders.reduce((acc, order: any) => {
           acc.total++;
           const dateKey = new Date(order.created_at).toLocaleDateString();
@@ -430,11 +429,15 @@ export default function Dashboard() {
           if (order.status !== 'Cancelado') {
               acc.revenue += rev;
               acc.cost += cst;
-              dailyData[dateKey].rev += rev;
               dailyData[dateKey].cst += cst;
               
-              if (order.is_paid) acc.received += rev;
-              else acc.pending += rev;
+              // MUDANÇA: O gráfico de faturamento vai acompanhar apenas o CAIXA REAL (is_paid)
+              if (order.is_paid) {
+                  acc.received += rev;
+                  dailyData[dateKey].rev += rev;
+              } else {
+                  acc.pending += rev;
+              }
           }
 
           const pName = (Array.isArray(order.products) ? order.products[0]?.name : order.products?.name) 
@@ -451,8 +454,10 @@ export default function Dashboard() {
         const sortedDates = Object.keys(dailyData);
         newStats.trends.revenue = sortedDates.map(d => dailyData[d].rev);
         newStats.trends.cost = sortedDates.map(d => dailyData[d].cst);
-        newStats.trends.profit = sortedDates.map(d => dailyData[d].rev - dailyData[d].cst);
-        newStats.profit = newStats.revenue - newStats.cost;
+        newStats.trends.profit = sortedDates.map(d => dailyData[d].rev - dailyData[d].cst); // Lucro dos dias baseado no caixa real
+        
+        // MUDANÇA: O Lucro é calculado com base no que foi Recebido de fato
+        newStats.profit = newStats.received - newStats.cost; 
 
         const allProducts = Object.keys(productMap).map(k => ({
           name: k,
@@ -713,52 +718,64 @@ export default function Dashboard() {
       </motion.div>
 
       <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
-        {/* BLOCO FATURAMENTO MUDADO PARA INCLUIR RECEBIDO E A RECEBER */}
+        {/* CARD 1: CAIXA REAL (RECEBIDO) E PENDENTE */}
         <motion.div variants={itemVariants}>
-          <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30">
-            <CardContent className="p-8">
+          <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30 h-full">
+            <CardContent className="p-8 h-full flex flex-col justify-center">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Faturado Bruto</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Recebido (Caixa)</span>
                 <MiniBarChart data={stats.trends.revenue} color="#3b82f6" />
               </div>
               <div className="text-4xl font-black tracking-tighter text-blue-500">
-                {loading ? '...' : `R$ ${stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                {loading ? '...' : `R$ ${stats.received.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
               </div>
               <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-border/50">
                  <div>
-                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Recebido no Caixa</span>
-                    <p className="text-sm font-black text-emerald-500 leading-tight">R$ {stats.received.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground">A Receber</span>
+                    <p className="text-sm font-black text-orange-500 leading-tight">R$ {stats.pending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                  </div>
                  <div>
-                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Pendente / A Receber</span>
-                    <p className="text-sm font-black text-orange-500 leading-tight">R$ {stats.pending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Total Vendido</span>
+                    <p className="text-sm font-black text-blue-400 leading-tight">R$ {stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                  </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {[
-          { id: 'cst', label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', textClass: 'text-red-500' },
-          { id: 'prf', label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', textClass: 'text-emerald-500', isZap: true }
-        ].map((m, i) => (
-          <motion.div key={i} variants={itemVariants}>
-            <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30 h-full">
-              <CardContent className="p-8 h-full flex flex-col justify-center">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
-                  <MiniBarChart data={m.trend} color={m.color} />
-                </div>
-                <div className={`text-4xl font-black tracking-tighter ${m.textClass}`}>
-                  {loading ? '...' : `R$ ${m.val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                </div>
-                <div className="flex items-center gap-1.5 mt-2 text-muted-foreground text-[10px] font-black uppercase tracking-wider">
-                  {m.isZap && <Zap className="w-3 h-3 text-emerald-500 fill-current" />} Performance Máxima
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+        {/* CARD 2: CUSTOS */}
+        <motion.div variants={itemVariants}>
+          <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-red-500/30 h-full">
+            <CardContent className="p-8 h-full flex flex-col justify-center">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Custos</span>
+                <MiniBarChart data={stats.trends.cost} color="#ef4444" />
+              </div>
+              <div className={`text-4xl font-black tracking-tighter text-red-500`}>
+                {loading ? '...' : `R$ ${stats.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* CARD 3: LUCRO REAL */}
+        <motion.div variants={itemVariants}>
+          <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-emerald-500/30 h-full">
+            <CardContent className="p-8 h-full flex flex-col justify-center">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Lucro Real (Caixa)</span>
+                <MiniBarChart data={stats.trends.profit} color="#10b981" />
+              </div>
+              <div className={`text-4xl font-black tracking-tighter text-emerald-500`}>
+                {loading ? '...' : `R$ ${stats.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              </div>
+              <div className="mt-4 pt-4 border-t border-border/50">
+                 <span className="text-[9px] uppercase font-bold text-muted-foreground">Lucro Projetado (Total)</span>
+                 <p className="text-sm font-black text-emerald-400/70 leading-tight">R$ {(stats.revenue - stats.cost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </motion.div>
 
       {stats.topProducts.length > 0 && (
