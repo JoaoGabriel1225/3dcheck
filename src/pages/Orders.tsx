@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { 
   MessageCircle, Plus, Search, Trash2, ShoppingBag, Filter, 
   Calendar, User, Tag, Package, Activity, Clock, CheckCircle2,
-  Info, DollarSign, TrendingUp, MapPin, Copy, Settings2, Wallet, AlertCircle
+  Info, DollarSign, TrendingUp, MapPin, Copy, Settings2, Wallet, AlertCircle, Edit, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -63,6 +63,10 @@ export default function Orders() {
   const [pendingWhatsappPhone, setPendingWhatsappPhone] = useState('');
   const [isNewOrderDialogOpen, setIsNewOrderDialogOpen] = useState(false);
   
+  // NOVOS ESTADOS PARA EDIÇÃO E VISUALIZAÇÃO
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [viewingDescription, setViewingDescription] = useState<string | null>(null);
+
   const [clientsOptions, setClientsOptions] = useState<any[]>([]);
   const [productsOptions, setProductsOptions] = useState<any[]>([]);
   const [clientSearchText, setClientSearchText] = useState('');
@@ -137,9 +141,10 @@ export default function Orders() {
   const fetchOrders = async () => {
     if (!profile) return;
     try {
+      // INCLUSÃO DO client_id E product_id NA BUSCA PARA PERMITIR A EDIÇÃO
       const { data, error } = await supabase
         .from('orders')
-        .select(`id, description, status, final_price, cost_total, quantity, created_at, is_paid, payment_method, clients(name, phone, address), products(name)`)
+        .select(`id, description, status, final_price, cost_total, quantity, created_at, is_paid, payment_method, client_id, product_id, clients(name, phone, address), products(name)`)
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -180,7 +185,6 @@ export default function Orders() {
     }
   };
 
-  // CÁLCULOS FINANCEIROS ATUALIZADOS
   const validOrders = orders.filter(o => o.status !== 'Cancelado');
   const totalCount = orders.length;
   const aguardandoCount = orders.filter(o => ['Aguardando contato', 'Confirmado'].includes(o.status)).length;
@@ -289,6 +293,26 @@ export default function Orders() {
       }
   };
 
+  // NOVO: Função para abrir o modal em modo de EDIÇÃO
+  const handleEditOrder = (order: any) => {
+    setEditingOrderId(order.id);
+    setSelectedClientId(order.client_id || '');
+    setClientSearchText(order.clients?.name || '');
+    setNewClientName(order.clients?.name || '');
+    setNewClientPhone(order.clients?.phone || '');
+    setNewClientAddress(order.clients?.address || '');
+
+    setSelectedProductId(order.product_id || 'custom');
+    setProductSearchText(order.products?.name || '');
+    setOrderQuantity(order.quantity ? order.quantity.toString() : '1');
+    setOrderDescription(order.description || '');
+    setOrderPrice(order.final_price ? order.final_price.toString() : '0');
+    setOrderCost(order.cost_total ? order.cost_total.toString() : '0');
+
+    setIsNewOrderDialogOpen(true);
+  };
+
+  // ATUALIZADO: Função agora cria OU atualiza dependendo se há um editingOrderId
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -311,24 +335,34 @@ export default function Orders() {
 
       const qty = parseInt(orderQuantity) || 1;
 
-      const { error: orderErr } = await supabase.from('orders').insert({
-        user_id: profile.id,
+      const payload = {
         client_id: finalClientId,
         product_id: selectedProductId === 'custom' ? null : selectedProductId,
-        status: 'Aguardando contato',
         description: orderDescription,
         final_price: parseFloat(orderPrice.toString().replace(',', '.')) || 0,
         cost_total: parseFloat(orderCost.toString().replace(',', '.')) || 0,
         quantity: qty 
-      });
-      if (orderErr) throw orderErr;
+      };
+
+      if (editingOrderId) {
+        const { error: orderErr } = await supabase.from('orders').update(payload).eq('id', editingOrderId);
+        if (orderErr) throw orderErr;
+        toast.success('Pedido atualizado com sucesso!');
+      } else {
+        const { error: orderErr } = await supabase.from('orders').insert({
+            user_id: profile.id,
+            status: 'Aguardando contato',
+            ...payload
+        });
+        if (orderErr) throw orderErr;
+        toast.success('Pedido criado com sucesso!');
+      }
       
-      toast.success('Pedido criado com sucesso!');
       setIsNewOrderDialogOpen(false);
       resetOrderForm();
       fetchOptions();
       fetchOrders();
-    } catch (err: any) { toast.error('Erro ao criar: ' + err.message); }
+    } catch (err: any) { toast.error('Erro ao salvar: ' + err.message); }
   };
 
   const selectClient = (client: any) => {
@@ -348,6 +382,7 @@ export default function Orders() {
     setNewClientName(''); setNewClientPhone(''); setNewClientAddress(''); setSelectedProductId('custom');
     setOrderDescription(''); setOrderPrice(''); setOrderCost('');
     setOrderQuantity('1'); 
+    setEditingOrderId(null);
   };
 
   const copyToClipboard = (text: string) => {
@@ -406,7 +441,6 @@ export default function Orders() {
             <p className="text-muted-foreground font-medium">Controle o status e a entrega das suas peças.</p>
           </div>
           
-          {/* MUDANÇA: RESUMO FINANCEIRO INTEGRADO */}
           <div className="flex flex-wrap gap-4 pt-2">
             <div className="bg-emerald-500/10 text-emerald-600 px-5 py-3 rounded-2xl border border-emerald-500/20 flex flex-col justify-center">
               <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><Wallet className="w-3 h-3" /> Recebido</p>
@@ -428,8 +462,10 @@ export default function Orders() {
           <DialogContent className="max-w-2xl rounded-[2rem] border-border bg-card shadow-2xl p-0 overflow-hidden">
             <DialogHeader className="p-8 pb-0">
                 <DialogTitle className="text-2xl font-black flex items-center gap-2">
-                    <div className="p-2 bg-blue-500 rounded-lg text-white"><Plus className="w-5 h-5" /></div>
-                    Criar Novo Pedido
+                    <div className="p-2 bg-blue-500 rounded-lg text-white">
+                        {editingOrderId ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                    </div>
+                    {editingOrderId ? 'Editar Pedido' : 'Criar Novo Pedido'}
                 </DialogTitle>
             </DialogHeader>
             
@@ -575,7 +611,7 @@ export default function Orders() {
 
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full h-16 bg-blue-600 hover:bg-blue-500 text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-600/20 transition-all active:scale-95">
-                  SALVAR PEDIDO
+                  {editingOrderId ? 'SALVAR ALTERAÇÕES' : 'SALVAR PEDIDO'}
                 </Button>
               </DialogFooter>
             </form>
@@ -781,14 +817,19 @@ export default function Orders() {
                     </Select>
                   </div>
                   
-                  <div className="bg-muted/30 p-3 rounded-2xl flex items-center gap-3">
-                    <Package className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs font-bold text-foreground leading-none">
-                          {order.quantity && order.quantity > 1 && <span className="text-blue-500 mr-1">{order.quantity}x</span>}
-                          {order.products?.name || 'Personalizado'}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1 italic line-clamp-1">{order.description || 'Sem obs.'}</p>
+                  <div className="bg-muted/30 p-3 rounded-2xl flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                        <Package className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-foreground leading-none">
+                              {order.quantity && order.quantity > 1 && <span className="text-blue-500 mr-1">{order.quantity}x</span>}
+                              {order.products?.name || 'Personalizado'}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1 italic line-clamp-2">{order.description || 'Sem obs.'}</p>
+                          {order.description && order.description.length > 60 && (
+                             <button onClick={() => setViewingDescription(order.description)} className="text-[9px] text-blue-500 font-bold hover:underline flex items-center gap-1 mt-1"><Eye className="w-3 h-3"/> Ler descrição completa</button>
+                          )}
+                        </div>
                     </div>
                   </div>
                   
@@ -816,6 +857,7 @@ export default function Orders() {
                     </div>
                     
                     <div className="flex gap-2">
+                      <Button size="icon" variant="ghost" className="h-10 w-10 rounded-2xl bg-blue-500/10 text-blue-500" onClick={() => handleEditOrder(order)}><Edit className="w-5 h-5" /></Button>
                       <Button size="icon" variant="ghost" className="h-10 w-10 rounded-2xl bg-emerald-500/10 text-emerald-500" onClick={() => openWhatsapp(order.clients?.phone, `Olá, seu pedido está em status: ${order.status}`)}><MessageCircle className="w-5 h-5" /></Button>
                       <Button size="icon" variant="ghost" className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-500" onClick={() => deleteOrder(order.id)}><Trash2 className="w-5 h-5" /></Button>
                     </div>
@@ -833,9 +875,9 @@ export default function Orders() {
               <TableRow className="bg-accent/30 border-b border-border hover:bg-accent/30">
                 <TableHead className="w-[12%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Data</TableHead>
                 <TableHead className="w-[20%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Cliente</TableHead>
-                <TableHead className="w-[30%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Pedido</TableHead>
-                <TableHead className="w-[23%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Status & Pgto</TableHead>
-                <TableHead className="w-[15%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground text-center">Ações</TableHead>
+                <TableHead className="w-[26%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Pedido</TableHead>
+                <TableHead className="w-[25%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground">Status & Pgto</TableHead>
+                <TableHead className="w-[17%] h-14 px-4 text-[10px] font-black uppercase text-muted-foreground text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -867,6 +909,9 @@ export default function Orders() {
                            {order.products?.name || 'Personalizado'}
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-1 italic line-clamp-2 pr-4">{order.description || 'Sem obs.'}</p>
+                        {order.description && order.description.length > 60 && (
+                            <button onClick={() => setViewingDescription(order.description)} className="text-[9px] text-blue-500 font-bold hover:underline flex items-center gap-1 mt-0.5"><Eye className="w-3 h-3"/> Ler descrição completa</button>
+                        )}
                         <div className="mt-2 text-xs font-black text-emerald-500">R$ {order.final_price?.toFixed(2)}</div>
                       </TableCell>
                       <TableCell className="px-4 py-4">
@@ -903,6 +948,7 @@ export default function Orders() {
                       </TableCell>
                       <TableCell className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-500" onClick={() => handleEditOrder(order)}><Edit className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-500" onClick={() => openWhatsapp(order.clients?.phone, `Olá, seu pedido está em status: ${order.status}`)}><MessageCircle className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-red-500/10 text-red-500" onClick={() => deleteOrder(order.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
@@ -916,6 +962,7 @@ export default function Orders() {
         </Card>
       </div>
 
+      {/* MODAL DE WHATSAPP */}
       <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
         <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
           <DialogHeader><DialogTitle className="font-black text-xl flex items-center gap-3"><div className="p-2 bg-emerald-500 rounded-lg text-white"><MessageCircle className="w-5 h-5" /></div>Notificar Cliente?</DialogTitle></DialogHeader>
@@ -930,6 +977,24 @@ export default function Orders() {
           <DialogFooter className="flex gap-2 sm:justify-end">
             <Button variant="ghost" className="font-bold text-muted-foreground" onClick={() => setWhatsappModalOpen(false)}>Depois</Button>
             <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 rounded-xl" onClick={() => { openWhatsapp(pendingWhatsappPhone, pendingWhatsappMessage); setWhatsappModalOpen(false); }}>Enviar WhatsApp</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* NOVO MODAL: LER DESCRIÇÃO COMPLETA */}
+      <Dialog open={!!viewingDescription} onOpenChange={(open) => !open && setViewingDescription(null)}>
+        <DialogContent className="sm:max-w-md rounded-[2rem] border-border bg-card shadow-2xl">
+          <DialogHeader>
+             <DialogTitle className="font-black text-xl flex items-center gap-3">
+                 <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Info className="w-5 h-5" /></div>
+                 Descrição do Pedido
+             </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 whitespace-pre-wrap text-sm font-medium text-foreground bg-muted/30 p-5 rounded-2xl max-h-[60vh] overflow-y-auto border border-border shadow-inner leading-relaxed">
+            {viewingDescription}
+          </div>
+          <DialogFooter>
+             <Button variant="ghost" className="font-bold text-muted-foreground w-full" onClick={() => setViewingDescription(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
