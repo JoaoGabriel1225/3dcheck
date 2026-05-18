@@ -42,10 +42,11 @@ const fadeInUp = {
 };
 
 const QUICK_REVIEWS = [
-  { text: "A assinatura se paga no primeiro pedido.", author: "Comunidade Maker BR" },
-  { text: "Nunca mais tomei prejuízo na energia elétrica.", author: "Elite da Impressão" },
-  { text: "A gestão visual de filamento me salvou de perder peças.", author: "Fazenda 3D Pro" },
-  { text: "Adeus planilhas caóticas. Automação pura e simples.", author: "Makers 3D Brasil" }
+  { text: "Mano, a barra de vida do filamento salva demais. antes eu perdia peça grande por falta de material", author: "Impressão 3D Brasil" },
+  { text: "Muito facil de mexer! Eu odiava planilha, agora vejo o lucro livre no fim do mes direto no celular", author: "Jota 3D Maker" },
+  { text: "A calculadora de custo com energia e purga já pagou o sistema no primeiro pedido kkkk", author: "Farm 3D Pro" },
+  { text: "to usando a vitrine deles e o cliente ja manda o pedido direto pro meu zap... bom demais", author: "PrintArt" },
+  { text: "Achei q ia ser dificil de usar mas é bem intuitivo. cadastrei meus rolos e produtos rapidinho", author: "Rafa_3D" }
 ];
 
 export default function Landing() {
@@ -135,8 +136,8 @@ export default function Landing() {
       >
         <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-blue-900/50 border border-blue-500/20 bg-black">
-              <img src="/icon-512.jpg" alt="3DCheck Logo" className="w-full h-full object-cover" />
+            <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-2.5 rounded-xl shadow-lg shadow-blue-900/50">
+              <PackageSearch className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-black tracking-tight uppercase text-zinc-100">3D<span className="text-blue-500">Check</span></span>
           </div>
@@ -217,7 +218,7 @@ export default function Landing() {
               </div>
            </div>
            
-           <div className="text-center md:text-right relative h-[60px] flex flex-col justify-center w-full md:w-[450px]">
+           <div className="text-center md:text-right relative h-[70px] md:h-[60px] flex flex-col justify-center w-full md:w-[600px]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentReviewIdx}
@@ -227,7 +228,7 @@ export default function Landing() {
                   transition={{ duration: 0.5 }}
                   className="absolute right-0 left-0"
                 >
-                  <p className="text-lg md:text-xl font-black text-zinc-100 tracking-tight">"{QUICK_REVIEWS[currentReviewIdx].text}"</p>
+                  <p className="text-sm md:text-lg font-black text-zinc-100 tracking-tight italic">"{QUICK_REVIEWS[currentReviewIdx].text}"</p>
                   <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">- {QUICK_REVIEWS[currentReviewIdx].author}</p>
                 </motion.div>
               </AnimatePresence>
@@ -246,7 +247,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeInUp} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-100">Um exército de <span className="text-blue-500">ferramentas</span> na sua mão.</h2>
-            <p className="text-zinc-400 mt-4 max-w-2xl mx-auto font-medium">Você foca em nivelar a mesa e fatiar o modelo. A parte chata e burocrática, o 3DCheck faz por você.</p>
+            <p className="text-zinc-400 mt-4 max-w-2xl mx-auto font-medium">Você foca em nivelar a mesa e fatiar o modelo. A parte chata e burocrática, o 3DCheck faz por você de um jeito muito fácil e rápido.</p>
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -258,7 +259,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Precificação Milimétrica</h3>
               <p className="text-zinc-400 text-sm leading-relaxed font-medium">
-                Insira peso e tempo. O app calcula Kw/h, depreciação das máquinas, taxa de falha e margem de lucro. Você nunca mais vai chutar um preço.
+                Insira peso e tempo. O app calcula Kw/h, depreciação das máquinas, taxa de falha e margem de lucro. Você nunca mais vai chutar um preço ou ficar na dúvida.
               </p>
             </motion.div>
 
@@ -269,7 +270,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Estoque de Filamentos Visual</h3>
               <p className="text-zinc-400 text-sm leading-relaxed font-medium">
-                Cadastre seus rolos. Conforme atende pedidos, o sistema desconta as gramas automaticamente. Saiba exatamente qual rolo está no fim antes mesmo de fatiar.
+                Cadastre seus rolos em 1 minuto. Conforme atende pedidos, o sistema desconta as gramas automaticamente. Saiba exatamente qual rolo está no fim antes mesmo de fatiar.
               </p>
             </motion.div>
 
@@ -280,7 +281,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Dashboard de Caixa Real</h3>
               <p className="text-zinc-400 text-sm leading-relaxed font-medium">
-                Vender não é receber. Nosso Dashboard separa exatamente o que já caiu na sua conta (Pix/Cartão) do que está pendente, mostrando seu lucro livre real.
+                Vender não é receber. Nosso Dashboard separa exatamente o que já caiu na sua conta (Pix/Cartão) do que está pendente, mostrando seu lucro livre real para investir.
               </p>
             </motion.div>
 
@@ -291,7 +292,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Sua Loja / Vitrine Digital</h3>
               <p className="text-zinc-400 text-sm leading-relaxed font-medium">
-                Ganhe um link exclusivo público com os seus produtos. O cliente escolhe, vê o preço e o pedido cai direto no seu painel pronto para você aprovar.
+                Ganhe um link exclusivo público com os seus produtos. O cliente escolhe, vê o preço e o pedido cai direto no seu painel pronto para você aprovar. Menos dor de cabeça, mais vendas.
               </p>
             </motion.div>
 
@@ -321,7 +322,7 @@ export default function Landing() {
         </div>
       </motion.section>
 
-      {/* SEÇÃO DE DEPOIMENTOS - A Autoridade */}
+      {/* SEÇÃO DE DEPOIMENTOS - A Autoridade (Makers Reais) */}
       <motion.section 
         initial="hidden"
         whileInView="visible"
@@ -331,14 +332,14 @@ export default function Landing() {
       >
         <div className="max-w-6xl mx-auto">
           <motion.div variants={fadeInUp} className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-100">Quem usa, não volta pras planilhas.</h2>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-100">Makers reais. Negócios reais.</h2>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { name: "Carlos M.", role: "Fazenda com 8 Máquinas", text: "Antes eu cobrava pelo peso do fatiador e sempre tomava prejuízo na energia. O 3DCheck me mostrou meu lucro real na hora." },
-              { name: "Marina R.", role: "Focada em Peças Técnicas", text: "A barra de vida do filamento é bizarra! Nunca mais aceitei encomenda sem ter o material exato no estoque para imprimir." },
-              { name: "Felipe T.", role: "Renda Extra com 3D", text: "O sistema se pagou no primeiro dia. Ajustei meus preços com a calculadora e vi que eu estava literalmente trabalhando de graça." }
+              { name: "Carlos M.", role: "Fazenda com 8 Máquinas", text: "Antes eu cobrava pelo peso q o fatiador mostrava e esquecia da luz e maquina. O 3DCheck calculou certo e vi q tava trabalhando quase de graça rs." },
+              { name: "Marina R.", role: "Focada em Peças Técnicas", text: "A barra de vida do filamento é absurda! Sou pessima com planilha e o app é muito facil de usar. Agr nao aceito pedido grande sem saber se o rolo aguenta." },
+              { name: "Felipe T.", role: "Renda Extra com 3D", text: "Comecei na impressao 3d faz pouco tempo e tava perdido nos preços. O sistema faz tudo sozinho, mt bom. Se pagou no primeiro dia." }
             ].map((review, i) => (
               <motion.div key={i} variants={fadeInUp} className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2rem] relative">
                  <Quote className="absolute top-6 right-6 w-8 h-8 text-zinc-700/50" />
@@ -398,7 +399,7 @@ export default function Landing() {
               </div>
               
               <p className="text-emerald-500 font-black uppercase tracking-widest mt-2 mb-8 text-sm bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/20">
-                 🔥 7 DIAS GRÁTIS PARA TESTAR
+                 🔥 TESTE COMPLETO GRÁTIS
               </p>
 
               <div className="w-full bg-[#0a0a0a] rounded-2xl p-5 border border-zinc-800/80 mb-8 shadow-inner">
@@ -433,12 +434,13 @@ export default function Landing() {
 
               <Button 
                 onClick={() => navigate('/login')} 
-                className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-600/30 transition-all active:scale-95 animate-pulse-slow"
+                className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-600/30 transition-all active:scale-95 animate-pulse-slow mb-4"
               >
-                QUERO MEUS 7 DIAS GRÁTIS
+                QUERO MEU TESTE GRÁTIS
               </Button>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-600 mt-6 uppercase tracking-widest">
-                <ShieldCheck className="w-4 h-4 text-zinc-500" /> Plataforma Segura • Cancele em 1 clique.
+              
+              <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-zinc-400 mt-2 uppercase tracking-widest bg-zinc-900/50 py-2.5 px-4 rounded-full border border-zinc-800">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" /> Sem necessidade de cadastrar cartão.
               </div>
             </div>
           </motion.div>
@@ -448,7 +450,7 @@ export default function Landing() {
       {/* FOOTER */}
       <footer className="py-12 text-center border-t border-zinc-900 relative z-10 bg-[#050505]">
         <div className="flex items-center justify-center gap-2 opacity-40 mb-3">
-          <img src="/icon-512.jpg" alt="3DCheck Logo" className="w-5 h-5 rounded-md grayscale" />
+          <PackageSearch className="w-5 h-5 text-zinc-500" />
           <span className="font-black tracking-widest uppercase text-zinc-400">3DCheck</span>
         </div>
         <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
