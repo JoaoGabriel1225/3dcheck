@@ -41,10 +41,18 @@ const fadeInUp = {
   }
 };
 
+const QUICK_REVIEWS = [
+  { text: "A assinatura se paga no primeiro pedido.", author: "Comunidade Maker BR" },
+  { text: "Nunca mais tomei prejuízo na energia elétrica.", author: "Elite da Impressão" },
+  { text: "A gestão visual de filamento me salvou de perder peças.", author: "Fazenda 3D Pro" },
+  { text: "Adeus planilhas caóticas. Automação pura e simples.", author: "Makers 3D Brasil" }
+];
+
 export default function Landing() {
   const navigate = useNavigate();
   const [timeLeft, setTimeLeft] = useState({ days: 7, hours: 0, minutes: 0, seconds: 0 });
   const [spotsLeft, setSpotsLeft] = useState(12);
+  const [currentReviewIdx, setCurrentReviewIdx] = useState(0);
 
   useEffect(() => {
     // TIMER PERSISTENTE REAL
@@ -84,7 +92,15 @@ export default function Landing() {
     }
     setSpotsLeft(parseInt(savedSpots));
 
-    return () => clearInterval(interval);
+    // CARROSSEL DE REVIEWS (Troca a cada 4 segundos)
+    const revInterval = setInterval(() => {
+      setCurrentReviewIdx(prev => (prev + 1) % QUICK_REVIEWS.length);
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(revInterval);
+    };
   }, []);
 
   return (
@@ -119,8 +135,8 @@ export default function Landing() {
       >
         <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-2.5 rounded-xl shadow-lg shadow-blue-900/50">
-              <PackageSearch className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-blue-900/50 border border-blue-500/20 bg-black">
+              <img src="/icon-512.jpg" alt="3DCheck Logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-2xl font-black tracking-tight uppercase text-zinc-100">3D<span className="text-blue-500">Check</span></span>
           </div>
@@ -183,20 +199,17 @@ export default function Landing() {
         </div>
       </motion.section>
 
-      {/* SEÇÃO SOCIAL PROOF - Prova de que funciona */}
+      {/* SEÇÃO SOCIAL PROOF COM CARROSSEL - Prova de que funciona */}
       <motion.section 
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
         variants={containerVariants}
-        className="py-10 px-6 relative z-10 border-y border-zinc-900/50 bg-[#080808]/50"
+        className="py-10 px-6 relative z-10 border-y border-zinc-900/50 bg-[#080808]/50 overflow-hidden"
       >
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 opacity-80">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-center md:justify-between gap-8 opacity-80">
            <div className="flex items-center gap-3">
-              <div className="flex -space-x-4">
-                 {[1,2,3,4].map(i => <div key={i} className="w-12 h-12 rounded-full bg-zinc-800 border-2 border-[#050505] flex items-center justify-center font-black text-xs text-zinc-500">{`+`}</div>)}
-              </div>
-              <div className="flex flex-col">
+              <div className="flex flex-col items-center md:items-start">
                  <div className="flex text-amber-500">
                     <Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" />
                  </div>
@@ -204,9 +217,20 @@ export default function Landing() {
               </div>
            </div>
            
-           <div className="text-center md:text-right">
-              <p className="text-xl font-black text-zinc-100 tracking-tight">"A assinatura se paga no primeiro pedido."</p>
-              <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">- Comunidade Maker BR</p>
+           <div className="text-center md:text-right relative h-[60px] flex flex-col justify-center w-full md:w-[450px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentReviewIdx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute right-0 left-0"
+                >
+                  <p className="text-lg md:text-xl font-black text-zinc-100 tracking-tight">"{QUICK_REVIEWS[currentReviewIdx].text}"</p>
+                  <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">- {QUICK_REVIEWS[currentReviewIdx].author}</p>
+                </motion.div>
+              </AnimatePresence>
            </div>
         </div>
       </motion.section>
@@ -424,7 +448,7 @@ export default function Landing() {
       {/* FOOTER */}
       <footer className="py-12 text-center border-t border-zinc-900 relative z-10 bg-[#050505]">
         <div className="flex items-center justify-center gap-2 opacity-40 mb-3">
-          <PackageSearch className="w-5 h-5 text-zinc-500" />
+          <img src="/icon-512.jpg" alt="3DCheck Logo" className="w-5 h-5 rounded-md grayscale" />
           <span className="font-black tracking-widest uppercase text-zinc-400">3DCheck</span>
         </div>
         <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
