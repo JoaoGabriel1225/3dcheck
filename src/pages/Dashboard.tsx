@@ -29,7 +29,9 @@ import {
   Settings2,
   Box,
   ShoppingCart,
-  Rocket
+  Rocket,
+  Wallet,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -205,6 +207,8 @@ type OrderContext = {
   ready: number;
   completed: number;
   revenue: number;
+  received: number; // NOVO: O que já entrou no caixa
+  pending: number; // NOVO: O que falta receber
   cost: number;
   profit: number;
   trends: { revenue: number[]; cost: number[]; profit: number[] }; 
@@ -271,7 +275,7 @@ export default function Dashboard() {
   const { profile, user } = useAuth();
   const navigate = useNavigate(); 
   const [stats, setStats] = useState<OrderContext>({ 
-    total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, cost: 0, profit: 0,
+    total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, received: 0, pending: 0, cost: 0, profit: 0,
     trends: { revenue: [], cost: [], profit: [] },
     topProducts: []
   });
@@ -283,14 +287,12 @@ export default function Dashboard() {
     hasClient: false, hasProduct: false, hasOrder: false, hasSettings: false, isComplete: false
   });
   
-  // ESTADOS DE EXIBICAO DOS CARDS
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [showBot, setShowBot] = useState(true);
   const [botPhrase, setBotPhrase] = useState("");
 
   const storeDisplayName = user?.user_metadata?.full_name || profile?.name || 'Maker';
 
-  // EFEITO 1: Inscricao no Realtime (Roda apenas 1 vez)
   useEffect(() => {
     const communitySubscription = supabase
       .channel('community_alerts')
@@ -316,7 +318,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // EFEITO 2: Preferencias atreladas APENAS AO USUARIO ATUAL
   useEffect(() => {
     if (!user) return;
     
@@ -372,11 +373,9 @@ export default function Dashboard() {
     const fetchStatsAndOnboarding = async () => {
       setLoading(true);
       try {
-        // Busca Missões
         const [clientsRes, productsRes, settingsRes, ordersCheckRes] = await Promise.all([
           supabase.from('clients').select('id').eq('user_id', profile.id).limit(1),
           supabase.from('products').select('id').eq('user_id', profile.id).limit(1),
-          // CORREÇÃO: Busca por 'user_id' em vez de 'id' para evitar Erro 400
           supabase.from('store_settings').select('user_id').eq('user_id', profile.id).limit(1),
           supabase.from('orders').select('id').eq('user_id', profile.id).limit(1)
         ]);
@@ -414,6 +413,7 @@ export default function Dashboard() {
         const dailyData: Record<string, { rev: number, cst: number }> = {};
         const productMap: Record<string, { count: number, revenue: number }> = {};
         
+        // MUDANÇA NA LÓGICA DE FATURAMENTO
         const newStats = orders.reduce((acc, order: any) => {
           acc.total++;
           const dateKey = new Date(order.created_at).toLocaleDateString();
@@ -427,10 +427,15 @@ export default function Dashboard() {
           const rev = Number(order.final_price) || 0;
           const cst = Number(order.cost_total) || 0;
           
-          acc.revenue += rev;
-          acc.cost += cst;
-          dailyData[dateKey].rev += rev;
-          dailyData[dateKey].cst += cst;
+          if (order.status !== 'Cancelado') {
+              acc.revenue += rev;
+              acc.cost += cst;
+              dailyData[dateKey].rev += rev;
+              dailyData[dateKey].cst += cst;
+              
+              if (order.is_paid) acc.received += rev;
+              else acc.pending += rev;
+          }
 
           const pName = (Array.isArray(order.products) ? order.products[0]?.name : order.products?.name) 
                         || order.description?.split('\n')[0].substring(0, 30) 
@@ -438,10 +443,10 @@ export default function Dashboard() {
           
           if (!productMap[pName]) productMap[pName] = { count: 0, revenue: 0 };
           productMap[pName].count += 1;
-          productMap[pName].revenue += rev;
+          if (order.status !== 'Cancelado') productMap[pName].revenue += rev;
           
           return acc;
-        }, { total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, cost: 0, profit: 0, trends: { revenue: [], cost: [], profit: [] }, topProducts: [] } as OrderContext);
+        }, { total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, received: 0, pending: 0, cost: 0, profit: 0, trends: { revenue: [], cost: [], profit: [] }, topProducts: [] } as OrderContext);
 
         const sortedDates = Object.keys(dailyData);
         newStats.trends.revenue = sortedDates.map(d => dailyData[d].rev);
@@ -708,14 +713,38 @@ export default function Dashboard() {
       </motion.div>
 
       <motion.div variants={containerVariants} className="grid gap-6 md:grid-cols-3">
+        {/* BLOCO FATURAMENTO MUDADO PARA INCLUIR RECEBIDO E A RECEBER */}
+        <motion.div variants={itemVariants}>
+          <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Faturado Bruto</span>
+                <MiniBarChart data={stats.trends.revenue} color="#3b82f6" />
+              </div>
+              <div className="text-4xl font-black tracking-tighter text-blue-500">
+                {loading ? '...' : `R$ ${stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-border/50">
+                 <div>
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Recebido no Caixa</span>
+                    <p className="text-sm font-black text-emerald-500 leading-tight">R$ {stats.received.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                 </div>
+                 <div>
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Pendente / A Receber</span>
+                    <p className="text-sm font-black text-orange-500 leading-tight">R$ {stats.pending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {[
-          { id: 'rev', label: 'Faturado', val: stats.revenue, trend: stats.trends.revenue, color: '#3b82f6', textClass: 'text-blue-500' },
           { id: 'cst', label: 'Custos', val: stats.cost, trend: stats.trends.cost, color: '#ef4444', textClass: 'text-red-500' },
           { id: 'prf', label: 'Lucro Líquido', val: stats.profit, trend: stats.trends.profit, color: '#10b981', textClass: 'text-emerald-500', isZap: true }
         ].map((m, i) => (
           <motion.div key={i} variants={itemVariants}>
-            <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30">
-              <CardContent className="p-8">
+            <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-blue-500/30 h-full">
+              <CardContent className="p-8 h-full flex flex-col justify-center">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
                   <MiniBarChart data={m.trend} color={m.color} />
