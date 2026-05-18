@@ -12,7 +12,14 @@ import {
   Calculator,
   LineChart,
   Box,
-  XCircle
+  XCircle,
+  MessageCircle,
+  Store,
+  Users,
+  Star,
+  Quote,
+  TrendingUp,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -36,15 +43,16 @@ const fadeInUp = {
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [timeLeft, setTimeLeft] = useState({ days: 14, hours: 0, minutes: 0, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState({ days: 7, hours: 0, minutes: 0, seconds: 0 });
+  const [spotsLeft, setSpotsLeft] = useState(12);
 
   useEffect(() => {
-    const timerKey = '3dcheck_exclusive_maker_offer_v2';
+    // TIMER PERSISTENTE REAL
+    const timerKey = '3dcheck_exclusive_7d_offer';
     let endTime = localStorage.getItem(timerKey);
 
     if (!endTime) {
-      // 14 dias de gatilho mental para a nova estratégia
-      const newEndTime = new Date().getTime() + 14 * 24 * 60 * 60 * 1000;
+      const newEndTime = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
       localStorage.setItem(timerKey, newEndTime.toString());
       endTime = newEndTime.toString();
     }
@@ -65,6 +73,16 @@ export default function Landing() {
         });
       }
     }, 1000);
+
+    // VAGAS PERSISTENTES (Gera urgência)
+    const spotsKey = '3dcheck_spots_left';
+    let savedSpots = localStorage.getItem(spotsKey);
+    if (!savedSpots) {
+        // Gera um número realista entre 7 e 14
+        savedSpots = Math.floor(Math.random() * (14 - 7 + 1) + 7).toString();
+        localStorage.setItem(spotsKey, savedSpots);
+    }
+    setSpotsLeft(parseInt(savedSpots));
 
     return () => clearInterval(interval);
   }, []);
@@ -97,7 +115,7 @@ export default function Landing() {
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed top-0 w-full bg-[#050505]/70 backdrop-blur-xl border-b border-zinc-900/50 z-50 h-20 flex items-center"
+        className="fixed top-0 w-full bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-900/50 z-50 h-20 flex items-center"
       >
         <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -116,7 +134,7 @@ export default function Landing() {
         </div>
       </motion.header>
 
-      {/* HERO SECTION - Focada na Dor */}
+      {/* HERO SECTION - Focada na Dor e Conversão Agressiva */}
       <motion.section 
         initial="hidden"
         animate="visible"
@@ -126,26 +144,26 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto text-center flex flex-col items-center gap-8">
           <motion.div 
             variants={fadeInUp}
-            className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold text-xs uppercase tracking-widest shadow-xl shadow-blue-900/20 backdrop-blur-md"
+            className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-xs uppercase tracking-widest shadow-xl shadow-red-900/20 backdrop-blur-md"
           >
-            <Zap className="w-4 h-4 text-blue-500" /> A era das planilhas acabou.
+            <AlertTriangle className="w-4 h-4 text-red-500" /> Apenas {spotsLeft} vagas restantes para o teste gratuito.
           </motion.div>
           
           <motion.h1 
             variants={fadeInUp}
             className="text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tighter leading-[1.05] text-zinc-100"
           >
-            Pare de chutar preços e <br className="hidden md:block" />
+            Você está trabalhando de <br className="hidden md:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">
-              perder dinheiro em 3D.
+              graça na Impressão 3D.
             </span>
           </motion.h1 >
           
           <motion.p 
             variants={fadeInUp}
-            className="text-lg md:text-xl text-zinc-400 font-medium max-w-2xl leading-relaxed"
+            className="text-lg md:text-xl text-zinc-400 font-medium max-w-3xl leading-relaxed"
           >
-            O único ERP financeiro e operacional que calcula o custo exato da grama do seu filamento, gerencia seus pedidos e te mostra o lucro real que vai para o seu bolso.
+            Se você não sabe calcular o custo de energia, desgaste da máquina e gramas do filamento, você está perdendo dinheiro. O 3DCheck é o ERP de Elite que gerencia toda a sua oficina no piloto automático.
           </motion.p>
           
           <motion.div 
@@ -154,18 +172,132 @@ export default function Landing() {
           >
             <Button 
               onClick={() => navigate('/login')} 
-              className="h-16 px-12 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-2xl shadow-blue-600/20 transition-all hover:scale-105 active:scale-95 w-full sm:w-auto tracking-wide"
+              className="h-16 px-12 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-2xl shadow-blue-600/30 transition-all hover:scale-105 active:scale-95 w-full sm:w-auto tracking-wide border border-blue-400/50"
             >
-              CRIAR CONTA GRÁTIS <ArrowRight className="w-5 h-5 ml-2" />
+              LIBERAR MEU ACESSO VIP AGORA <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
-          <motion.p variants={fadeInUp} className="text-[11px] font-bold text-zinc-600 uppercase tracking-widest -mt-2">
-            Teste completo por 14 dias. Sem cartão de crédito.
+          <motion.p variants={fadeInUp} className="text-xs font-bold text-zinc-500 uppercase tracking-widest -mt-2">
+            Não pedimos cartão de crédito. Cancele quando quiser.
           </motion.p>
         </div>
       </motion.section>
 
-      {/* SEÇÃO PROBLEMA VS SOLUÇÃO */}
+      {/* SEÇÃO SOCIAL PROOF - Prova de que funciona */}
+      <motion.section 
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+        variants={containerVariants}
+        className="py-10 px-6 relative z-10 border-y border-zinc-900/50 bg-[#080808]/50"
+      >
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 opacity-80">
+           <div className="flex items-center gap-3">
+              <div className="flex -space-x-4">
+                 {[1,2,3,4].map(i => <div key={i} className="w-12 h-12 rounded-full bg-zinc-800 border-2 border-[#050505] flex items-center justify-center font-black text-xs text-zinc-500">{`+`}</div>)}
+              </div>
+              <div className="flex flex-col">
+                 <div className="flex text-amber-500">
+                    <Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" />
+                 </div>
+                 <span className="text-xs font-black uppercase text-zinc-400 tracking-widest mt-1">Mais de 10.000+ peças precificadas</span>
+              </div>
+           </div>
+           
+           <div className="text-center md:text-right">
+              <p className="text-xl font-black text-zinc-100 tracking-tight">"A assinatura se paga no primeiro pedido."</p>
+              <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">- Comunidade Maker BR</p>
+           </div>
+        </div>
+      </motion.section>
+
+      {/* TODAS AS FUNCIONALIDADES DO APP */}
+      <motion.section 
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.1 }}
+        variants={containerVariants}
+        className="py-24 px-6 relative z-10"
+      >
+        <div className="max-w-7xl mx-auto">
+          <motion.div variants={fadeInUp} className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-100">Um exército de <span className="text-blue-500">ferramentas</span> na sua mão.</h2>
+            <p className="text-zinc-400 mt-4 max-w-2xl mx-auto font-medium">Você foca em nivelar a mesa e fatiar o modelo. A parte chata e burocrática, o 3DCheck faz por você.</p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* Feat 1: Precificação */}
+            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-8 rounded-[2.5rem] shadow-xl hover:border-blue-500/30 transition-colors group">
+              <div className="bg-blue-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6">
+                <Calculator className="w-7 h-7 text-blue-500" />
+              </div>
+              <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Precificação Milimétrica</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed font-medium">
+                Insira peso e tempo. O app calcula Kw/h, depreciação das máquinas, taxa de falha e margem de lucro. Você nunca mais vai chutar um preço.
+              </p>
+            </motion.div>
+
+            {/* Feat 2: Estoque de Filamento */}
+            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-8 rounded-[2.5rem] shadow-xl hover:border-emerald-500/30 transition-colors group">
+              <div className="bg-emerald-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6">
+                <Box className="w-7 h-7 text-emerald-500" />
+              </div>
+              <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Estoque de Filamentos Visual</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed font-medium">
+                Cadastre seus rolos. Conforme atende pedidos, o sistema desconta as gramas automaticamente. Saiba exatamente qual rolo está no fim antes mesmo de fatiar.
+              </p>
+            </motion.div>
+
+            {/* Feat 3: Financeiro */}
+            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-8 rounded-[2.5rem] shadow-xl hover:border-amber-500/30 transition-colors group">
+              <div className="bg-amber-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6">
+                <LineChart className="w-7 h-7 text-amber-500" />
+              </div>
+              <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Dashboard de Caixa Real</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed font-medium">
+                Vender não é receber. Nosso Dashboard separa exatamente o que já caiu na sua conta (Pix/Cartão) do que está pendente, mostrando seu lucro livre real.
+              </p>
+            </motion.div>
+
+            {/* Feat 4: Vitrine */}
+            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-8 rounded-[2.5rem] shadow-xl hover:border-indigo-500/30 transition-colors group">
+              <div className="bg-indigo-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6">
+                <Store className="w-7 h-7 text-indigo-500" />
+              </div>
+              <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Sua Loja / Vitrine Digital</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed font-medium">
+                Ganhe um link exclusivo público com os seus produtos. O cliente escolhe, vê o preço e o pedido cai direto no seu painel pronto para você aprovar.
+              </p>
+            </motion.div>
+
+            {/* Feat 5: WhatsApp */}
+            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-8 rounded-[2.5rem] shadow-xl hover:border-green-500/30 transition-colors group">
+              <div className="bg-green-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6">
+                <MessageCircle className="w-7 h-7 text-green-500" />
+              </div>
+              <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">Automação de WhatsApp</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed font-medium">
+                Mude o status do pedido para "Imprimindo" ou "Pronto para Entrega" e o 3DCheck gera a mensagem de WhatsApp automática para notificar seu cliente em 1 clique.
+              </p>
+            </motion.div>
+
+            {/* Feat 6: CRM */}
+            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-8 rounded-[2.5rem] shadow-xl hover:border-violet-500/30 transition-colors group">
+              <div className="bg-violet-500/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6">
+                <Users className="w-7 h-7 text-violet-500" />
+              </div>
+              <h3 className="text-xl font-black text-zinc-100 mb-3 tracking-tight">CRM e Banco de Clientes</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed font-medium">
+                Guarde o histórico de todo mundo que já comprou com você. Saiba quem são os clientes de ouro que mais te dão lucro e ofereça descontos exclusivos.
+              </p>
+            </motion.div>
+
+          </div>
+        </div>
+      </motion.section>
+
+      {/* SEÇÃO DE DEPOIMENTOS - A Autoridade */}
       <motion.section 
         initial="hidden"
         whileInView="visible"
@@ -175,165 +307,79 @@ export default function Landing() {
       >
         <div className="max-w-6xl mx-auto">
           <motion.div variants={fadeInUp} className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-100">Por que os amadores <span className="text-red-500">quebram</span>?</h2>
-            <p className="text-zinc-400 mt-4 max-w-2xl mx-auto font-medium">A impressão 3D é uma fábrica em casa. Se você não gerenciar como uma indústria, o prejuízo é certo.</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-100">Quem usa, não volta pras planilhas.</h2>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            <motion.div variants={fadeInUp} className="bg-red-500/5 border border-red-500/20 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col gap-4">
-              <div className="bg-red-500/10 w-12 h-12 rounded-2xl flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-500" />
-              </div>
-              <h3 className="text-xl font-black text-zinc-100">Cobrar pelo "Olhômetro"</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                Você gasta 35 horas imprimindo, gasta luz, desgaste de bico e cobra barato porque o concorrente cobrou. Resultado: Trabalhou de graça.
-              </p>
-            </motion.div>
-
-            <motion.div variants={fadeInUp} className="bg-red-500/5 border border-red-500/20 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col gap-4">
-              <div className="bg-red-500/10 w-12 h-12 rounded-2xl flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-500" />
-              </div>
-              <h3 className="text-xl font-black text-zinc-100">Estoque Cego</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                Você aceita a encomenda e na hora de fatiar descobre que o rolo de filamento preto acabou. Cliente frustrado, prazo estourado.
-              </p>
-            </motion.div>
-
-            <motion.div variants={fadeInUp} className="bg-red-500/5 border border-red-500/20 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col gap-4">
-              <div className="bg-red-500/10 w-12 h-12 rounded-2xl flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-500" />
-              </div>
-              <h3 className="text-xl font-black text-zinc-100">Planilhas Caóticas</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                Anotar pedidos no papel, no WhatsApp e em planilhas que você esquece de atualizar. O dinheiro entra, mas você não sabe de onde veio.
-              </p>
-            </motion.div>
+            {[
+              { name: "Carlos M.", role: "Fazenda com 8 Máquinas", text: "Antes eu cobrava pelo peso do fatiador e sempre tomava prejuízo na energia. O 3DCheck me mostrou meu lucro real na hora." },
+              { name: "Marina R.", role: "Focada em Peças Técnicas", text: "A barra de vida do filamento é bizarra! Nunca mais aceitei encomenda sem ter o material exato no estoque para imprimir." },
+              { name: "Felipe T.", role: "Renda Extra com 3D", text: "O sistema se pagou no primeiro dia. Ajustei meus preços com a calculadora e vi que eu estava literalmente trabalhando de graça." }
+            ].map((review, i) => (
+              <motion.div key={i} variants={fadeInUp} className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2rem] relative">
+                 <Quote className="absolute top-6 right-6 w-8 h-8 text-zinc-700/50" />
+                 <div className="flex text-amber-500 mb-4">
+                    <Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" /><Star className="w-4 h-4 fill-amber-500" />
+                 </div>
+                 <p className="text-zinc-300 font-medium leading-relaxed mb-6 italic">"{review.text}"</p>
+                 <div>
+                    <h4 className="font-black text-zinc-100 uppercase tracking-tight">{review.name}</h4>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">{review.role}</span>
+                 </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </motion.section>
 
-      {/* FEATURES MATADORAS */}
-      <motion.section 
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-        variants={containerVariants}
-        className="py-24 px-6 relative z-10"
-      >
-        <div className="max-w-6xl mx-auto">
-          <motion.div variants={fadeInUp} className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-100">Assuma o controle de uma <span className="text-blue-500">Elite Maker</span>.</h2>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-10 rounded-[3rem] shadow-2xl group hover:border-blue-500/30 transition-colors">
-              <div className="bg-blue-500/10 w-16 h-16 rounded-3xl flex items-center justify-center mb-6">
-                <Calculator className="w-8 h-8 text-blue-500" />
-              </div>
-              <h3 className="text-2xl font-black text-zinc-100 mb-4 tracking-tight">Precificação Milimétrica</h3>
-              <p className="text-zinc-400 leading-relaxed font-medium">
-                Insira suas gramas, horas de impressão e margem de lucro. O 3DCheck calcula a energia elétrica, desgaste da máquina, purga e te dá o preço exato e imbatível. Nunca mais tome prejuízo.
-              </p>
-            </motion.div>
-
-            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-10 rounded-[3rem] shadow-2xl group hover:border-emerald-500/30 transition-colors">
-              <div className="bg-emerald-500/10 w-16 h-16 rounded-3xl flex items-center justify-center mb-6">
-                <Box className="w-8 h-8 text-emerald-500" />
-              </div>
-              <h3 className="text-2xl font-black text-zinc-100 mb-4 tracking-tight">Gestão de Filamentos Visual</h3>
-              <p className="text-zinc-400 leading-relaxed font-medium">
-                Cadastre seus rolos. Conforme você fecha os pedidos, o 3DCheck desconta automaticamente as gramas e exibe barras de vida reais do seu estoque. Saiba exatamente quando repor.
-              </p>
-            </motion.div>
-
-            <motion.div variants={fadeInUp} className="bg-[#0a0a0a] border border-zinc-800/80 p-10 rounded-[3rem] shadow-2xl group hover:border-amber-500/30 transition-colors md:col-span-2 flex flex-col md:flex-row items-center gap-8">
-              <div className="flex-1">
-                <div className="bg-amber-500/10 w-16 h-16 rounded-3xl flex items-center justify-center mb-6">
-                  <LineChart className="w-8 h-8 text-amber-500" />
-                </div>
-                <h3 className="text-2xl font-black text-zinc-100 mb-4 tracking-tight">Dashboard Financeiro Inteligente</h3>
-                <p className="text-zinc-400 leading-relaxed font-medium">
-                  Pare de misturar dinheiro pessoal com o da oficina. Veja em gráficos o que foi <strong>Vendido</strong>, o que realmente está <strong>Pago no Caixa</strong>, o dinheiro <strong>Pendente</strong> e o seu <strong>Lucro Líquido Real</strong> do mês.
-                </p>
-              </div>
-              <div className="flex-1 w-full flex justify-end">
-                <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl w-full max-w-sm shadow-2xl rotate-2">
-                  <div className="flex justify-between items-center mb-4">
-                     <span className="text-[10px] uppercase font-black text-zinc-500 tracking-widest">Lucro Real (Caixa)</span>
-                  </div>
-                  <div className="text-4xl font-black text-emerald-500">R$ 4.259,00</div>
-                  <div className="w-full bg-zinc-800 h-2 mt-4 rounded-full overflow-hidden">
-                     <div className="bg-emerald-500 w-[80%] h-full rounded-full"></div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* OFERTA E GATILHO MENTAL */}
+      {/* OFERTA E ANCORAGEM (A HORA DA VERDADE) */}
       <motion.section 
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
         variants={containerVariants}
-        className="py-24 px-6 bg-[#080808] border-y border-zinc-900 relative overflow-hidden z-10"
+        className="py-32 px-6 relative overflow-hidden z-10"
       >
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+        <div className="max-w-4xl mx-auto flex flex-col items-center">
           
-          <motion.div variants={fadeInUp} className="space-y-6">
+          <motion.div variants={fadeInUp} className="text-center space-y-6 mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest mb-4">
+              <TrendingUp className="w-3.5 h-3.5" /> O Investimento Mais Lógico
+            </div>
             <h2 className="text-4xl md:text-5xl font-black tracking-tight text-zinc-100 leading-[1.1]">
-              Blinde sua operação, <br/>
-              <span className="text-blue-500">por menos que um rolo de PLA</span>.
+              A paz mental da sua oficina custa <br/>
+              <span className="text-blue-500 underline decoration-blue-500/30 underline-offset-8">o preço de um chaveiro.</span>
             </h2>
-            <p className="text-lg text-zinc-400 leading-relaxed font-medium">
-              Um erro no cálculo de um pedido grande ou a falta de organização custam dezenas de reais. O 3DCheck paga a própria assinatura com 1 pedido bem precificado.
+            <p className="text-lg text-zinc-400 leading-relaxed font-medium max-w-2xl mx-auto">
+              Perder uma impressão de 15 horas por falta de filamento custa caro. Cobrar R$ 20 numa peça que custou R$ 25 de energia e material custa caro. O 3DCheck custa menos que o lucro de UM chaveiro que você vende no mês.
             </p>
-            <ul className="space-y-5 pt-4">
-              {[
-                "Vitrine online pública exclusiva",
-                "Estoque de Filamentos com Baixa Automática",
-                "Dashboard de Fluxo de Caixa Real",
-                "Alertas Inteligentes no WhatsApp do Cliente"
-              ].map((item, i) => (
-                <motion.li key={i} whileHover={{ x: 10 }} className="flex items-center gap-4 font-bold text-zinc-300">
-                  <CheckCircle2 className="w-6 h-6 text-blue-500 shrink-0" /> {item}
-                </motion.li>
-              ))}
-            </ul>
           </motion.div>
 
           <motion.div 
             variants={fadeInUp}
-            whileHover={{ scale: 1.02, y: -5 }}
-            className="relative"
+            whileHover={{ scale: 1.02 }}
+            className="relative w-full max-w-lg"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 to-blue-900 rounded-[3rem] transform rotate-3 scale-105 opacity-30 blur-2xl pointer-events-none" />
             
-            <div className="bg-[#050505] border border-zinc-800 p-10 rounded-[3rem] shadow-2xl relative z-10 flex flex-col items-center text-center">
-              
-              <div className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-8">
-                <Timer className="w-4 h-4" /> Liberação Imediata
-              </div>
+            <div className="bg-[#050505] border border-zinc-800 p-10 md:p-12 rounded-[3rem] shadow-2xl relative z-10 flex flex-col items-center text-center">
               
               <div className="flex items-start justify-center gap-1 mb-2">
-                <span className="text-xl font-black text-zinc-600 mt-2.5">R$</span>
-                <span className="text-7xl font-black tracking-tighter text-zinc-100">19</span>
+                <span className="text-2xl font-black text-zinc-600 mt-2.5">R$</span>
+                <span className="text-8xl font-black tracking-tighter text-zinc-100">19</span>
                 <div className="flex flex-col items-start justify-start mt-2 gap-0.5">
-                  <span className="text-3xl font-black tracking-tighter text-zinc-100">,90</span>
+                  <span className="text-4xl font-black tracking-tighter text-zinc-100">,90</span>
                   <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">/Mês</span>
                 </div>
               </div>
               
-              <p className="text-zinc-400 font-bold mb-8 text-sm flex items-center gap-2">
-                 Comece agora com 14 dias TOTALMENTE GRÁTIS.
+              <p className="text-emerald-500 font-black uppercase tracking-widest mt-2 mb-8 text-sm bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/20">
+                 🔥 7 DIAS GRÁTIS PARA TESTAR
               </p>
 
               <div className="w-full bg-[#0a0a0a] rounded-2xl p-5 border border-zinc-800/80 mb-8 shadow-inner">
-                <p className="text-[9px] uppercase font-black tracking-widest text-zinc-500 mb-3 flex items-center gap-2 justify-center">
-                   <Zap className="w-3.5 h-3.5 text-blue-500 animate-pulse"/> Sua vaga expira em:
+                <p className="text-[10px] uppercase font-black tracking-widest text-zinc-500 mb-3 flex items-center gap-2 justify-center">
+                   <Zap className="w-3.5 h-3.5 text-blue-500 animate-pulse"/> Sua vaga de teste expira em:
                 </p>
                 <div className="grid grid-cols-4 gap-2">
                   {[
@@ -363,12 +409,12 @@ export default function Landing() {
 
               <Button 
                 onClick={() => navigate('/login')} 
-                className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-600/20 transition-all active:scale-95"
+                className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-600/30 transition-all active:scale-95 animate-pulse-slow"
               >
-                QUERO MEUS 14 DIAS GRÁTIS
+                QUERO MEUS 7 DIAS GRÁTIS
               </Button>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-600 mt-5 uppercase tracking-widest">
-                <ShieldCheck className="w-4 h-4 text-zinc-500" /> Plataforma Segura • Cancele quando quiser.
+              <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-600 mt-6 uppercase tracking-widest">
+                <ShieldCheck className="w-4 h-4 text-zinc-500" /> Plataforma Segura • Cancele em 1 clique.
               </div>
             </div>
           </motion.div>
