@@ -141,7 +141,6 @@ export default function Orders() {
   const fetchOrders = async () => {
     if (!profile) return;
     try {
-      // INCLUSÃO DO client_id E product_id NA BUSCA PARA PERMITIR A EDIÇÃO
       const { data, error } = await supabase
         .from('orders')
         .select(`id, description, status, final_price, cost_total, quantity, created_at, is_paid, payment_method, client_id, product_id, clients(name, phone, address), products(name)`)
@@ -191,8 +190,11 @@ export default function Orders() {
   const emProducaoCount = orders.filter(o => o.status === 'Preparação').length;
   const prontosCount = orders.filter(o => o.status === 'Pronto').length;
 
+  // CÁLCULOS ATUALIZADOS: Caixa Real (Recebido, Custo Pago, Lucro Real, Pendente)
   const totalRecebido = validOrders.filter(o => o.is_paid).reduce((acc, o) => acc + (o.final_price || 0), 0);
   const totalAReceber = validOrders.filter(o => !o.is_paid).reduce((acc, o) => acc + (o.final_price || 0), 0);
+  const custoPago = validOrders.filter(o => o.is_paid).reduce((acc, o) => acc + (o.cost_total || 0), 0);
+  const lucroReal = totalRecebido - custoPago;
 
   const updateStatus = async (order: any, newStatus: string) => {
     try {
@@ -293,7 +295,7 @@ export default function Orders() {
       }
   };
 
-  // NOVO: Função para abrir o modal em modo de EDIÇÃO
+  // Função para abrir o modal em modo de EDIÇÃO
   const handleEditOrder = (order: any) => {
     setEditingOrderId(order.id);
     setSelectedClientId(order.client_id || '');
@@ -312,7 +314,6 @@ export default function Orders() {
     setIsNewOrderDialogOpen(true);
   };
 
-  // ATUALIZADO: Função agora cria OU atualiza dependendo se há um editingOrderId
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -441,13 +442,21 @@ export default function Orders() {
             <p className="text-muted-foreground font-medium">Controle o status e a entrega das suas peças.</p>
           </div>
           
-          <div className="flex flex-wrap gap-4 pt-2">
+          <div className="flex flex-wrap gap-3 pt-2">
             <div className="bg-emerald-500/10 text-emerald-600 px-5 py-3 rounded-2xl border border-emerald-500/20 flex flex-col justify-center">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><Wallet className="w-3 h-3" /> Recebido</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><Wallet className="w-3 h-3" /> Recebido (Caixa)</p>
               <p className="text-xl font-black tracking-tighter">R$ {totalRecebido.toFixed(2)}</p>
             </div>
+            <div className="bg-red-500/10 text-red-600 px-5 py-3 rounded-2xl border border-red-500/20 flex flex-col justify-center">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><Activity className="w-3 h-3" /> Custos (Pagos)</p>
+              <p className="text-xl font-black tracking-tighter">R$ {custoPago.toFixed(2)}</p>
+            </div>
+            <div className="bg-blue-500/10 text-blue-600 px-5 py-3 rounded-2xl border border-blue-500/20 flex flex-col justify-center">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> Lucro Real</p>
+              <p className="text-xl font-black tracking-tighter">R$ {lucroReal.toFixed(2)}</p>
+            </div>
             <div className="bg-orange-500/10 text-orange-600 px-5 py-3 rounded-2xl border border-orange-500/20 flex flex-col justify-center">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><AlertCircle className="w-3 h-3" /> A Receber</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80 flex items-center gap-1.5"><AlertCircle className="w-3 h-3" /> Pendente</p>
               <p className="text-xl font-black tracking-tighter">R$ {totalAReceber.toFixed(2)}</p>
             </div>
           </div>
