@@ -755,6 +755,16 @@ export default function Dashboard() {
               <div className={`text-4xl font-black tracking-tighter text-red-500`}>
                 {loading ? '...' : `R$ ${stats.costPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
               </div>
+              <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-border/50">
+                 <div>
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground">A Pagar</span>
+                    <p className="text-sm font-black text-red-400/70 leading-tight">R$ {(stats.cost - stats.costPaid).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                 </div>
+                 <div>
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Custo Total</span>
+                    <p className="text-sm font-black text-red-400/70 leading-tight">R$ {stats.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                 </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -770,9 +780,15 @@ export default function Dashboard() {
               <div className={`text-4xl font-black tracking-tighter text-emerald-500`}>
                 {loading ? '...' : `R$ ${stats.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
               </div>
-              <div className="mt-4 pt-4 border-t border-border/50">
-                 <span className="text-[9px] uppercase font-bold text-muted-foreground">Lucro Projetado (Total)</span>
-                 <p className="text-sm font-black text-emerald-400/70 leading-tight">R$ {(stats.revenue - stats.cost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-border/50">
+                 <div>
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Lucro Pendente</span>
+                    <p className="text-sm font-black text-emerald-400/70 leading-tight">R$ {((stats.revenue - stats.cost) - stats.profit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                 </div>
+                 <div>
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Lucro Total</span>
+                    <p className="text-sm font-black text-emerald-400/70 leading-tight">R$ {(stats.revenue - stats.cost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                 </div>
               </div>
             </CardContent>
           </Card>
