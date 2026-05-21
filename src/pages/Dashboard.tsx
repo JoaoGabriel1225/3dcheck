@@ -207,9 +207,10 @@ type OrderContext = {
   ready: number;
   completed: number;
   revenue: number;
-  received: number; // NOVO: O que já entrou no caixa
-  pending: number; // NOVO: O que falta receber
+  received: number; 
+  pending: number; 
   cost: number;
+  costPaid: number; 
   profit: number;
   trends: { revenue: number[]; cost: number[]; profit: number[] }; 
   topProducts: TopProduct[];
@@ -275,7 +276,7 @@ export default function Dashboard() {
   const { profile, user } = useAuth();
   const navigate = useNavigate(); 
   const [stats, setStats] = useState<OrderContext>({ 
-    total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, received: 0, pending: 0, cost: 0, profit: 0,
+    total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, received: 0, pending: 0, cost: 0, costPaid: 0, profit: 0,
     trends: { revenue: [], cost: [], profit: [] },
     topProducts: []
   });
@@ -410,13 +411,13 @@ export default function Dashboard() {
 
         if (error) throw error;
 
-        const dailyData: Record<string, { rev: number, cst: number }> = {};
+        const dailyData: Record<string, { rev: number, cst: number, cstPaid: number }> = {};
         const productMap: Record<string, { count: number, revenue: number }> = {};
         
         const newStats = orders.reduce((acc, order: any) => {
           acc.total++;
           const dateKey = new Date(order.created_at).toLocaleDateString();
-          if (!dailyData[dateKey]) dailyData[dateKey] = { rev: 0, cst: 0 };
+          if (!dailyData[dateKey]) dailyData[dateKey] = { rev: 0, cst: 0, cstPaid: 0 };
 
           if (['Aguardando contato', 'Confirmado', 'Pendente'].includes(order.status)) acc.newOrders++;
           else if (['Preparação', 'Imprimindo', 'Em Andamento'].includes(order.status)) acc.inProgress++;
@@ -431,10 +432,11 @@ export default function Dashboard() {
               acc.cost += cst;
               dailyData[dateKey].cst += cst;
               
-              // MUDANÇA: O gráfico de faturamento vai acompanhar apenas o CAIXA REAL (is_paid)
               if (order.is_paid) {
                   acc.received += rev;
+                  acc.costPaid += cst; 
                   dailyData[dateKey].rev += rev;
+                  dailyData[dateKey].cstPaid += cst; 
               } else {
                   acc.pending += rev;
               }
@@ -449,15 +451,14 @@ export default function Dashboard() {
           if (order.status !== 'Cancelado') productMap[pName].revenue += rev;
           
           return acc;
-        }, { total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, received: 0, pending: 0, cost: 0, profit: 0, trends: { revenue: [], cost: [], profit: [] }, topProducts: [] } as OrderContext);
+        }, { total: 0, newOrders: 0, inProgress: 0, ready: 0, completed: 0, revenue: 0, received: 0, pending: 0, cost: 0, costPaid: 0, profit: 0, trends: { revenue: [], cost: [], profit: [] }, topProducts: [] } as OrderContext);
 
         const sortedDates = Object.keys(dailyData);
         newStats.trends.revenue = sortedDates.map(d => dailyData[d].rev);
-        newStats.trends.cost = sortedDates.map(d => dailyData[d].cst);
-        newStats.trends.profit = sortedDates.map(d => dailyData[d].rev - dailyData[d].cst); // Lucro dos dias baseado no caixa real
+        newStats.trends.cost = sortedDates.map(d => dailyData[d].cstPaid); 
+        newStats.trends.profit = sortedDates.map(d => dailyData[d].rev - dailyData[d].cstPaid); 
         
-        // MUDANÇA: O Lucro é calculado com base no que foi Recebido de fato
-        newStats.profit = newStats.received - newStats.cost; 
+        newStats.profit = newStats.received - newStats.costPaid; 
 
         const allProducts = Object.keys(productMap).map(k => ({
           name: k,
@@ -743,16 +744,16 @@ export default function Dashboard() {
           </Card>
         </motion.div>
 
-        {/* CARD 2: CUSTOS */}
+        {/* CARD 2: CUSTOS PAGOS */}
         <motion.div variants={itemVariants}>
           <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm group transition-all duration-300 hover:border-red-500/30 h-full">
             <CardContent className="p-8 h-full flex flex-col justify-center">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Custos</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Custos (Pagos)</span>
                 <MiniBarChart data={stats.trends.cost} color="#ef4444" />
               </div>
               <div className={`text-4xl font-black tracking-tighter text-red-500`}>
-                {loading ? '...' : `R$ ${stats.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                {loading ? '...' : `R$ ${stats.costPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
               </div>
             </CardContent>
           </Card>
