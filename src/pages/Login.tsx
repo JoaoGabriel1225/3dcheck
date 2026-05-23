@@ -48,6 +48,9 @@ export default function Login() {
     try {
       if (isSignUp) {
         // --- LÓGICA DE CADASTRO ATUALIZADA ---
+        // Recupera o código de afiliado caso exista no navegador
+        const referralCode = localStorage.getItem('referral_code');
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -55,6 +58,7 @@ export default function Login() {
             data: {
               full_name: storeName, // Define como nome oficial no Supabase Auth
               store_name: storeName, // Mantém a referência original para o dashboard
+              referred_by: referralCode // IMPLEMENTAÇÃO DE AFILIADO
             }
           }
         });
@@ -217,7 +221,7 @@ export default function Login() {
                   disabled={loading}
                   className="w-full h-12 font-bold text-base bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] flex items-center justify-center gap-2 group border-0"
                 >
-                  {loading ? 'Aguarde...' : (isSignUp ? 'Criar Minha Loja' : 'Acessar Painel')}
+                  {loading ? 'Aguardade...' : (isSignUp ? 'Criar Minha Loja' : 'Acessar Painel')}
                   {!loading && (isSignUp ? <UserPlus className="w-5 h-5" /> : <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />)}
                 </Button>
               </form>
