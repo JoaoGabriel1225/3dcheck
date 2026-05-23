@@ -31,8 +31,10 @@ import {
   ShoppingCart,
   Rocket,
   Wallet,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -198,6 +200,10 @@ const BOT_PHRASES = [
   "3DCheck: Criado de maker para maker, visando a Elite da impressão."
 ];
 
+const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
+
 type TopProduct = { name: string; count: number; revenue: number; percentage: number };
 
 type OrderContext = {
@@ -272,6 +278,16 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
 };
 
+type DailyRecord = {
+  dateStr: string;
+  dayNumber: number;
+  received: number;
+  costPaid: number;
+  profit: number;
+  pending: number;
+  orderCount: number;
+};
+
 export default function Dashboard() {
   const { profile, user } = useAuth();
   const navigate = useNavigate(); 
@@ -291,6 +307,13 @@ export default function Dashboard() {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [showBot, setShowBot] = useState(true);
   const [botPhrase, setBotPhrase] = useState("");
+
+  // ESTADOS DO HISTÓRICO FINANCEIRO
+  const [histMonth, setHistMonth] = useState<string>(new Date().getMonth().toString());
+  const [histYear, setHistYear] = useState<string>(currentYear.toString());
+  const [histLoading, setHistLoading] = useState(false);
+  const [monthStats, setMonthStats] = useState({ received: 0, costPaid: 0, profit: 0, pending: 0, totalOrders: 0 });
+  const [dailyLogs, setDailyLogs] = useState<DailyRecord[]>([]);
 
   const storeDisplayName = user?.user_metadata?.full_name || profile?.name || 'Maker';
 
@@ -368,6 +391,7 @@ export default function Dashboard() {
     setDeferredPrompt(null);
   };
 
+  // FETCH DOS CARDS PRINCIPAIS DO DASHBOARD
   useEffect(() => {
     if (!profile || !user) return;
 
@@ -475,6 +499,87 @@ export default function Dashboard() {
     };
     fetchStatsAndOnboarding();
   }, [profile, user, timeFilter]);
+
+  // FETCH DO HISTÓRICO MENSAL INDEPENDENTE
+  useEffect(() => {
+    if (!profile) return;
+
+    const fetchHistory = async () => {
+      setHistLoading(true);
+      const year = parseInt(histYear);
+      const month = parseInt(histMonth);
+      
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+      try {
+        const { data: orders, error } = await supabase
+          .from('orders')
+          .select('final_price, cost_total, is_paid, status, created_at')
+          .eq('user_id', profile.id)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString())
+          .neq('status', 'Cancelado');
+
+        if (error) throw error;
+
+        let totalReceived = 0;
+        let totalCostPaid = 0;
+        let totalPending = 0;
+        let orderCount = orders.length;
+
+        const dailyMap: Record<number, DailyRecord> = {};
+
+        orders.forEach((order: any) => {
+          const orderDate = new Date(order.created_at);
+          const day = orderDate.getDate();
+          
+          if (!dailyMap[day]) {
+            dailyMap[day] = {
+              dateStr: orderDate.toLocaleDateString('pt-BR'),
+              dayNumber: day,
+              received: 0, costPaid: 0, profit: 0, pending: 0, orderCount: 0
+            };
+          }
+
+          const rev = Number(order.final_price) || 0;
+          const cst = Number(order.cost_total) || 0;
+
+          dailyMap[day].orderCount += 1;
+
+          if (order.is_paid) {
+            totalReceived += rev;
+            totalCostPaid += cst;
+            
+            dailyMap[day].received += rev;
+            dailyMap[day].costPaid += cst;
+            dailyMap[day].profit += (rev - cst);
+          } else {
+            totalPending += rev;
+            dailyMap[day].pending += rev;
+          }
+        });
+
+        setMonthStats({
+          received: totalReceived,
+          costPaid: totalCostPaid,
+          profit: totalReceived - totalCostPaid,
+          pending: totalPending,
+          totalOrders: orderCount
+        });
+
+        const logsArray = Object.values(dailyMap).sort((a, b) => b.dayNumber - a.dayNumber);
+        setDailyLogs(logsArray);
+
+      } catch (err) {
+        console.error('Erro ao buscar histórico:', err);
+      } finally {
+        setHistLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [profile, histMonth, histYear]);
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-10 pb-10">
@@ -890,6 +995,116 @@ export default function Dashboard() {
           ))}
         </motion.div>
       </motion.div>
+
+      {/* SEÇÃO DE HISTÓRICO FINANCEIRO INTEGRADA */}
+      <motion.div variants={itemVariants} className="space-y-6 pt-10 mt-10 border-t border-border">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-blue-500 font-bold text-xs uppercase tracking-widest">
+              <FileText className="w-4 h-4" /> Relatório Detalhado
+            </div>
+            <h2 className="text-3xl font-black tracking-tight text-foreground">Extrato Mensal</h2>
+            <p className="text-muted-foreground font-medium text-sm">Navegue pelos meses passados e veja seu extrato diário.</p>
+          </div>
+
+          <div className="flex items-center gap-3 bg-card/50 border border-border p-2 rounded-2xl backdrop-blur-sm self-start sm:self-auto">
+             <Select value={histMonth} onValueChange={setHistMonth}>
+               <SelectTrigger className="w-[140px] h-11 bg-transparent border-none font-black text-sm focus:ring-0">
+                 <SelectValue />
+               </SelectTrigger>
+               <SelectContent>
+                 {MONTHS.map((m, index) => (
+                   <SelectItem key={index} value={index.toString()} className="font-bold">{m}</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+             
+             <div className="w-[1px] h-6 bg-border" />
+             
+             <Select value={histYear} onValueChange={setHistYear}>
+               <SelectTrigger className="w-[100px] h-11 bg-transparent border-none font-black text-sm focus:ring-0">
+                 <SelectValue />
+               </SelectTrigger>
+               <SelectContent>
+                 {YEARS.map(y => (
+                   <SelectItem key={y} value={y} className="font-bold">{y}</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+          </div>
+        </div>
+
+        {/* TOTAIS DO MÊS SELECIONADO NO HISTÓRICO */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+           <div className="p-5 bg-card border border-border rounded-2xl text-center md:text-left flex flex-col justify-center items-center md:items-start shadow-sm">
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1 flex items-center justify-center md:justify-start gap-1.5 w-full"><Wallet className="w-3.5 h-3.5" /> Recebido</p>
+              <h3 className="text-2xl font-black text-blue-500">R$ {monthStats.received.toFixed(2)}</h3>
+           </div>
+           <div className="p-5 bg-card border border-border rounded-2xl text-center md:text-left flex flex-col justify-center items-center md:items-start shadow-sm">
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1 flex items-center justify-center md:justify-start gap-1.5 w-full"><Activity className="w-3.5 h-3.5" /> Custos Pagos</p>
+              <h3 className="text-2xl font-black text-red-500">R$ {monthStats.costPaid.toFixed(2)}</h3>
+           </div>
+           <div className="p-5 bg-card border border-border rounded-2xl text-center md:text-left flex flex-col justify-center items-center md:items-start shadow-sm">
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1 flex items-center justify-center md:justify-start gap-1.5 w-full"><TrendingUp className="w-3.5 h-3.5" /> Lucro Real</p>
+              <h3 className="text-2xl font-black text-emerald-500">R$ {monthStats.profit.toFixed(2)}</h3>
+           </div>
+           <div className="p-5 bg-card border border-border rounded-2xl text-center md:text-left flex flex-col justify-center items-center md:items-start shadow-sm">
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1 flex items-center justify-center md:justify-start gap-1.5 w-full"><AlertCircle className="w-3.5 h-3.5" /> Faltou Receber</p>
+              <h3 className="text-2xl font-black text-orange-500">R$ {monthStats.pending.toFixed(2)}</h3>
+           </div>
+        </div>
+
+        {/* LISTA DO EXTRATO DIÁRIO */}
+        <Card className="border-border bg-card/30 overflow-hidden shadow-sm">
+           {histLoading ? (
+             <div className="p-10 text-center text-sm font-black uppercase tracking-widest text-muted-foreground animate-pulse">
+               Processando extrato...
+             </div>
+           ) : dailyLogs.length === 0 ? (
+             <div className="p-16 text-center flex flex-col items-center justify-center opacity-50">
+                <Search className="w-12 h-12 mb-4 text-muted-foreground" />
+                <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Nenhuma movimentação neste mês.</p>
+             </div>
+           ) : (
+             <div className="divide-y divide-border">
+                {dailyLogs.map((log, i) => (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                    key={log.dateStr} 
+                    className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-colors"
+                  >
+                     <div className="flex items-center gap-4">
+                        <div className="bg-muted w-14 h-14 rounded-2xl flex flex-col items-center justify-center shrink-0 border border-border">
+                           <span className="text-[10px] font-black uppercase text-muted-foreground leading-none">{MONTHS[parseInt(histMonth)].substring(0,3)}</span>
+                           <span className="text-xl font-black leading-none mt-1">{log.dayNumber.toString().padStart(2, '0')}</span>
+                        </div>
+                        <div>
+                           <h4 className="font-black text-sm uppercase tracking-wider">Movimentação Diária</h4>
+                           <p className="text-[10px] text-muted-foreground font-bold mt-1 uppercase">{log.orderCount} pedido(s) movimentado(s)</p>
+                        </div>
+                     </div>
+                     
+                     <div className="grid grid-cols-3 gap-4 sm:gap-8 bg-background/50 p-3 rounded-xl border border-border flex-1 sm:flex-none">
+                        <div className="text-center sm:text-right">
+                           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Recebido</p>
+                           <p className="font-black text-blue-500 text-sm">R$ {log.received.toFixed(2)}</p>
+                        </div>
+                        <div className="text-center sm:text-right">
+                           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Custos</p>
+                           <p className="font-black text-red-500 text-sm">-R$ {log.costPaid.toFixed(2)}</p>
+                        </div>
+                        <div className="text-center sm:text-right">
+                           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Lucro</p>
+                           <p className="font-black text-emerald-500 text-sm">R$ {log.profit.toFixed(2)}</p>
+                        </div>
+                     </div>
+                  </motion.div>
+                ))}
+             </div>
+           )}
+        </Card>
+      </motion.div>
+
     </motion.div>
   );
 }
