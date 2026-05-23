@@ -44,9 +44,9 @@ const fadeInUp = {
 const QUICK_REVIEWS = [
   { text: "Mano, a barra de vida do filamento salva demais. antes eu perdia peça grande por falta de material", author: "Impressão 3D Brasil" },
   { text: "Muito facil de mexer! Eu odiava planilha, agora vejo o lucro livre no fim do mes direto no celular", author: "Jota 3D Maker" },
-  { text: "A calculadora de custo com energia e purga já pagou o sistema no primeiro pedido kkkk", author: "Farm 3D Pro" },
+  { text: "A calculadora de custo com energia e purga já pagou o sistema no primeiro pedido kkkk", author: "Farm 3D" },
   { text: "to usando a vitrine deles e o cliente ja manda o pedido direto pro meu zap... bom demais", author: "PrintArt" },
-  { text: "Achei q ia ser dificil de usar mas é bem intuitivo. cadastrei meus rolos e produtos rapidinho", author: "Rafa_3D" }
+  { text: "Achei q ia ser dificil de usar mas é bem intuitivo. cadastrei meus filamentos e produtos rapidinho", author: "Rafa_3D" }
 ];
 
 export default function Landing() {
@@ -54,6 +54,15 @@ export default function Landing() {
   const [timeLeft, setTimeLeft] = useState({ days: 7, hours: 0, minutes: 0, seconds: 0 });
   const [spotsLeft, setSpotsLeft] = useState(12);
   const [currentReviewIdx, setCurrentReviewIdx] = useState(0);
+
+  // IMPLEMENTAÇÃO DA NOVA LÓGICA DE AFILIADOS
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const refCode = queryParams.get('ref');
+    if (refCode) {
+      localStorage.setItem('referral_code', refCode);
+    }
+  }, []);
 
   useEffect(() => {
     // TIMER PERSISTENTE REAL
