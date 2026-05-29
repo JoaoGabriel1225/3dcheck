@@ -34,6 +34,8 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
+const MAX_IMAGES = 5;
+
 export default function Products() {
   const { profile, user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
@@ -46,9 +48,14 @@ export default function Products() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [file, setFile] = useState<File | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [discount, setDiscount] = useState('');
+  
+  // ---> ESTADOS PARA MÚLTIPLAS IMAGENS/VÍDEOS <---
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<any[]>([]);
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   
   // Variáveis Base
   const [filamentPrice, setFilamentPrice] = useState('');
@@ -61,7 +68,7 @@ export default function Products() {
   const [setupFee, setSetupFee] = useState('');
   const [failureBuffer, setFailureBuffer] = useState('');
 
-  // ---> NOVOS ESTADOS (Integração Filamentos e Custos Extras) <---
+  // Estados (Integração Filamentos e Custos Extras)
   const [filamentsList, setFilamentsList] = useState<any[]>([]);
   const [selectedFilamentId, setSelectedFilamentId] = useState('');
   const [extraCosts, setExtraCosts] = useState('');
@@ -73,17 +80,16 @@ export default function Products() {
   const [isMultiColor, setIsMultiColor] = useState(false);
   const [powerWatts, setPowerWatts] = useState('300');
   const [postProcessingMin, setPostProcessingMin] = useState('0');
-  const [laborRate, setLaborRate] = useState('35'); // Valor da hora do Maker
+  const [laborRate, setLaborRate] = useState('35');
   const [taxML, setTaxML] = useState('18');
   const [taxShopee, setTaxShopee] = useState('20');
-  const [multicolorWaste, setMulticolorWaste] = useState('15'); // Estado da Purga
+  const [multicolorWaste, setMulticolorWaste] = useState('15');
   const [suggestedPriceML, setSuggestedPriceML] = useState('0.00');
   const [suggestedPriceShopee, setSuggestedPriceShopee] = useState('0.00');
 
   const [calculatedCost, setCalculatedCost] = useState(0);
   const [suggestedPrice, setSuggestedPrice] = useState('0.00');
 
-  // Filtro inteligente do filamento
   const filteredFilaments = filamentsList.filter(f => 
     `${f.brand} ${f.material} ${f.color}`.toLowerCase().includes(filamentSearch.toLowerCase())
   );
@@ -141,7 +147,7 @@ export default function Products() {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select(`*, product_images(url)`)
+        .select(`*, product_images(id, url)`) // ID adicionado para exclusão de imagens
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
 
@@ -157,19 +163,17 @@ export default function Products() {
   useEffect(() => {
     fetchProducts();
     fetchGlobalSettings();
-    fetchFilaments(); // Busca os filamentos ao carregar a página
+    fetchFilaments();
   }, [profile]);
 
-  // ---> NOVO MOTOR DE CÁLCULO <---
   useEffect(() => {
-    // Lógica para pegar o custo do filamento selecionado
     let costPerGram = 0;
     const selectedFilamentData = filamentsList.find(f => f.id === selectedFilamentId);
     
     if (selectedFilamentData) {
       costPerGram = selectedFilamentData.price / selectedFilamentData.weight_g;
     } else {
-      costPerGram = (parseFloat(filamentPrice) || 0) / 1000; // Fallback se não tiver filamento selecionado
+      costPerGram = (parseFloat(filamentPrice) || 0) / 1000;
     }
 
     const gUsed = parseFloat(gramsUsed) || 0;
@@ -180,7 +184,6 @@ export default function Products() {
     const kwh = parseFloat(kwhPrice) || 0;
     const buff = 1 + (parseFloat(failureBuffer) || 0) / 100;
     
-    // Novas Variáveis
     const watts = parseFloat(powerWatts) || 0;
     const postProc = parseFloat(postProcessingMin) || 0;
     const lRate = parseFloat(laborRate) || 0;
@@ -188,27 +191,22 @@ export default function Products() {
     const tShopee = parseFloat(taxShopee) || 0;
     const wastePct = parseFloat(multicolorWaste) || 0;
     
-    // NOVO: Custos Extras Unificados
     const totalExtraCosts = parseFloat(extraCosts) || 0;
 
-    // Lógica Multi-Cor Dinâmica
     const multicolorMultiplier = isMultiColor ? (1 + (wastePct / 100)) : 1; 
 
-    // Cálculo exato do Plástico
     const materialCost = (costPerGram * (gUsed * multicolorMultiplier)) * buff;
     
     const energyCost = ((watts / 1000) * kwh) * pTime; 
     const depreciationCost = dep * pTime;
-    const laborCost = (lRate / 60) * postProc; // Mão de obra do acabamento
+    const laborCost = (lRate / 60) * postProc; 
     
-    // Somando todos os custos extras
     const cTotal = materialCost + energyCost + depreciationCost + sFee + laborCost + totalExtraCosts;
     
     setCalculatedCost(cTotal);
     const calcPrice = cTotal * (1 + margin / 100);
     setSuggestedPrice(calcPrice.toFixed(2));
 
-    // Lógica Marketplaces
     const priceML = calcPrice / (1 - (tML / 100));
     const priceShopee = calcPrice / (1 - (tShopee / 100));
     
@@ -216,6 +214,36 @@ export default function Products() {
     setSuggestedPriceShopee(isFinite(priceShopee) ? priceShopee.toFixed(2) : '0.00');
 
   }, [selectedFilamentId, filamentsList, filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste, extraCosts]);
+
+  // ---> LÓGICA DE MANIPULAÇÃO DE MÚLTIPLOS ARQUIVOS <---
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      const currentTotal = existingImages.length + files.length;
+      const availableSlots = MAX_IMAGES - currentTotal;
+      
+      const filesToAdd = selectedFiles.slice(0, availableSlots);
+
+      if (filesToAdd.length < selectedFiles.length) {
+        toast.error(`Você só pode ter até ${MAX_IMAGES} mídias. Algumas foram ignoradas.`);
+      }
+
+      const newPreviews = filesToAdd.map(file => URL.createObjectURL(file));
+      setFiles(prev => [...prev, ...filesToAdd]);
+      setPreviews(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const removeNewFile = (index: number) => {
+    URL.revokeObjectURL(previews[index]);
+    setFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (id: string) => {
+    setImagesToDelete(prev => [...prev, id]);
+    setExistingImages(prev => prev.filter(img => img.id !== id));
+  };
 
   const handleOpenNewProduct = () => {
     resetForm();
@@ -249,7 +277,6 @@ export default function Products() {
         suggested_price_shopee: parseFloat(suggestedPriceShopee) || 0,
         filament_id: selectedFilamentId || null,
         extra_costs: parseFloat(extraCosts) || 0,
-        // CORREÇÃO: Enviando o Peso e o Tempo para o Banco de Dados!
         weight_g: parseFloat(gramsUsed) || 0,
         print_time_hours: parseFloat(printTime) || 0
       };
@@ -281,33 +308,48 @@ export default function Products() {
         
       if (productError) throw productError;
 
-      if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${productData.id}-${Math.random()}.${fileExt}`;
-        const filePath = `${profile.id}/${fileName}`;
+      // 1. Apaga imagens removidas do banco de dados
+      if (imagesToDelete.length > 0) {
+        await supabase.from('product_images').delete().in('id', imagesToDelete);
+      }
 
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(filePath, file);
+      // 2. Faz o upload das novas imagens/vídeos
+      let newUploadedUrls: string[] = [];
+      if (files.length > 0) {
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${productData.id}-${Math.random()}.${fileExt}`;
+          const filePath = `${profile.id}/${fileName}`;
 
-        if (!uploadError) {
-          const { data: publicUrlData } = supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('product-images')
-            .getPublicUrl(filePath);
+            .upload(filePath, file);
 
-          await supabase
-            .from('product_images')
-            .insert({
-              product_id: productData.id,
-              url: publicUrlData.publicUrl
-            });
-            
-          await supabase
-            .from('products')
-            .update({ main_image_url: publicUrlData.publicUrl })
-            .eq('id', productData.id);
+          if (!uploadError) {
+            const { data: publicUrlData } = supabase.storage
+              .from('product-images')
+              .getPublicUrl(filePath);
+
+            await supabase
+              .from('product_images')
+              .insert({
+                product_id: productData.id,
+                url: publicUrlData.publicUrl
+              });
+            newUploadedUrls.push(publicUrlData.publicUrl);
+          }
         }
       }
+
+      // 3. Atualiza a imagem principal (Main Image) baseada no que sobrou
+      const finalExisting = existingImages.length > 0 ? existingImages[0].url : null;
+      const finalNew = newUploadedUrls.length > 0 ? newUploadedUrls[0] : null;
+      const mainUrl = finalExisting || finalNew || null;
+
+      await supabase
+        .from('products')
+        .update({ main_image_url: mainUrl })
+        .eq('id', productData.id);
 
       toast.success('Produto salvo com sucesso!');
       setIsDialogOpen(false);
@@ -347,9 +389,14 @@ export default function Products() {
     setSelectedFilamentId(product.filament_id || '');
     setExtraCosts(product.extra_costs?.toString() || '');
     
-    // CORREÇÃO: Carregando o Peso e o Tempo salvos
     setGramsUsed(product.weight_g?.toString() || '');
     setPrintTime(product.print_time_hours?.toString() || '');
+
+    // Carrega imagens já salvas no produto
+    setExistingImages(product.product_images || []);
+    setFiles([]);
+    setPreviews([]);
+    setImagesToDelete([]);
 
     if (globalSettings) {
         setKwhPrice(globalSettings.kwh_price?.toString());
@@ -387,7 +434,11 @@ export default function Products() {
     setName('');
     setDescription('');
     setPrice('');
-    setFile(null);
+    setFiles([]);
+    previews.forEach(url => URL.revokeObjectURL(url));
+    setPreviews([]);
+    setExistingImages([]);
+    setImagesToDelete([]);
     setIsPublic(true);
     setDiscount('');
     setFilamentPrice('');
@@ -494,7 +545,6 @@ export default function Products() {
                 <div className="bg-muted/30 p-6 rounded-[2rem] space-y-6 border border-border">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     
-                    {/* DROP DOWN DE FILAMENTO COM PESQUISA */}
                     <div className="space-y-2 relative">
                       <Label className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex justify-between">
                         Filamento Usado
@@ -518,7 +568,6 @@ export default function Products() {
                         <ChevronDown className="w-4 h-4 text-muted-foreground ml-2 shrink-0" />
                       </div>
 
-                      {/* Modal de Pesquisa Absolute */}
                       <AnimatePresence>
                         {isFilamentSearchOpen && (
                           <motion.div 
@@ -568,7 +617,6 @@ export default function Products() {
                     </div>
                   </div>
 
-                  {/* CAIXA DE CUSTOS */}
                   <div className="grid grid-cols-2 gap-6 p-6 bg-background/50 rounded-3xl border border-dashed border-border/50">
                     <div className="space-y-1.5">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
@@ -595,7 +643,6 @@ export default function Products() {
                       <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-10 text-sm rounded-xl" />
                     </div>
                     
-                    {/* CAMPO UNIFICADO: Custos Extras */}
                     <div className="space-y-1.5 col-span-2">
                       <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Custos Extras (Embalagem, Ferragens, etc) (R$)</Label>
                       <Input type="number" step="0.01" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="Ex: 2.50" />
@@ -668,14 +715,59 @@ export default function Products() {
                 </div>
               </div>
 
+              {/* UPLOAD DE MÚLTIPLAS IMAGENS */}
               <div className="pt-4 border-t border-border">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Foto do Produto</Label>
-                  <div className="relative h-12">
-                    <Input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                    <div className="h-full border-2 border-dashed border-border rounded-2xl flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                      <ImageIcon className="w-4 h-4 mr-2" /> SELECIONAR IMAGEM
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Fotos do Produto (Máx 5)</Label>
+                    <span className="text-[10px] font-bold text-muted-foreground">{existingImages.length + files.length}/{MAX_IMAGES}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-5 gap-2">
+                    {/* Imagens já salvas no banco */}
+                    {existingImages.map((img) => (
+                      <div key={img.id} className="relative aspect-square rounded-xl border border-border overflow-hidden group">
+                        <img src={img.url} className="w-full h-full object-cover" />
+                        <button 
+                          type="button" 
+                          onClick={() => removeExistingImage(img.id)} 
+                          className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Previews das novas imagens selecionadas */}
+                    {previews.map((url, i) => (
+                      <div key={i} className="relative aspect-square rounded-xl border border-border overflow-hidden group">
+                        <img src={url} className="w-full h-full object-cover" />
+                        <button 
+                          type="button" 
+                          onClick={() => removeNewFile(i)} 
+                          className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Botão de Adicionar (some se chegar em 5) */}
+                    {(existingImages.length + files.length) < MAX_IMAGES && (
+                      <div className="relative aspect-square rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer bg-muted/20">
+                        <Input 
+                          type="file" 
+                          accept="image/*,video/*" 
+                          multiple 
+                          onChange={handleFileSelect} 
+                          className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                        />
+                        <Plus className="w-5 h-5 text-muted-foreground mb-1" />
+                        <span className="text-[8px] font-bold text-muted-foreground uppercase text-center leading-tight">
+                          Adicionar Mídia
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -723,10 +815,15 @@ export default function Products() {
                           <ImageIcon className="h-16 w-16 text-muted-foreground/20" />
                         )}
                         
-                        <div className="absolute top-4 left-4">
+                        <div className="absolute top-4 left-4 flex gap-2">
                             <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm backdrop-blur-md ${product.is_public ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'}`}>
                               {product.is_public ? 'Ativo' : 'Pausado'}
                             </div>
+                            {product.product_images && product.product_images.length > 1 && (
+                              <div className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm backdrop-blur-md bg-black/40 text-white border-white/20">
+                                +{product.product_images.length}
+                              </div>
+                            )}
                         </div>
                       </div>
                       
