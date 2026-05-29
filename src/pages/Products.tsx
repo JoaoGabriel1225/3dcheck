@@ -61,7 +61,7 @@ export default function Products() {
   const [filamentPrice, setFilamentPrice] = useState('');
   const [gramsUsed, setGramsUsed] = useState('');
   const [printTime, setPrintTime] = useState('');
-  const [printTimeMinutes, setPrintTimeMinutes] = useState('0'); // <--- NOVO ESTADO: Minutos
+  const [printTimeMinutes, setPrintTimeMinutes] = useState('0'); 
   const [profitMargin, setProfitMargin] = useState('');
   
   const [kwhPrice, setKwhPrice] = useState('');
@@ -179,7 +179,6 @@ export default function Products() {
 
     const gUsed = parseFloat(gramsUsed) || 0;
     
-    // <--- CÁLCULO PROPORCIONAL DE HORAS E MINUTOS --->
     const hours = parseFloat(printTime) || 0;
     const mins = parseFloat(printTimeMinutes) || 0;
     const pTime = hours + (mins / 60);
@@ -221,7 +220,6 @@ export default function Products() {
 
   }, [selectedFilamentId, filamentsList, filamentPrice, gramsUsed, printTime, printTimeMinutes, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste, extraCosts]);
 
-  // ---> LÓGICA DE MANIPULAÇÃO DE MÚLTIPLOS ARQUIVOS <---
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
@@ -269,7 +267,6 @@ export default function Products() {
       let profitMarginNum = parseFloat(profitMargin) || 0;
       let discountNum = parseFloat(discount.toString().replace(',', '.')) || 0;
 
-      // Junta as horas e minutos para salvar em print_time_hours no banco
       const hours = parseFloat(printTime) || 0;
       const mins = parseFloat(printTimeMinutes) || 0;
       const totalTimeHours = hours + (mins / 60);
@@ -399,7 +396,6 @@ export default function Products() {
     
     setGramsUsed(product.weight_g?.toString() || '');
     
-    // <--- DESMEMBRAR HORAS TOTAIS EM HORAS E MINUTOS --->
     const totalHours = product.print_time_hours || 0;
     const h = Math.floor(totalHours);
     const m = Math.round((totalHours - h) * 60);
@@ -663,25 +659,29 @@ export default function Products() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                  {/* AJUSTE AQUI: CAIXAS DE HORAS E MINUTOS MAIORES */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2 md:col-span-2">
                       <Label className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Tempo Máquina
+                        <Clock className="w-3 h-3" /> Tempo de Máquina
                       </Label>
-                      <div className="flex gap-2">
+                      <div className="flex gap-3">
                         <div className="relative flex-1">
-                          <Input id="pTime" type="number" min="0" step="1" value={printTime} onChange={(e) => setPrintTime(e.target.value)} required className="h-11 pr-8 bg-background rounded-xl border-border" placeholder="0" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">h</span>
+                          <Input id="pTime" type="number" min="0" step="1" value={printTime} onChange={(e) => setPrintTime(e.target.value)} required className="h-11 pl-4 pr-8 text-base font-bold bg-background rounded-xl border-border" placeholder="0" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground">h</span>
                         </div>
                         <div className="relative flex-1">
-                          <Input id="pTimeMin" type="number" min="0" max="59" step="1" value={printTimeMinutes} onChange={(e) => setPrintTimeMinutes(e.target.value)} required className="h-11 pr-10 bg-background rounded-xl border-border" placeholder="0" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">min</span>
+                          <Input id="pTimeMin" type="number" min="0" max="59" step="1" value={printTimeMinutes} onChange={(e) => setPrintTimeMinutes(e.target.value)} required className="h-11 pl-4 pr-10 text-base font-bold bg-background rounded-xl border-border" placeholder="0" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground">min</span>
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="pMargin" className="font-black text-emerald-600 text-[9px] uppercase tracking-wider">Lucro Desejado (%)</Label>
-                      <Input id="pMargin" type="number" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="h-11 bg-emerald-500/5 border-emerald-500/20 text-emerald-700 font-bold rounded-xl" />
+                    <div className="space-y-2 md:col-span-1">
+                      <Label htmlFor="pMargin" className="font-black text-emerald-600 text-[9px] uppercase tracking-wider">Lucro Desejado</Label>
+                      <div className="relative">
+                        <Input id="pMargin" type="number" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="h-11 pl-4 pr-8 text-base font-bold bg-emerald-500/5 border-emerald-500/20 text-emerald-700 rounded-xl" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-emerald-600">%</span>
+                      </div>
                     </div>
                   </div>
                   
