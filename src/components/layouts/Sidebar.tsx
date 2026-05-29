@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router';
+import { NavLink } from 'react-router-dom'; // CORREÇÃO: react-router-dom em vez de react-router
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -21,7 +21,7 @@ import {
   MessageSquare,
   Sparkles,
   Layers,
-  HelpCircle // NOVO ÍCONE PARA AS DÚVIDAS FREQUENTES
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -193,7 +193,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               </NavLink>
             </li>
             
-            {/* NOVA ROTA: DÚVIDAS FREQUENTES */}
+            {/* ROTA: DÚVIDAS FREQUENTES */}
             <li>
               <NavLink to="/app/faq" onClick={onClose} className={navLinkClass}>
                 <HelpCircle className="h-5 w-5 transition-transform group-hover:scale-110" />
