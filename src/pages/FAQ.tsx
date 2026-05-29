@@ -14,7 +14,7 @@ const QUICK_START_STEPS = [
   {
     step: "01",
     title: "Configure os Custos",
-    desc: "Vá em Configurações > Financeiro. Insira o valor do seu kWh e a sua hora de trabalho. O app precisa disso para calcular custos.",
+    desc: "Vá em Configurações Globais. Insira o valor do seu kWh e a sua hora de trabalho. O app precisa disso para calcular custos.",
     icon: Cog,
     color: "text-blue-500",
     bg: "bg-blue-500/10"
@@ -38,7 +38,7 @@ const QUICK_START_STEPS = [
   {
     step: "04",
     title: "Registre as Vendas",
-    desc: "Ao vender, vá em Pedidos. O app vai cruzar o produto com os custos, gerenciar o status da impressão e mostrar seu Lucro Real no Dashboard.",
+    desc: "Fez uma venda fora da vitrine? Cadastre o Cliente e depois vá em Pedidos. O app cruzará o produto com os custos para calcular seu Lucro Real.",
     icon: TrendingUp,
     color: "text-indigo-500",
     bg: "bg-indigo-500/10"
@@ -55,11 +55,11 @@ const FAQ_DATA = [
     questions: [
       {
         q: "Como configuro os custos da minha loja (Luz, Hora, etc)?",
-        a: "Vá em Configurações > Financeiro. Lá você define o custo da sua energia (kWh), a depreciação das máquinas e o valor da sua hora de trabalho. Esses dados são a fundação para o 3DCheck calcular automaticamente o custo real de cada impressão e garantir seu lucro."
+        a: "Vá em Configurações Globais. Lá você define o custo da sua energia (kWh), a depreciação das máquinas e o valor da sua hora de trabalho. Esses dados são a fundação para o 3DCheck calcular automaticamente o custo real de cada impressão e garantir seu lucro."
       },
       {
-        q: "Como configuro minha Vitrine Digital?",
-        a: "Em Configurações da Loja, adicione o nome da sua marca, logotipo e uma breve descrição. Todos os produtos que você marcar como 'Ativos na Vitrine' aparecerão no seu link exclusivo. Copie esse link e coloque na bio do seu Instagram ou mande no WhatsApp dos clientes!"
+        q: "Como configuro e personalizo minha Vitrine Digital?",
+        a: "Em Configurações da Loja, você pode personalizar a sua vitrine da forma que desejar. Adicione o nome da sua marca, logotipo, ajuste as cores e insira uma descrição. Todos os produtos marcados como 'Ativos na Vitrine' aparecerão no seu link exclusivo para você compartilhar com os clientes!"
       }
     ]
   },
@@ -86,8 +86,8 @@ const FAQ_DATA = [
     bgColor: "bg-amber-500/10",
     questions: [
       {
-        q: "Qual a melhor forma de cadastrar um Cliente?",
-        a: "Na aba Clientes, insira o nome, WhatsApp e endereço (caso faça entregas). Ter uma base de clientes organizada permite que você acompanhe quem compra mais e mande mensagens de novidades. Um cliente recorrente é lucro garantido."
+        q: "Quando e como devo cadastrar um Cliente?",
+        a: "Se você realizou uma venda direta (por WhatsApp, Instagram ou fora da vitrine digital), vá na aba Clientes e insira o nome, contato e endereço. Cadastrar o cliente primeiro é essencial para poder gerar o Pedido dele no sistema logo em seguida."
       },
       {
         q: "Como funciona o Ciclo do Pedido?",
