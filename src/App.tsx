@@ -74,6 +74,7 @@ function AppContent() {
             <Route path="storefront-settings" element={<StorefrontSettings />} />
             <Route path="settings" element={<Settings />} />
             <Route path="support" element={<Support />} />
+            <Route path="faq" element={<FAQ />} />
             
             {/* ROTA DA COMUNIDADE CORRIGIDA (AGORA TEM SIDEBAR) */}
             <Route path="community" element={<Community />} />
