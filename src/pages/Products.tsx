@@ -504,78 +504,83 @@ export default function Products() {
               </DialogTitle>
             </DialogHeader>
 
-            <form onSubmit={handleSaveProduct} className="p-8 space-y-6">
-               <div className="space-y-4">
+            <form onSubmit={handleSaveProduct} className="p-8 space-y-8">
+               
+               {/* 1. NOME, DESCRIÇÃO E VISIBILIDADE */}
+               <div className="space-y-6">
                  <div className="space-y-2">
-                   <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Nome do Produto</Label>
-                   <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required className="h-12 rounded-2xl border-border bg-muted/30" placeholder="Ex: Action Figure Batman" />
+                   <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Nome do Produto</Label>
+                   <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required className="h-12 rounded-2xl border-border bg-muted/30 text-base" placeholder="Ex: Action Figure Batman" />
                  </div>
                  <div className="space-y-2">
-                   <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Descrição Detalhada</Label>
-                   <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required className="rounded-2xl border-border bg-muted/30 min-h-[100px]" placeholder="Fale sobre o material, escala e acabamento..." />
+                   <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Descrição Detalhada</Label>
+                   <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required className="rounded-2xl border-border bg-muted/30 min-h-[100px] text-base" placeholder="Fale sobre o material, escala e acabamento..." />
                  </div>
                  
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div className="flex items-center space-x-3 bg-muted/20 p-4 rounded-2xl border border-border">
+                   <div className="flex items-center space-x-3 bg-muted/20 p-5 rounded-2xl border border-border">
                      <Switch id="is-public" checked={isPublic} onCheckedChange={setIsPublic} />
-                     <Label htmlFor="is-public" className="font-bold text-sm cursor-pointer">Visível na Vitrine Pública</Label>
+                     <Label htmlFor="is-public" className="font-bold text-base cursor-pointer">Visível na Vitrine Pública</Label>
                    </div>
-                   <div className="flex items-center space-x-3 bg-indigo-500/5 p-4 rounded-2xl border border-indigo-500/20">
+                   <div className="flex items-center space-x-3 bg-indigo-500/5 p-5 rounded-2xl border border-indigo-500/20">
                      <Switch id="is-multicolor" checked={isMultiColor} onCheckedChange={setIsMultiColor} />
-                     <Label htmlFor="is-multicolor" className="font-bold text-sm text-indigo-700 cursor-pointer">
+                     <Label htmlFor="is-multicolor" className="font-bold text-base text-indigo-700 cursor-pointer">
                        Impressão Multi-Cor (+{multicolorWaste}%)
                      </Label>
                    </div>
                  </div>
                </div>
 
-              <div className="space-y-4 pt-6 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <Label className="font-black text-foreground text-base flex items-center gap-2">
-                    <Calculator className="w-5 h-5 text-blue-500" /> Custos de Produção
+              {/* 2. CALCULADORA DE CUSTOS (REFORMULADA) */}
+              <div className="space-y-6 pt-8 border-t border-border">
+                
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <Label className="font-black text-foreground text-xl flex items-center gap-2">
+                    <Calculator className="w-6 h-6 text-blue-500" /> Custos de Produção
                   </Label>
                   <Button 
                     type="button" 
                     variant="ghost" 
                     size="sm" 
                     onClick={applyGlobalDefaults}
-                    className="text-[9px] font-black bg-blue-500/10 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-500/20"
+                    className="text-[10px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-500/20"
                   >
-                    <RotateCcw className="w-3 h-3 mr-1" /> RESETAR PADRÕES
+                    <RotateCcw className="w-4 h-4 mr-2" /> RESETAR PADRÕES
                   </Button>
                 </div>
 
-                <div className="bg-blue-500/5 border border-blue-500/10 p-4 rounded-2xl flex items-start gap-3">
-                    <ShieldAlert className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-                    <p className="text-[10px] font-bold text-blue-700/80 leading-relaxed italic">
-                        Os valores abaixo refletem suas <strong className="underline">Configurações Globais</strong>. Altere manualmente ou ajuste os padrões no menu de configurações.
+                <div className="bg-blue-500/5 border border-blue-500/10 p-4 rounded-2xl flex items-center gap-3">
+                    <ShieldAlert className="w-6 h-6 text-blue-500 shrink-0" />
+                    <p className="text-xs font-bold text-blue-700/80 leading-relaxed italic">
+                        Estes valores refletem suas <strong className="underline cursor-help">Configurações Globais</strong>. Altere manualmente abaixo se essa peça tiver custos diferentes do padrão.
                     </p>
                 </div>
 
-                <div className="bg-muted/30 p-6 rounded-[2rem] space-y-6 border border-border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    
-                    <div className="space-y-2 relative">
-                      <Label className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex justify-between">
+                <div className="bg-muted/30 p-6 md:p-8 rounded-[2.5rem] space-y-8 border border-border">
+                  
+                  {/* Filamento e Peso */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3 relative">
+                      <Label className="font-black text-muted-foreground text-[10px] uppercase tracking-widest flex justify-between">
                         Filamento Usado
                         {selectedFilamentId && filamentsList.find(f => f.id === selectedFilamentId) && (
-                          <span className="text-blue-500 font-bold">
+                          <span className="text-blue-500 font-black">
                             (R$ {(filamentsList.find(f => f.id === selectedFilamentId).price / filamentsList.find(f => f.id === selectedFilamentId).weight_g).toFixed(4)}/g)
                           </span>
                         )}
                       </Label>
                       
                       <div 
-                        className="w-full h-11 px-3 bg-background rounded-xl border border-border text-sm flex items-center justify-between cursor-pointer hover:border-blue-500/50 transition-colors"
+                        className="w-full h-12 px-4 bg-background rounded-2xl border border-border text-base font-bold flex items-center justify-between cursor-pointer hover:border-blue-500/50 transition-colors"
                         onClick={() => setIsFilamentSearchOpen(!isFilamentSearchOpen)}
                       >
                         <span className="truncate">
                           {selectedFilamentId && filamentsList.find(f => f.id === selectedFilamentId)
                             ? `${filamentsList.find(f => f.id === selectedFilamentId).brand} - ${filamentsList.find(f => f.id === selectedFilamentId).material} ${filamentsList.find(f => f.id === selectedFilamentId).color}`
-                            : <span className="text-muted-foreground">Selecionar filamento...</span>
+                            : <span className="text-muted-foreground font-medium">Selecionar filamento...</span>
                           }
                         </span>
-                        <ChevronDown className="w-4 h-4 text-muted-foreground ml-2 shrink-0" />
+                        <ChevronDown className="w-5 h-5 text-muted-foreground ml-2 shrink-0" />
                       </div>
 
                       <AnimatePresence>
@@ -584,36 +589,36 @@ export default function Products() {
                             initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
                             className="absolute z-50 top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col"
                           >
-                            <div className="p-2 border-b border-border bg-muted/30 relative">
-                              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <div className="p-3 border-b border-border bg-muted/30 relative">
+                              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                               <input 
                                 autoFocus
                                 type="text" 
                                 placeholder="Pesquisar marca ou cor..." 
                                 value={filamentSearch}
                                 onChange={(e) => setFilamentSearch(e.target.value)}
-                                className="w-full h-9 pl-9 pr-3 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                                className="w-full h-10 pl-9 pr-3 bg-background border border-border rounded-lg text-sm font-bold focus:outline-none focus:border-blue-500"
                               />
                             </div>
-                            <div className="max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                            <div className="max-h-56 overflow-y-auto p-2 custom-scrollbar">
                               <div 
-                                className="px-3 py-2 text-xs text-red-500 font-bold cursor-pointer hover:bg-red-500/10 rounded-lg flex items-center gap-2"
+                                className="px-3 py-3 text-sm text-red-500 font-bold cursor-pointer hover:bg-red-500/10 rounded-lg flex items-center gap-2 mb-1"
                                 onClick={() => { setSelectedFilamentId(''); setIsFilamentSearchOpen(false); }}
                               >
-                                <X className="w-3 h-3" /> Limpar Seleção
+                                <X className="w-4 h-4" /> Limpar Seleção
                               </div>
                               {filteredFilaments.map(f => (
                                 <div 
                                   key={f.id} 
-                                  className="px-3 py-2.5 text-xs text-foreground font-medium cursor-pointer hover:bg-blue-500/10 hover:text-blue-500 rounded-lg flex items-center gap-2 transition-colors"
+                                  className="px-3 py-3 text-sm text-foreground font-bold cursor-pointer hover:bg-blue-500/10 hover:text-blue-500 rounded-lg flex items-center gap-3 transition-colors"
                                   onClick={() => { setSelectedFilamentId(f.id); setIsFilamentSearchOpen(false); setFilamentSearch(''); }}
                                 >
-                                  <div className="w-3 h-3 rounded-full border shadow-sm shrink-0" style={{backgroundColor: f.color_hex || '#000'}} />
+                                  <div className="w-4 h-4 rounded-full border border-border shadow-sm shrink-0" style={{backgroundColor: f.color_hex || '#000'}} />
                                   <span className="truncate">{f.brand} - {f.material} {f.color}</span>
                                 </div>
                               ))}
                               {filteredFilaments.length === 0 && (
-                                <div className="p-3 text-xs text-muted-foreground text-center">Nenhum filamento encontrado.</div>
+                                <div className="p-4 text-sm font-bold text-muted-foreground text-center">Nenhum filamento encontrado.</div>
                               )}
                             </div>
                           </motion.div>
@@ -621,163 +626,170 @@ export default function Products() {
                       </AnimatePresence>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="gUsed" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider">Peso da Peça (g)</Label>
-                      <Input id="gUsed" type="number" step="0.1" value={gramsUsed} onChange={(e) => setGramsUsed(e.target.value)} required className="h-11 bg-background rounded-xl border-border" placeholder="Ex: 150" />
+                    <div className="space-y-3">
+                      <Label htmlFor="gUsed" className="font-black text-muted-foreground text-[10px] uppercase tracking-widest">Peso da Peça (g)</Label>
+                      <Input id="gUsed" type="number" step="0.1" value={gramsUsed} onChange={(e) => setGramsUsed(e.target.value)} required className="h-12 bg-background rounded-2xl border-border text-base font-bold" placeholder="Ex: 150" />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6 p-6 bg-background/50 rounded-3xl border border-dashed border-border/50">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
-                      <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-10 text-sm rounded-xl" />
+                  {/* Grid de Custos Mais Espaçoso */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6 p-6 md:p-8 bg-background/50 rounded-[2rem] border border-dashed border-border/60">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Energia (R$/kWh)</Label>
+                      <Input type="number" value={kwhPrice} onChange={(e) => setKwhPrice(e.target.value)} className="h-12 text-base font-bold rounded-xl" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Potência (W)</Label>
-                      <Input type="number" value={powerWatts} onChange={(e) => setPowerWatts(e.target.value)} className="h-10 text-sm rounded-xl bg-yellow-500/10 text-yellow-700 font-bold border-yellow-500/30" />
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Potência (W)</Label>
+                      <Input type="number" value={powerWatts} onChange={(e) => setPowerWatts(e.target.value)} className="h-12 text-base font-bold rounded-xl bg-yellow-500/10 text-yellow-700 border-yellow-500/30" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Depreciação (R$/h)</Label>
-                      <Input type="number" value={depreciation} onChange={(e) => setDepreciation(e.target.value)} className="h-10 text-sm rounded-xl" />
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Depreciação (R$/h)</Label>
+                      <Input type="number" value={depreciation} onChange={(e) => setDepreciation(e.target.value)} className="h-12 text-base font-bold rounded-xl" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Acabamento (min)</Label>
-                      <Input type="number" value={postProcessingMin} onChange={(e) => setPostProcessingMin(e.target.value)} className="h-10 text-sm rounded-xl bg-blue-500/10 text-blue-700 font-bold border-blue-500/30" placeholder="Ex: 15" />
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Acabamento (min)</Label>
+                      <Input type="number" value={postProcessingMin} onChange={(e) => setPostProcessingMin(e.target.value)} className="h-12 text-base font-bold rounded-xl bg-blue-500/10 text-blue-700 border-blue-500/30" placeholder="Ex: 15" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Sua Hora (R$/h)</Label>
-                      <Input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="h-10 text-sm rounded-xl" />
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Sua Hora (R$/h)</Label>
+                      <Input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="h-12 text-base font-bold rounded-xl" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
-                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-10 text-sm rounded-xl" />
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Taxa Setup (R$)</Label>
+                      <Input type="number" value={setupFee} onChange={(e) => setSetupFee(e.target.value)} className="h-12 text-base font-bold rounded-xl" />
                     </div>
                     
-                    <div className="space-y-1.5 col-span-2">
-                      <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Custos Extras (Embalagem, Ferragens, etc) (R$)</Label>
-                      <Input type="number" step="0.01" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} className="h-10 text-sm rounded-xl bg-emerald-500/10 text-emerald-700 font-bold border-emerald-500/30" placeholder="Ex: 2.50" />
+                    <div className="space-y-2 col-span-2 md:col-span-3 pt-2">
+                      <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Custos Extras (Embalagem, Ferragens, etc) (R$)</Label>
+                      <Input type="number" step="0.01" value={extraCosts} onChange={(e) => setExtraCosts(e.target.value)} className="h-12 text-base font-bold rounded-xl bg-emerald-500/10 text-emerald-700 border-emerald-500/30" placeholder="Ex: 2.50" />
                     </div>
                   </div>
 
-                  {/* AJUSTE AQUI: CAIXAS DE HORAS E MINUTOS MAIORES */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Tempo de Máquina
+                  {/* Tempo e Margem Gigantes */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="space-y-3 md:col-span-2">
+                      <Label className="font-black text-muted-foreground text-[10px] uppercase tracking-widest flex items-center gap-2">
+                        <Clock className="w-4 h-4" /> Tempo de Máquina
                       </Label>
-                      <div className="flex gap-3">
+                      <div className="flex gap-4">
                         <div className="relative flex-1">
-                          <Input id="pTime" type="number" min="0" step="1" value={printTime} onChange={(e) => setPrintTime(e.target.value)} required className="h-11 pl-4 pr-8 text-base font-bold bg-background rounded-xl border-border" placeholder="0" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground">h</span>
+                          <Input id="pTime" type="number" min="0" step="1" value={printTime} onChange={(e) => setPrintTime(e.target.value)} required className="h-14 pl-5 pr-8 text-xl font-black bg-background rounded-2xl border-border" placeholder="0" />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-black text-muted-foreground">h</span>
                         </div>
                         <div className="relative flex-1">
-                          <Input id="pTimeMin" type="number" min="0" max="59" step="1" value={printTimeMinutes} onChange={(e) => setPrintTimeMinutes(e.target.value)} required className="h-11 pl-4 pr-10 text-base font-bold bg-background rounded-xl border-border" placeholder="0" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground">min</span>
+                          <Input id="pTimeMin" type="number" min="0" max="59" step="1" value={printTimeMinutes} onChange={(e) => setPrintTimeMinutes(e.target.value)} required className="h-14 pl-5 pr-12 text-xl font-black bg-background rounded-2xl border-border" placeholder="0" />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-black text-muted-foreground">min</span>
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-2 md:col-span-1">
-                      <Label htmlFor="pMargin" className="font-black text-emerald-600 text-[9px] uppercase tracking-wider">Lucro Desejado</Label>
+                    <div className="space-y-3 md:col-span-1">
+                      <Label htmlFor="pMargin" className="font-black text-emerald-600 text-[10px] uppercase tracking-widest">Lucro Desejado</Label>
                       <div className="relative">
-                        <Input id="pMargin" type="number" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="h-11 pl-4 pr-8 text-base font-bold bg-emerald-500/5 border-emerald-500/20 text-emerald-700 rounded-xl" />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-emerald-600">%</span>
+                        <Input id="pMargin" type="number" value={profitMargin} onChange={(e) => setProfitMargin(e.target.value)} required className="h-14 pl-5 pr-10 text-xl font-black bg-emerald-500/5 border-emerald-500/20 text-emerald-700 rounded-2xl" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-black text-emerald-600">%</span>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="pt-4 border-t border-border/50 flex flex-col gap-4">
-                    <div className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-muted-foreground uppercase">Custo de Fabricação Total</span>
-                        <span className="text-xl font-black text-foreground tracking-tighter">R$ {calculatedCost.toFixed(2)}</span>
+                  {/* Bloco de Resultados Destacado */}
+                  <div className="pt-8 border-t border-border/50">
+                    <div className="bg-muted/20 p-6 md:p-8 rounded-[2.5rem] border border-border space-y-6">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div className="flex flex-col text-center md:text-left w-full md:w-auto">
+                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Custo de Fabricação Total</span>
+                                <span className="text-4xl font-black text-foreground tracking-tighter mt-1">R$ {calculatedCost.toFixed(2)}</span>
+                            </div>
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-3xl flex flex-col items-center md:items-end text-center md:text-right w-full md:w-auto min-w-[200px]">
+                                <span className="block text-[10px] font-black text-emerald-600 uppercase tracking-widest">Preço Venda Direta</span>
+                                <span className="text-4xl font-black text-emerald-600 tracking-tighter leading-none mt-1">R$ {suggestedPrice}</span>
+                                <Button 
+                                    type="button"
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => setPrice(suggestedPrice)}
+                                    className="h-10 mt-3 text-xs font-black text-emerald-700 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-xl px-4 w-full"
+                                >
+                                    <Wand2 className="w-4 h-4 mr-2" /> APLICAR PREÇO
+                                </Button>
+                            </div>
                         </div>
-                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl text-right">
-                            <span className="block text-[9px] font-black text-emerald-600 uppercase">Preço Venda Direta</span>
-                            <span className="text-lg font-black text-emerald-600 tracking-tighter leading-none">R$ {suggestedPrice}</span>
-                            <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => setPrice(suggestedPrice)}
-                                className="h-6 mt-1 text-[9px] font-black text-emerald-700 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-lg px-2"
-                            >
-                                <Wand2 className="w-3 h-3 mr-1" /> APLICAR
-                            </Button>
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                        <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-2xl relative group">
-                            <Store className="w-8 h-8 absolute right-2 bottom-2 opacity-10 text-yellow-600" />
-                            <span className="block text-[8px] font-black text-yellow-600 uppercase tracking-widest">Mercado Livre ({taxML}%)</span>
-                            <span className="block text-sm font-black text-yellow-600 tracking-tighter">R$ {suggestedPriceML}</span>
-                            <button type="button" onClick={() => setPrice(suggestedPriceML)} className="text-[8px] uppercase font-bold text-yellow-700 mt-1 opacity-60 hover:opacity-100 transition-opacity">Usar este preço</button>
-                        </div>
-                        <div className="bg-orange-500/10 border border-orange-500/20 p-3 rounded-2xl relative group">
-                            <Store className="w-8 h-8 absolute right-2 bottom-2 opacity-10 text-orange-600" />
-                            <span className="block text-[8px] font-black text-orange-600 uppercase tracking-widest">Shopee ({taxShopee}%)</span>
-                            <span className="block text-sm font-black text-orange-600 tracking-tighter">R$ {suggestedPriceShopee}</span>
-                            <button type="button" onClick={() => setPrice(suggestedPriceShopee)} className="text-[8px] uppercase font-bold text-orange-700 mt-1 opacity-60 hover:opacity-100 transition-opacity">Usar este preço</button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                            <div className="bg-yellow-500/10 border border-yellow-500/20 p-5 rounded-2xl relative group flex flex-col justify-center">
+                                <Store className="w-12 h-12 absolute right-4 top-1/2 -translate-y-1/2 opacity-5 text-yellow-600" />
+                                <span className="block text-[10px] font-black text-yellow-600 uppercase tracking-widest">Mercado Livre ({taxML}%)</span>
+                                <span className="block text-2xl font-black text-yellow-700 tracking-tighter mt-1">R$ {suggestedPriceML}</span>
+                                <button type="button" onClick={() => setPrice(suggestedPriceML)} className="text-[10px] uppercase font-black text-yellow-800 mt-2 opacity-70 hover:opacity-100 transition-opacity text-left">Aplicar este preço</button>
+                            </div>
+                            <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-2xl relative group flex flex-col justify-center">
+                                <Store className="w-12 h-12 absolute right-4 top-1/2 -translate-y-1/2 opacity-5 text-orange-600" />
+                                <span className="block text-[10px] font-black text-orange-600 uppercase tracking-widest">Shopee ({taxShopee}%)</span>
+                                <span className="block text-2xl font-black text-orange-700 tracking-tighter mt-1">R$ {suggestedPriceShopee}</span>
+                                <button type="button" onClick={() => setPrice(suggestedPriceShopee)} className="text-[10px] uppercase font-black text-orange-800 mt-2 opacity-70 hover:opacity-100 transition-opacity text-left">Aplicar este preço</button>
+                            </div>
                         </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price" className="text-[10px] font-black uppercase text-muted-foreground">Preço Final Oficial</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="price" className="text-xs font-black uppercase text-muted-foreground tracking-widest">Preço Final Oficial</Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">R$</span>
-                      <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required className="h-12 pl-10 rounded-2xl border-blue-500/30 bg-blue-500/5 font-black text-lg" />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-black text-lg">R$</span>
+                      <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required className="h-16 pl-12 rounded-2xl border-blue-500/50 bg-blue-500/5 font-black text-2xl" />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="discount" className="text-[10px] font-black uppercase text-muted-foreground">Desconto Vitrine</Label>
-                    <Input id="discount" type="number" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} className="h-12 rounded-2xl border-border" placeholder="0.00" />
+                  <div className="space-y-3">
+                    <Label htmlFor="discount" className="text-xs font-black uppercase text-muted-foreground tracking-widest">Desconto Vitrine</Label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-black text-lg">R$</span>
+                      <Input id="discount" type="number" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} className="h-16 pl-12 rounded-2xl border-border font-black text-2xl" placeholder="0.00" />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* UPLOAD DE MÚLTIPLAS IMAGENS */}
-              <div className="pt-4 border-t border-border">
-                <div className="space-y-3">
+              {/* 3. UPLOAD DE MÚLTIPLAS IMAGENS */}
+              <div className="pt-8 border-t border-border">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Fotos do Produto (Máx 5)</Label>
-                    <span className="text-[10px] font-bold text-muted-foreground">{existingImages.length + files.length}/{MAX_IMAGES}</span>
+                    <Label className="text-xs font-black uppercase text-muted-foreground tracking-widest">Fotos do Produto (Máx 5)</Label>
+                    <span className="text-xs font-black text-muted-foreground">{existingImages.length + files.length}/{MAX_IMAGES}</span>
                   </div>
                   
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                     {/* Imagens já salvas no banco */}
                     {existingImages.map((img) => (
-                      <div key={img.id} className="relative aspect-square rounded-xl border border-border overflow-hidden group">
+                      <div key={img.id} className="relative aspect-square rounded-2xl border-2 border-border overflow-hidden group">
                         <img src={img.url} className="w-full h-full object-cover" />
                         <button 
                           type="button" 
                           onClick={() => removeExistingImage(img.id)} 
-                          className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 shadow-xl"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
 
                     {/* Previews das novas imagens selecionadas */}
                     {previews.map((url, i) => (
-                      <div key={i} className="relative aspect-square rounded-xl border border-border overflow-hidden group">
+                      <div key={i} className="relative aspect-square rounded-2xl border-2 border-border overflow-hidden group">
                         <img src={url} className="w-full h-full object-cover" />
                         <button 
                           type="button" 
                           onClick={() => removeNewFile(i)} 
-                          className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 shadow-xl"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
 
                     {/* Botão de Adicionar (some se chegar em 5) */}
                     {(existingImages.length + files.length) < MAX_IMAGES && (
-                      <div className="relative aspect-square rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer bg-muted/20">
+                      <div className="relative aspect-square rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer bg-muted/20">
                         <Input 
                           type="file" 
                           accept="image/*,video/*" 
@@ -785,9 +797,9 @@ export default function Products() {
                           onChange={handleFileSelect} 
                           className="absolute inset-0 opacity-0 cursor-pointer z-10" 
                         />
-                        <Plus className="w-5 h-5 text-muted-foreground mb-1" />
-                        <span className="text-[8px] font-bold text-muted-foreground uppercase text-center leading-tight">
-                          Adicionar Mídia
+                        <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                        <span className="text-[10px] font-black text-muted-foreground uppercase text-center tracking-widest leading-tight">
+                          Adicionar<br/>Mídia
                         </span>
                       </div>
                     )}
@@ -795,8 +807,8 @@ export default function Products() {
                 </div>
               </div>
 
-              <div className="pt-4">
-                <Button type="submit" className="w-full h-14 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-500/20 text-lg transition-all active:scale-[0.98]">
+              <div className="pt-8">
+                <Button type="submit" className="w-full h-16 font-black bg-blue-600 hover:bg-blue-500 text-white rounded-[1.5rem] shadow-xl shadow-blue-500/20 text-lg transition-all active:scale-[0.98] tracking-widest uppercase">
                   {editingProductId ? 'SALVAR ALTERAÇÕES' : 'CADASTRAR NA VITRINE'}
                 </Button>
               </div>
