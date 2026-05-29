@@ -12,16 +12,16 @@ import {
   Store,
   X,
   Users,
-  Users2, // NOVO ÍCONE
+  Users2,
   Circle,
   Download,
   Smartphone,
   Settings2,
   ShoppingBag,
   MessageSquare,
-  Share2,
   Sparkles,
-  Layers // ADICIONADO PARA OS FILAMENTOS
+  Layers,
+  HelpCircle // NOVO ÍCONE PARA AS DÚVIDAS FREQUENTES
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -181,7 +181,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               </NavLink>
             </li>
 
-            {/* NOVA SEÇÃO: ECOSSISTEMA MAKER */}
+            {/* SEÇÃO: ECOSSISTEMA MAKER */}
             <NavGroupLabel>Ecossistema Maker</NavGroupLabel>
             <li>
               <NavLink to="/app/community" onClick={onClose} className={navLinkClass}>
@@ -192,6 +192,15 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 </div>
               </NavLink>
             </li>
+            
+            {/* NOVA ROTA: DÚVIDAS FREQUENTES */}
+            <li>
+              <NavLink to="/app/faq" onClick={onClose} className={navLinkClass}>
+                <HelpCircle className="h-5 w-5 transition-transform group-hover:scale-110" />
+                Dúvidas Frequentes
+              </NavLink>
+            </li>
+
             <li>
               <NavLink to="/app/support" onClick={onClose} className={navLinkClass}>
                 <div className="flex items-center gap-3 relative">
