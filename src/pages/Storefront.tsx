@@ -57,8 +57,9 @@ export default function Storefront() {
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // NOVO ESTADO: Quantidade para a vitrine
+  // NOVO ESTADO: Quantidade e Galeria
   const [quantity, setQuantity] = useState('1');
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -89,7 +90,7 @@ export default function Storefront() {
         const [storeRes, prodRes] = await Promise.all([
           supabase.from('store_settings').select('*').eq('user_id', targetUserId).single(),
           supabase.from('products')
-            .select(`*`) // Removido product_images para economizar banda, já usamos main_image_url
+            .select(`*, product_images(url)`) // RECUPERADO: Puxando as imagens extras
             .eq('user_id', targetUserId)
             .eq('is_public', true)
             .order('created_at', { ascending: false })
@@ -97,7 +98,6 @@ export default function Storefront() {
 
         if (storeRes.data) {
           setStore(storeRes.data);
-          // SEO: Atualiza o título da página
           document.title = `${storeRes.data.store_name} | Vitrine 3D`;
         }
         if (prodRes.data) setProducts(prodRes.data);
@@ -124,9 +124,8 @@ export default function Storefront() {
     }
 
     try {
-      // 1. Criar o Cliente (Atrelado ao dono da loja)
       const { data: clientData, error: clientErr } = await supabase.from('clients').insert([{ 
-        user_id: store.user_id, // FORÇA PARA O DONO DA LOJA DA URL
+        user_id: store.user_id, 
         name: name, 
         phone: cleanPhone 
       }]).select().single();
@@ -136,22 +135,20 @@ export default function Storefront() {
         throw new Error("Erro de permissão no banco. Certifique-se de liberar inserção anônima em 'clients'.");
       }
       
-      // Multiplica o valor unitário pela quantidade escolhida pelo cliente
       const qty = parseInt(quantity) || 1;
       const unitPrice = selectedProduct.final_price - (selectedProduct.discount || 0);
       const finalOrderPrice = unitPrice * qty;
       const finalCost = (selectedProduct.cost_total || 0) * qty;
       
-      // 2. Criar o Pedido (Atrelado ao dono da loja)
       const { error: orderErr } = await supabase.from('orders').insert([{
-        user_id: store.user_id, // FORÇA PARA O DONO DA LOJA DA URL
+        user_id: store.user_id, 
         client_id: clientData.id, 
         product_id: selectedProduct.id, 
         description: description || "Sem observações", 
         status: 'Aguardando contato', 
         final_price: finalOrderPrice, 
         cost_total: finalCost,
-        quantity: qty // INSERE A QUANTIDADE NO BANCO
+        quantity: qty
       }]);
       
       if (orderErr) {
@@ -161,13 +158,29 @@ export default function Storefront() {
       
       toast.success('Pedido enviado com sucesso!');
       setSelectedProduct(null);
-      setName(''); setPhone(''); setDescription(''); setQuantity('1');
+      setName(''); setPhone(''); setDescription(''); setQuantity('1'); setCurrentImageIndex(0);
     } catch (err: any) { 
       toast.error(err.message); 
     } finally { 
       setIsSubmitting(false); 
     }
   };
+
+  // Funções Auxiliares de Mídia
+  const getProductMedia = (prod: any) => {
+    if (!prod) return [];
+    const media = [];
+    if (prod.main_image_url) media.push({ url: prod.main_image_url });
+    if (prod.product_images && prod.product_images.length > 0) {
+      prod.product_images.forEach((img: any) => {
+        if (img.url !== prod.main_image_url) media.push({ url: img.url });
+      });
+    }
+    return media.length > 0 ? media : [{ url: "/placeholder.jpg" }];
+  };
+
+  const isVideo = (url: string) => !!url?.match(/\.(mp4|webm|mov|ogg|m4v)$/i);
+  const selectedMedia = getProductMedia(selectedProduct);
 
   if (loading) {
     return (
@@ -190,7 +203,6 @@ export default function Storefront() {
   return (
     <div className={`relative min-h-screen font-sans pb-20 transition-colors duration-700 ${isLight ? 'bg-slate-50 text-slate-900' : 'text-white'}`}>
       
-      {/* BOTÃO ADMIN VOLTAR */}
       {profile?.id === store?.user_id && (
         <Button 
           onClick={() => navigate('/app/storefront-settings')}
@@ -200,11 +212,9 @@ export default function Storefront() {
         </Button>
       )}
 
-      {/* BACKGROUND DINÂMICO */}
       <div className={`fixed inset-0 z-[-1] transition-all duration-1000 ${isColored ? '' : isLight ? 'bg-slate-50' : 'bg-[#0f0f12]'}`} 
            style={isColored ? { backgroundColor: brandColor } : {}} />
       
-      {/* HEADER PREMIUM */}
       <div className="relative min-h-[50vh] flex flex-col items-center justify-center py-20 px-4 overflow-hidden z-10">
         {store?.banner_url && (
           <img src={store.banner_url} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${isLight ? 'opacity-20' : 'opacity-40'}`} alt="Banner" />
@@ -245,7 +255,6 @@ export default function Storefront() {
         </motion.div>
       </div>
 
-      {/* CATÁLOGO COM ANIMAÇÃO EM CASCATA */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 mt-12 space-y-10">
         <div className="flex items-center gap-6">
           <h2 className={`text-3xl md:text-5xl font-black tracking-tighter uppercase italic ${textTitle}`}>Catálogo</h2>
@@ -272,6 +281,12 @@ export default function Storefront() {
                       {prod.discount > 0 && (
                         <div className="absolute top-4 left-4 bg-emerald-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg flex items-center gap-1 animate-pulse">
                           <Zap className="w-3 h-3 fill-current" /> OFERTA
+                        </div>
+                      )}
+                      {/* Indicador de galeria no card principal */}
+                      {prod.product_images && prod.product_images.length > 1 && (
+                        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg">
+                          +{prod.product_images.length}
                         </div>
                       )}
                     </div>
@@ -309,28 +324,52 @@ export default function Storefront() {
         )}
       </div>
 
-      {/* MODAL DE PEDIDO - DESIGNER CLEAN */}
       <Dialog open={!!selectedProduct} onOpenChange={(open) => {
           if(!open) {
               setSelectedProduct(null);
-              setQuantity('1'); // Reseta a quantidade ao fechar
+              setQuantity('1'); 
+              setCurrentImageIndex(0); 
           }
       }}>
         <DialogContent className="max-w-[95vw] md:max-w-xl rounded-[3rem] bg-[#16161a] border-white/5 p-0 overflow-hidden text-zinc-100 shadow-2xl">
           <div className="overflow-y-auto max-h-[90vh]">
-            <div className="relative aspect-video w-full bg-zinc-900">
-              <img src={selectedProduct?.main_image_url} className="w-full h-full object-cover" />
-              <Button onClick={() => { setSelectedProduct(null); setQuantity('1'); }} className="absolute top-6 right-6 h-12 w-12 rounded-full bg-black/60 backdrop-blur-xl border-white/10 hover:bg-black/80 z-50">
+            
+            <div className="relative aspect-video w-full bg-zinc-950 flex flex-col">
+              {isVideo(selectedMedia[currentImageIndex]?.url) ? (
+                <video src={selectedMedia[currentImageIndex]?.url} controls autoPlay muted loop className="w-full h-full object-contain" />
+              ) : (
+                <img src={selectedMedia[currentImageIndex]?.url} className="w-full h-full object-contain" />
+              )}
+              
+              <Button onClick={() => { setSelectedProduct(null); setQuantity('1'); setCurrentImageIndex(0); }} className="absolute top-6 right-6 h-12 w-12 rounded-full bg-black/60 backdrop-blur-xl border-white/10 hover:bg-black/80 z-50">
                   <X className="w-6 h-6 text-white" />
               </Button>
             </div>
+
+            {selectedMedia.length > 1 && (
+              <div className="flex gap-3 px-8 pt-6 pb-2 overflow-x-auto custom-scrollbar">
+                {selectedMedia.map((media, idx) => (
+                  <button 
+                    key={idx} 
+                    type="button" 
+                    onClick={() => setCurrentImageIndex(idx)} 
+                    className={`relative h-16 w-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${currentImageIndex === idx ? 'border-blue-500 scale-105 shadow-lg shadow-blue-500/20' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                  >
+                    {isVideo(media.url) ? (
+                      <video src={media.url} className="w-full h-full object-cover" />
+                    ) : (
+                      <img src={media.url} className="w-full h-full object-cover" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <form onSubmit={handleOrder} className="p-8 md:p-12 space-y-8">
               <div className="space-y-2">
                   <h2 className="text-3xl font-black tracking-tighter uppercase italic leading-none">{selectedProduct?.name}</h2>
                   <p className="text-zinc-400 text-sm leading-relaxed">{selectedProduct?.description}</p>
                   
-                  {/* CÁLCULO E EXIBIÇÃO EM TEMPO REAL DA QUANTIDADE */}
                   <div className="flex items-center justify-between pt-6">
                     <div className="flex flex-col">
                       <p className="text-4xl font-black text-emerald-400 tracking-tighter">
