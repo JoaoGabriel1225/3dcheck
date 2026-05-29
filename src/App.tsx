@@ -27,8 +27,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Storefront from './pages/Storefront';
 import Clients from './pages/Clients';
 import Support from './pages/Support';
-import FAQ from '@/pages/FAQ'; // Verifique se o caminho da pasta está correto para o seu projeto
-// CORREÇÃO: Usando caminho relativo direto para garantir que o Vercel encontre dentro de src
+import FAQ from './pages/FAQ'; // <-- CORREÇÃO: Usando caminho relativo igual aos outros componentes
 import Community from './pages/app/Community'; 
 import Landing from './pages/Landing'; // NOVA IMPORTAÇÃO DA LANDING PAGE
 
