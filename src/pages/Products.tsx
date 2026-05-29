@@ -61,6 +61,7 @@ export default function Products() {
   const [filamentPrice, setFilamentPrice] = useState('');
   const [gramsUsed, setGramsUsed] = useState('');
   const [printTime, setPrintTime] = useState('');
+  const [printTimeMinutes, setPrintTimeMinutes] = useState('0'); // <--- NOVO ESTADO: Minutos
   const [profitMargin, setProfitMargin] = useState('');
   
   const [kwhPrice, setKwhPrice] = useState('');
@@ -147,7 +148,7 @@ export default function Products() {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select(`*, product_images(id, url)`) // ID adicionado para exclusão de imagens
+        .select(`*, product_images(id, url)`)
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
 
@@ -177,7 +178,12 @@ export default function Products() {
     }
 
     const gUsed = parseFloat(gramsUsed) || 0;
-    const pTime = parseFloat(printTime) || 0;
+    
+    // <--- CÁLCULO PROPORCIONAL DE HORAS E MINUTOS --->
+    const hours = parseFloat(printTime) || 0;
+    const mins = parseFloat(printTimeMinutes) || 0;
+    const pTime = hours + (mins / 60);
+
     const margin = parseFloat(profitMargin) || 0;
     const sFee = parseFloat(setupFee) || 0;
     const dep = parseFloat(depreciation) || 0;
@@ -213,7 +219,7 @@ export default function Products() {
     setSuggestedPriceML(isFinite(priceML) ? priceML.toFixed(2) : '0.00');
     setSuggestedPriceShopee(isFinite(priceShopee) ? priceShopee.toFixed(2) : '0.00');
 
-  }, [selectedFilamentId, filamentsList, filamentPrice, gramsUsed, printTime, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste, extraCosts]);
+  }, [selectedFilamentId, filamentsList, filamentPrice, gramsUsed, printTime, printTimeMinutes, profitMargin, kwhPrice, depreciation, setupFee, failureBuffer, isMultiColor, powerWatts, postProcessingMin, laborRate, taxML, taxShopee, multicolorWaste, extraCosts]);
 
   // ---> LÓGICA DE MANIPULAÇÃO DE MÚLTIPLOS ARQUIVOS <---
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,6 +269,11 @@ export default function Products() {
       let profitMarginNum = parseFloat(profitMargin) || 0;
       let discountNum = parseFloat(discount.toString().replace(',', '.')) || 0;
 
+      // Junta as horas e minutos para salvar em print_time_hours no banco
+      const hours = parseFloat(printTime) || 0;
+      const mins = parseFloat(printTimeMinutes) || 0;
+      const totalTimeHours = hours + (mins / 60);
+
       const productPayload = {
         name,
         description,
@@ -278,7 +289,7 @@ export default function Products() {
         filament_id: selectedFilamentId || null,
         extra_costs: parseFloat(extraCosts) || 0,
         weight_g: parseFloat(gramsUsed) || 0,
-        print_time_hours: parseFloat(printTime) || 0
+        print_time_hours: totalTimeHours
       };
 
       let productData;
@@ -308,12 +319,10 @@ export default function Products() {
         
       if (productError) throw productError;
 
-      // 1. Apaga imagens removidas do banco de dados
       if (imagesToDelete.length > 0) {
         await supabase.from('product_images').delete().in('id', imagesToDelete);
       }
 
-      // 2. Faz o upload das novas imagens/vídeos
       let newUploadedUrls: string[] = [];
       if (files.length > 0) {
         for (const file of files) {
@@ -341,7 +350,6 @@ export default function Products() {
         }
       }
 
-      // 3. Atualiza a imagem principal (Main Image) baseada no que sobrou
       const finalExisting = existingImages.length > 0 ? existingImages[0].url : null;
       const finalNew = newUploadedUrls.length > 0 ? newUploadedUrls[0] : null;
       const mainUrl = finalExisting || finalNew || null;
@@ -390,9 +398,14 @@ export default function Products() {
     setExtraCosts(product.extra_costs?.toString() || '');
     
     setGramsUsed(product.weight_g?.toString() || '');
-    setPrintTime(product.print_time_hours?.toString() || '');
+    
+    // <--- DESMEMBRAR HORAS TOTAIS EM HORAS E MINUTOS --->
+    const totalHours = product.print_time_hours || 0;
+    const h = Math.floor(totalHours);
+    const m = Math.round((totalHours - h) * 60);
+    setPrintTime(h.toString());
+    setPrintTimeMinutes(m.toString());
 
-    // Carrega imagens já salvas no produto
     setExistingImages(product.product_images || []);
     setFiles([]);
     setPreviews([]);
@@ -444,6 +457,7 @@ export default function Products() {
     setFilamentPrice('');
     setGramsUsed('');
     setPrintTime('');
+    setPrintTimeMinutes('0');
     setProfitMargin('');
     setKwhPrice('');
     setDepreciation('');
@@ -651,10 +665,19 @@ export default function Products() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="pTime" className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Tempo Máquina (Horas)
+                      <Label className="font-black text-muted-foreground text-[9px] uppercase tracking-wider flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Tempo Máquina
                       </Label>
-                      <Input id="pTime" type="number" step="0.1" value={printTime} onChange={(e) => setPrintTime(e.target.value)} required className="h-11 bg-background rounded-xl border-border" placeholder="Ex: 4.5" />
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input id="pTime" type="number" min="0" step="1" value={printTime} onChange={(e) => setPrintTime(e.target.value)} required className="h-11 pr-8 bg-background rounded-xl border-border" placeholder="0" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">h</span>
+                        </div>
+                        <div className="relative flex-1">
+                          <Input id="pTimeMin" type="number" min="0" max="59" step="1" value={printTimeMinutes} onChange={(e) => setPrintTimeMinutes(e.target.value)} required className="h-11 pr-10 bg-background rounded-xl border-border" placeholder="0" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">min</span>
+                        </div>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="pMargin" className="font-black text-emerald-600 text-[9px] uppercase tracking-wider">Lucro Desejado (%)</Label>
