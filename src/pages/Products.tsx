@@ -1,4 +1,4 @@
-faça a seguinte alteração no codigo, preciso que voce modifique o design de topda a calculadora para ela ser mais espasoça e mais simples de se usar e se enteder. não altere nada da logica, porem apenas quero um espeço mais confortavel e sem complicações. não quero que voce apenas de zoom ou aumente as coisas, eu euro um design totalmente novo, elite e bonito e separado para que tudo caiba em um espaço confortavel.  import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
