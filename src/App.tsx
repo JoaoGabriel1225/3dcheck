@@ -28,6 +28,7 @@ import Storefront from './pages/Storefront';
 import Clients from './pages/Clients';
 import Support from './pages/Support';
 import FAQ from './pages/FAQ'; // <-- CORREÇÃO: Usando caminho relativo igual aos outros componentes
+import Caixa from './pages/Caixa'; // <-- NOVO: Importação do Caixa
 import Community from './pages/app/Community'; 
 import Landing from './pages/Landing'; // NOVA IMPORTAÇÃO DA LANDING PAGE
 
@@ -67,6 +68,7 @@ function AppContent() {
             <Route index element={<Dashboard />} />
             <Route path="clients" element={<Clients />} />
             <Route path="orders" element={<Orders />} />
+            <Route path="caixa" element={<Caixa />} /> {/* <-- NOVO: Rota do Caixa */}
             <Route path="products" element={<Products />} />
             <Route path="filaments" element={<Filaments />} /> {/* <-- ADICIONADO: Rota da Estante de Filamentos */}
             <Route path="marketplace" element={<Marketplace />} />
