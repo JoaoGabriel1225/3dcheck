@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom'; // CORREÇÃO: react-router-dom em vez de react-router
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -21,7 +21,8 @@ import {
   MessageSquare,
   Sparkles,
   Layers,
-  HelpCircle
+  HelpCircle,
+  Wallet // <-- NOVO ÍCONE PARA O CAIXA
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -32,7 +33,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const [isAppMode, setIsAppMode] = useState(false);
   const [hasUnreadSupport, setHasUnreadSupport] = useState(false);
 
-  // Busca inicial de notificações
   const checkSupportNotifications = async () => {
     try {
       if (!user?.id) return;
@@ -52,7 +52,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   useEffect(() => {
     checkSupportNotifications();
 
-    // MELHORIA: Substituído Interval por Realtime para economia de dados e rapidez
     const supportChannel = supabase
       .channel('sidebar_notifications')
       .on('postgres_changes', { 
@@ -86,7 +85,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
-      supabase.removeChannel(supportChannel); // Limpa o canal realtime
+      supabase.removeChannel(supportChannel); 
     };
   }, [user]);
 
@@ -162,6 +161,15 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 Pedidos
               </NavLink>
             </li>
+            
+            {/* ---> NOVA ROTA DO CAIXA AQUI <--- */}
+            <li>
+              <NavLink to="/app/caixa" onClick={onClose} className={navLinkClass}>
+                <Wallet className="h-5 w-5 transition-transform group-hover:scale-110" />
+                Fluxo de Caixa
+              </NavLink>
+            </li>
+
             <li>
               <NavLink to="/app/products" onClick={onClose} className={navLinkClass}>
                 <PackageSearch className="h-5 w-5 transition-transform group-hover:scale-110" />
@@ -181,7 +189,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               </NavLink>
             </li>
 
-            {/* SEÇÃO: ECOSSISTEMA MAKER */}
             <NavGroupLabel>Ecossistema Maker</NavGroupLabel>
             <li>
               <NavLink to="/app/community" onClick={onClose} className={navLinkClass}>
@@ -192,15 +199,12 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 </div>
               </NavLink>
             </li>
-            
-            {/* ROTA: DÚVIDAS FREQUENTES */}
             <li>
               <NavLink to="/app/faq" onClick={onClose} className={navLinkClass}>
                 <HelpCircle className="h-5 w-5 transition-transform group-hover:scale-110" />
                 Dúvidas Frequentes
               </NavLink>
             </li>
-
             <li>
               <NavLink to="/app/support" onClick={onClose} className={navLinkClass}>
                 <div className="flex items-center gap-3 relative">
@@ -232,7 +236,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             <li>
               <NavLink to="/billing" onClick={onClose} className={navLinkClass}>
                 <CreditCard className="h-5 w-5 transition-transform group-hover:scale-110" />
-                Financeiro
+                Assinatura
               </NavLink>
             </li>
             
